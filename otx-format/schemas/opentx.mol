@@ -1,0 +1,20 @@
+import blockchain;
+
+/// Open Transaction Definition
+table OpenTransaction {
+    meta: OtxMap,
+    cell_deps: OtxMapVec,
+    header_deps: OtxMapVec,
+    inputs: OtxMapVec,
+    witnesses: OtxMapVec,
+    outputs: OtxMapVec,
+}
+
+vector OtxMapVec <OtxMap>;
+vector OtxMap <OtxKeyPair>;
+
+table OtxKeyPair {
+    key_type: Uint32,
+    key_data: BytesOpt,
+    value_data: Bytes,
+}
