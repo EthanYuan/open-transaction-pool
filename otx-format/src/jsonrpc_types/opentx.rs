@@ -461,71 +461,46 @@ impl TryFrom<OtxMap> for (CellOutput, OutputData) {
             .unwrap_or((None, Bytes::new().pack().into()))
             .1;
 
-        let (type_, output_data) = if map.len() == 5 {
-            // output data
-            let output_data = &map
-                .get(4)
-                .filter(|keypair| keypair.key_type.value() == OTX_OUTPUT_DATA)
-                .ok_or_else(|| {
-                    OtxFormatError::OtxMapParseMissingField(OTX_OUTPUT_DATA.to_string())
-                })?
-                .value_data;
-
-            (None, output_data)
+        let type_ = if kv_map.get(&OTX_OUTPUT_TYPE_CODE_HASH).is_none()
+            && kv_map.get(&OTX_OUTPUT_TYPE_HASH_TYPE).is_none()
+            && kv_map.get(&OTX_OUTPUT_TYPE_ARGS).is_none()
+        {
+            None
         } else {
-            // type code hash
-            let type_code_hash = map
-                .get(4)
-                .filter(|keypair| keypair.key_type.value() == OTX_OUTPUT_TYPE_CODE_HASH)
-                .ok_or_else(|| {
-                    OtxFormatError::OtxMapParseMissingField(OTX_OUTPUT_TYPE_CODE_HASH.to_string())
-                })?;
-            let type_code_hash =
-                ckb_types::packed::Byte32::from_slice(type_code_hash.value_data.as_bytes())
-                    .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
-                    .unpack();
+            let type_code_hash = kv_map
+                .remove(&OTX_OUTPUT_TYPE_CODE_HASH)
+                .unwrap_or((None, Byte32::zero().as_bytes().pack().into()));
+            let type_code_hash = ckb_types::packed::Byte32::from_slice(type_code_hash.1.as_bytes())
+                .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+                .unpack();
 
-            // type hash type
-            let type_hash_type = map
-                .get(5)
-                .filter(|keypair| keypair.key_type.value() == OTX_OUTPUT_TYPE_HASH_TYPE)
-                .ok_or_else(|| {
-                    OtxFormatError::OtxMapParseMissingField(OTX_OUTPUT_TYPE_HASH_TYPE.to_string())
-                })?;
-            let type_hash_type: u8 = packed::Byte::from_slice(type_hash_type.value_data.as_bytes())
+            let type_hash_type = kv_map
+                .remove(&OTX_OUTPUT_TYPE_HASH_TYPE)
+                .unwrap_or((None, packed::Byte::default().as_bytes().pack().into()));
+            let type_hash_type: u8 = packed::Byte::from_slice(type_hash_type.1.as_bytes())
                 .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
                 .into();
             let type_hash_type: ScriptHashType = type_hash_type
                 .try_into()
                 .map_err(|_| OtxFormatError::OtxMapParseFailed("ScriptHashType".to_string()))?;
 
-            // type args
-            let type_args = &map
-                .get(6)
-                .filter(|keypair| keypair.key_type.value() == OTX_OUTPUT_TYPE_ARGS)
-                .ok_or_else(|| {
-                    OtxFormatError::OtxMapParseMissingField(OTX_OUTPUT_TYPE_ARGS.to_string())
-                })?
-                .value_data;
+            let type_args = kv_map
+                .remove(&OTX_OUTPUT_TYPE_ARGS)
+                .unwrap_or((None, Bytes::new().pack().into()))
+                .1;
 
-            // output data
-            let output_data = &map
-                .get(7)
-                .filter(|keypair| keypair.key_type.value() == OTX_OUTPUT_DATA)
-                .ok_or_else(|| {
-                    OtxFormatError::OtxMapParseMissingField(OTX_OUTPUT_DATA.to_string())
-                })?
-                .value_data;
-
-            (
-                Some(Script {
-                    code_hash: type_code_hash,
-                    hash_type: type_hash_type.into(),
-                    args: type_args.to_owned(),
-                }),
-                output_data,
-            )
+            Some(Script {
+                code_hash: type_code_hash,
+                hash_type: type_hash_type.into(),
+                args: type_args,
+            })
         };
+
+        // output data
+        let output_data = kv_map
+            .remove(&OTX_OUTPUT_DATA)
+            .ok_or_else(|| OtxFormatError::OtxMapParseMissingField(OTX_OUTPUT_DATA.to_string()))?
+            .1;
 
         let cell_output = CellOutput {
             capacity,
@@ -537,7 +512,7 @@ impl TryFrom<OtxMap> for (CellOutput, OutputData) {
             type_,
         };
 
-        Ok((cell_output, output_data.to_owned()))
+        Ok((cell_output, output_data))
     }
 }
 

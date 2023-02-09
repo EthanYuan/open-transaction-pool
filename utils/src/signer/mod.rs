@@ -84,10 +84,5 @@ pub fn get_uncompressed_pubkey_from_pk(pk: &str) -> String {
 
 fn get_right_pk<'a>(pks: &'a [H256], script: &Script) -> Option<&'a H256> {
     let args = script.args.clone().into_bytes();
-    for pk in pks {
-        if get_secp_lock_arg(pk) == args {
-            return Some(pk);
-        }
-    }
-    None
+    pks.iter().find(|&pk| get_secp_lock_arg(pk) == args)
 }
