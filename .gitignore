@@ -1,8 +1,7 @@
 /target
 /dev_chain/dev/data
-/free-space
 
-# otx-service
-/otx-service/target
-/otx-service/plugins
-/otx-service/plugins_inactive
+# integration test
+/integration-test/target
+/integration-test/free-space
+/integration-test/dev_chain/dev/data

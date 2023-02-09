@@ -18,7 +18,6 @@ ctrlc = "3.2.3"
 env_logger = "0.9.3"
 log = "0.4.17"
 jsonrpc-core = "18.0"
-# jsonrpc-derive = "18.0"
 jsonrpc-http-server = "18.0"
 jsonrpc-server-utils = "18.0"
 secp256k1 = { version = "0.24", features = ["recovery"] }
@@ -29,10 +28,13 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread", "process", "sy
 otx-format = { path = "./otx-format" }
 otx-plugin-protocol = { path = "otx-plugin-protocol" }
 otx-pool = { path = "./otx-pool" }
+utils = { path = "./utils" }
 
 [workspace]
 members = [
     "otx-format",
     "otx-plugin-protocol",
     "otx-pool",
+    "utils",
+
 ]

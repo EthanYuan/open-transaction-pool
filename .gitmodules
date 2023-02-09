@@ -1,0 +1,4 @@
+[submodule "integration-test/mercury"]
+	path = integration-test/mercury
+	url = https://github.com/EthanYuan/mercury.git
+	branch = dev-0.4-omni-otx
