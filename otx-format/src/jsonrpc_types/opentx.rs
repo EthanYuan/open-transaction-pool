@@ -11,7 +11,7 @@ use crate::types::packed::{self, OpenTransactionBuilder, OtxMapBuilder, OtxMapVe
 use ckb_jsonrpc_types::{CellDep, CellInput, CellOutput, DepType, JsonBytes, Script, Uint32};
 use ckb_types::bytes::Bytes;
 use ckb_types::core::{self, ScriptHashType};
-use ckb_types::packed::{Byte32, OutPointBuilder};
+use ckb_types::packed::{Byte32, OutPointBuilder, WitnessArgs};
 use ckb_types::{self, prelude::*, H256};
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +19,7 @@ pub type HeaderDep = H256;
 pub type Witness = JsonBytes;
 pub type OutputData = JsonBytes;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::slice::Iter;
 
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
@@ -160,14 +160,6 @@ impl OtxMap {
     fn iter(&self) -> Iter<OtxKeyPair> {
         self.0.iter()
     }
-
-    fn get(&self, index: usize) -> Option<&OtxKeyPair> {
-        self.0.get(index)
-    }
-
-    fn len(&self) -> usize {
-        self.0.len()
-    }
 }
 
 impl From<Vec<OtxKeyPair>> for OtxMap {
@@ -291,21 +283,11 @@ impl From<Witness> for OtxMap {
 impl TryFrom<OtxMap> for Witness {
     type Error = OtxFormatError;
     fn try_from(map: OtxMap) -> Result<Self, Self::Error> {
-        if !has_unique_elements(&map) {
-            return Err(OtxFormatError::OtxMapHasDuplicateKeypair(
-                "Witness".to_string(),
-            ));
-        }
-        if map.len() != 1 {
-            return Err(OtxFormatError::OtxMapParseFailed("Witness".to_string()));
-        }
-
-        let witness = map
-            .get(0)
-            .filter(|keypair| keypair.key_type.value() == OTX_WITNESS_RAW)
-            .ok_or_else(|| OtxFormatError::OtxMapParseMissingField(OTX_WITNESS_RAW.to_string()))?;
-        let witness = witness.value_data.clone();
-
+        let mut kv_map = to_kv_map(&map)?;
+        let witness = kv_map
+            .remove(&OTX_WITNESS_RAW)
+            .unwrap_or((None, WitnessArgs::default().as_bytes().pack().into()))
+            .1;
         Ok(witness)
     }
 }
@@ -514,11 +496,6 @@ impl TryFrom<OtxMap> for (CellOutput, OutputData) {
 
         Ok((cell_output, output_data))
     }
-}
-
-fn has_unique_elements(iter: &OtxMap) -> bool {
-    let mut uniq = HashSet::new();
-    iter.iter().all(|pair| uniq.insert(pair.key_type))
 }
 
 fn to_kv_map(
