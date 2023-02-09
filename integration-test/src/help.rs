@@ -15,6 +15,8 @@ use common::lazy::{
     SUDT_CODE_HASH,
 };
 
+use ckb_types::H256;
+
 use std::panic;
 use std::process::Child;
 use std::thread::sleep;
@@ -113,7 +115,7 @@ pub(crate) fn start_otx_pool(ckb: Child, mercury: Child) -> (Child, Child, Child
     };
     let client = ServiceRpcClient::new(SERVICE_URI.to_string());
     for _try in 0..=RPC_TRY_COUNT {
-        let resp = client.query_otx_by_id(u64::MAX);
+        let resp = client.query_otx_by_id(H256::default());
         if resp.is_ok() {
             return (ckb, mercury, service);
         } else {

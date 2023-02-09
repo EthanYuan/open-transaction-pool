@@ -1,20 +1,16 @@
 use crate::error::InnerResult;
 use crate::notify::NotifyController;
 
+use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::{jsonrpc_types::OpenTransaction, types::packed};
 
 use ckb_jsonrpc_types::JsonBytes;
-use ckb_types::prelude::Entity;
+use ckb_types::{prelude::Entity, H256};
 use dashmap::mapref::entry::Entry;
 use dashmap::DashMap;
 
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-
-pub type Id = u64;
-
 pub struct OtxPool {
-    raw_otxs: DashMap<Id, OpenTransaction>,
+    raw_otxs: DashMap<H256, OpenTransaction>,
     notify_ctrl: NotifyController,
 }
 
@@ -26,24 +22,23 @@ impl OtxPool {
         }
     }
 
-    pub fn insert(&self, otx: JsonBytes) -> InnerResult<Id> {
-        let id = {
-            let mut s = DefaultHasher::new();
-            otx.hash(&mut s);
-            s.finish()
-        };
+    pub fn insert(&self, otx: JsonBytes) -> InnerResult<H256> {
         let otx = parse_otx(otx)?;
-        match self.raw_otxs.entry(id) {
+        let tx_hash = {
+            let tx_view = otx_to_tx_view(otx.clone())?;
+            tx_view.hash
+        };
+        match self.raw_otxs.entry(tx_hash.clone()) {
             Entry::Vacant(entry) => {
                 entry.insert(otx.clone());
                 self.notify_ctrl.notify_new_open_tx(otx)
             }
             Entry::Occupied(_) => {}
         };
-        Ok(id)
+        Ok(tx_hash)
     }
 
-    pub fn get_otx_by_id(&self, id: Id) -> Option<OpenTransaction> {
+    pub fn get_otx_by_id(&self, id: H256) -> Option<OpenTransaction> {
         self.raw_otxs.get(&id).map(|pair| pair.value().clone())
     }
 }

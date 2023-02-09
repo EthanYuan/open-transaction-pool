@@ -1,21 +1,22 @@
 mod r#impl;
 
-use super::pool::{Id, OtxPool};
+use super::pool::OtxPool;
 use crate::notify::NotifyController;
 
 use otx_format::jsonrpc_types::OpenTransaction;
 
 use ckb_jsonrpc_types::JsonBytes;
+use ckb_types::H256;
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_derive::rpc;
 
 #[rpc(server)]
 pub trait OtxPoolRpc {
     #[rpc(name = "submit_otx")]
-    fn submit_otx(&self, otx: JsonBytes) -> RpcResult<Id>;
+    fn submit_otx(&self, otx: JsonBytes) -> RpcResult<H256>;
 
     #[rpc(name = "query_otx_by_id")]
-    fn query_otx_by_id(&self, id: Id) -> RpcResult<Option<OpenTransaction>>;
+    fn query_otx_by_id(&self, id: H256) -> RpcResult<Option<OpenTransaction>>;
 }
 
 pub struct OtxPoolRpcImpl {

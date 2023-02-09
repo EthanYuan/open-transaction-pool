@@ -12,7 +12,7 @@ use utils::wallet::{GenOpenTxArgs, Wallet};
 use anyhow::Result;
 use ckb_jsonrpc_types::JsonBytes;
 use ckb_sdk::{unlock::IdentityFlag, HumanCapacity};
-use ckb_types::prelude::Entity;
+use ckb_types::{prelude::Entity, H256};
 
 use std::str::FromStr;
 
@@ -24,7 +24,7 @@ fn test_service_rpc() {
     let service_client = ServiceRpcClient::new(SERVICE_URI.to_string());
     let ret = service_client.submit_otx(JsonBytes::default());
     assert!(ret.is_err());
-    let ret = service_client.query_otx_by_id(u64::MAX);
+    let ret = service_client.query_otx_by_id(H256::default());
     assert!(ret.is_ok())
 }
 
