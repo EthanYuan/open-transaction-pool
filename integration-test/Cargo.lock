@@ -1076,6 +1076,7 @@ dependencies = [
  "ckb-types",
  "clap",
  "common",
+ "core-rpc-types",
  "inventory",
  "otx-format",
  "secp256k1 0.24.3",

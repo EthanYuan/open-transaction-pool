@@ -22,6 +22,7 @@ otx-format = { path = "../otx-format" }
 utils = { path = "../utils" }
 
 common = { git = "https://github.com/EthanYuan/mercury.git", branch = "dev-0.4-omni-otx" }
+core-rpc-types = { git = "https://github.com/EthanYuan/mercury.git", branch = "dev-0.4-omni-otx" }
 
 [workspace]
 members = ["."]

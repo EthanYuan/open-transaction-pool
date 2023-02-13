@@ -1,6 +1,7 @@
-use crate::const_definition::{CELL_BASE_MATURE_EPOCH, CKB_URI, GENESIS_EPOCH_LENGTH};
+use crate::const_definition::{CELL_BASE_MATURE_EPOCH, CKB_URI, GENESIS_EPOCH_LENGTH, MERCURY_URI};
 
 use crate::client::ckb_client::CkbRpcClient;
+use crate::client::mercury_client::MercuryRpcClient;
 
 use anyhow::Result;
 use ckb_jsonrpc_types::{OutputsValidator, Transaction};
@@ -36,6 +37,8 @@ pub fn generate_blocks(number: usize) -> Result<()> {
 pub fn aggregate_transactions_into_blocks() -> Result<()> {
     generate_blocks(3)?;
     generate_blocks(3)?;
+    let mercury_client = MercuryRpcClient::new(MERCURY_URI.to_string());
+    mercury_client.wait_sync();
     Ok(())
 }
 
