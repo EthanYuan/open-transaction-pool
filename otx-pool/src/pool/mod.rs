@@ -1,5 +1,8 @@
+pub mod types;
+
 use crate::error::InnerResult;
 use crate::notify::NotifyController;
+use crate::pool::types::OpenTxWithStatus;
 
 use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::{jsonrpc_types::OpenTransaction, types::packed};
@@ -10,7 +13,7 @@ use dashmap::mapref::entry::Entry;
 use dashmap::DashMap;
 
 pub struct OtxPool {
-    raw_otxs: DashMap<H256, OpenTransaction>,
+    raw_otxs: DashMap<H256, OpenTxWithStatus>,
     notify_ctrl: NotifyController,
 }
 
@@ -30,7 +33,7 @@ impl OtxPool {
         };
         match self.raw_otxs.entry(tx_hash.clone()) {
             Entry::Vacant(entry) => {
-                entry.insert(otx.clone());
+                entry.insert(OpenTxWithStatus::new(otx.clone()));
                 self.notify_ctrl.notify_new_open_tx(otx)
             }
             Entry::Occupied(_) => {}
@@ -38,7 +41,7 @@ impl OtxPool {
         Ok(tx_hash)
     }
 
-    pub fn get_otx_by_id(&self, id: H256) -> Option<OpenTransaction> {
+    pub fn get_otx_by_id(&self, id: H256) -> Option<OpenTxWithStatus> {
         self.raw_otxs.get(&id).map(|pair| pair.value().clone())
     }
 }

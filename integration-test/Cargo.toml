@@ -19,6 +19,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 otx-format = { path = "../otx-format" }
+otx-pool = { path = "../otx-pool"}
 utils = { path = "../utils" }
 
 common = { git = "https://github.com/EthanYuan/mercury.git", branch = "dev-0.4-omni-otx" }

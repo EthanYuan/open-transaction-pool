@@ -36,6 +36,6 @@ fn test_service_rpc_submit_otx() {
         .submit_otx(JsonBytes::from_bytes(otx.as_bytes()))
         .unwrap();
     let otx = service_client.query_otx_by_id(id).unwrap().unwrap();
-    let tx_view_rebuilt = otx_to_tx_view(otx).unwrap();
+    let tx_view_rebuilt = otx_to_tx_view(otx.otx).unwrap();
     assert_eq!(tx_view, tx_view_rebuilt);
 }

@@ -1,6 +1,6 @@
 use super::{request, RpcClient};
 
-use otx_format::jsonrpc_types::OpenTransaction;
+use otx_pool::types::OpenTxWithStatus;
 
 use anyhow::Result;
 use ckb_jsonrpc_types::JsonBytes;
@@ -20,7 +20,7 @@ impl ServiceRpcClient {
         request(&self.client, "submit_otx", vec![otx])
     }
 
-    pub fn query_otx_by_id(&self, otx: H256) -> Result<Option<OpenTransaction>> {
+    pub fn query_otx_by_id(&self, otx: H256) -> Result<Option<OpenTxWithStatus>> {
         request(&self.client, "query_otx_by_id", vec![otx])
     }
 }
