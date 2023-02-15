@@ -1,6 +1,7 @@
-use super::service::ServiceHandler;
+use super::host_service::ServiceHandler;
+use super::Plugin;
+use crate::notify::RuntimeHandle;
 
-use ckb_async_runtime::Handle;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, MessageType, PluginInfo};
 
 use ckb_types::core::service::Request;
@@ -16,15 +17,20 @@ pub type MsgHandler = Sender<(u64, MessageFromHost)>;
 
 #[derive(Clone, Debug)]
 pub struct PluginState {
+    /// The installation path of the plug-in, the built-in plugin binary_path is default value.
     pub binary_path: PathBuf,
+    /// Activation falg.
     pub is_active: bool,
+    /// Built-in flag.
+    pub is_built_in: bool,
 }
 
 impl PluginState {
-    pub fn new(binary_path: PathBuf, is_active: bool) -> PluginState {
+    pub fn new(binary_path: PathBuf, is_active: bool, is_built_in: bool) -> PluginState {
         PluginState {
             binary_path,
             is_active,
+            is_built_in,
         }
     }
 }
@@ -36,24 +42,42 @@ pub struct PluginProcess {
 }
 
 pub struct PluginProxy {
-    _state: PluginState,
-    _info: PluginInfo,
+    state: PluginState,
+    info: PluginInfo,
     _process: PluginProcess,
 
     /// Send request to stdin thread, and expect a response from stdout thread.
-    _request_handler: RequestHandler,
+    request_handler: RequestHandler,
 
     /// Send notifaction/response to stdin thread.
     msg_handler: MsgHandler,
 }
 
-impl PluginProxy {
-    pub fn msg_handler(&self) -> MsgHandler {
+impl Plugin for PluginProxy {
+    fn get_name(&self) -> String {
+        self.info.name.clone()
+    }
+
+    fn msg_handler(&self) -> MsgHandler {
         self.msg_handler.clone()
     }
 
+    fn request_handler(&self) -> RequestHandler {
+        self.request_handler.clone()
+    }
+
+    fn get_info(&self) -> PluginInfo {
+        self.info.clone()
+    }
+
+    fn get_state(&self) -> PluginState {
+        self.state.clone()
+    }
+}
+
+impl PluginProxy {
     /// This function will create a temporary plugin process to fetch plugin information.
-    pub fn get_plugin_info(binary_path: PathBuf) -> Result<PluginInfo, String> {
+    pub fn load_plugin_info(binary_path: PathBuf) -> Result<PluginInfo, String> {
         let mut child = Command::new(&binary_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -98,7 +122,7 @@ impl PluginProxy {
     }
 
     pub fn start_process(
-        runtime: Handle,
+        runtime: RuntimeHandle,
         plugin_state: PluginState,
         plugin_info: PluginInfo,
         service_handler: ServiceHandler,
@@ -282,10 +306,10 @@ impl PluginProxy {
         };
 
         Ok(PluginProxy {
-            _state: plugin_state,
-            _info: plugin_info,
+            state: plugin_state,
+            info: plugin_info,
             _process: process,
-            _request_handler: host_request_sender,
+            request_handler: host_request_sender,
             msg_handler: host_msg_sender,
         })
     }

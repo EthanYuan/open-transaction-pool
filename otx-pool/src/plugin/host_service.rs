@@ -8,13 +8,13 @@ use std::thread::{self, JoinHandle};
 pub type ServiceHandler = Sender<Request<MessageFromPlugin, MessageFromHost>>;
 
 #[derive(Debug)]
-pub struct ServiceProvider {
+pub struct HostServiceProvider {
     handler: ServiceHandler,
     _thread: JoinHandle<()>,
 }
 
-impl ServiceProvider {
-    pub fn start() -> Result<ServiceProvider, String> {
+impl HostServiceProvider {
+    pub fn start() -> Result<HostServiceProvider, String> {
         let (sender, receiver) = bounded(5);
 
         let handle = thread::spawn(move || loop {
@@ -38,7 +38,7 @@ impl ServiceProvider {
             }
         });
 
-        Ok(ServiceProvider {
+        Ok(HostServiceProvider {
             _thread: handle,
             handler: sender,
         })

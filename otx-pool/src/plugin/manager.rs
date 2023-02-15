@@ -1,12 +1,10 @@
+use super::host_service::HostServiceProvider;
 use super::plugin_proxy::MsgHandler;
 use super::plugin_proxy::{PluginProxy, PluginState};
-use super::service::ServiceProvider;
-use crate::notify::NotifyController;
+use crate::notify::{NotifyController, RuntimeHandle};
+use crate::plugin::Plugin;
 
-use otx_plugin_protocol::MessageFromHost;
-
-use ckb_async_runtime::Handle;
-use otx_plugin_protocol::PluginInfo;
+use otx_plugin_protocol::{MessageFromHost, PluginInfo};
 use tokio::task::JoinHandle;
 
 use std::collections::HashMap;
@@ -24,14 +22,14 @@ pub struct PluginManager {
     plugin_configs: HashMap<String, (PluginState, PluginInfo)>,
 
     // proxies for activated plugin processes
-    _plugin_proxies: HashMap<String, PluginProxy>,
+    plugin_proxies: HashMap<String, Box<dyn Plugin>>,
 
-    _service_provider: ServiceProvider,
+    _service_provider: HostServiceProvider,
     _notify_thread: JoinHandle<()>,
 }
 
 impl PluginManager {
-    pub fn load_plugin_configs(
+    fn load_plugin_configs(
         host_dir: &Path,
     ) -> Result<HashMap<String, (PluginState, PluginInfo)>, io::Error> {
         let plugin_dir = host_dir.join(PLUGINS_DIRNAME);
@@ -48,8 +46,8 @@ impl PluginManager {
             for entry in fs::read_dir(dir)? {
                 let path = entry?.path();
                 if path.is_file() {
-                    let plugin_state = PluginState::new(path.clone(), *is_active);
-                    match PluginProxy::get_plugin_info(path.clone()) {
+                    let plugin_state = PluginState::new(path.clone(), *is_active, false);
+                    match PluginProxy::load_plugin_info(path.clone()) {
                         Ok(plugin_info) => {
                             log::info!("Loaded plugin: {}", plugin_info.name);
                             plugin_configs.insert(
@@ -68,17 +66,17 @@ impl PluginManager {
     }
 
     pub fn init(
-        handle: Handle,
+        handle: RuntimeHandle,
         notify_ctrl: NotifyController,
         host_dir: &Path,
     ) -> Result<PluginManager, String> {
         let plugin_dir = host_dir.join(PLUGINS_DIRNAME);
         let plugin_configs = Self::load_plugin_configs(host_dir).map_err(|err| err.to_string())?;
 
-        let mut plugin_proxies = HashMap::new();
+        let mut plugin_proxies: HashMap<String, Box<dyn Plugin>> = HashMap::new();
 
         // Make sure ServiceProvider start before all daemon processes
-        let service_provider = ServiceProvider::start()?;
+        let service_provider = HostServiceProvider::start()?;
 
         for (plugin_name, (plugin_state, plugin_info)) in plugin_configs.iter() {
             if plugin_state.is_active {
@@ -88,7 +86,7 @@ impl PluginManager {
                     plugin_info.to_owned(),
                     service_provider.handler().clone(),
                 )?;
-                plugin_proxies.insert(plugin_name.to_owned(), plugin_proxy);
+                plugin_proxies.insert(plugin_name.to_owned(), Box::new(plugin_proxy));
             }
         }
 
@@ -115,7 +113,7 @@ impl PluginManager {
         Ok(PluginManager {
             _plugin_dir: plugin_dir,
             plugin_configs,
-            _plugin_proxies: plugin_proxies,
+            plugin_proxies,
             _service_provider: service_provider,
             _notify_thread: notify_thread,
         })
@@ -123,5 +121,14 @@ impl PluginManager {
 
     pub fn plugin_configs(&self) -> &HashMap<String, (PluginState, PluginInfo)> {
         &self.plugin_configs
+    }
+
+    pub fn add_built_in_plugin(&mut self, plugin: Box<dyn Plugin>) -> Result<(), String> {
+        let plugin_info = plugin.get_info();
+        let plugin_state = plugin.get_state();
+        self.plugin_configs
+            .insert(plugin.get_name(), (plugin_state, plugin_info));
+        self.plugin_proxies.insert(plugin.get_name(), plugin);
+        Ok(())
     }
 }

@@ -8,6 +8,8 @@ use tokio::sync::{
 
 use std::collections::HashMap;
 
+pub type RuntimeHandle = Handle;
+
 /// Asynchronous request sent to the service.
 pub struct Request<A, R> {
     /// Oneshot channel for the service to send back the response.

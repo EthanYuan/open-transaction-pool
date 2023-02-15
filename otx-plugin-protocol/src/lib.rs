@@ -71,3 +71,13 @@ pub struct PluginInfo {
     pub description: String,
     pub version: String,
 }
+
+impl PluginInfo {
+    pub fn new(name: &str, description: &str, version: &str) -> Self {
+        PluginInfo {
+            name: name.into(),
+            description: description.into(),
+            version: version.into(),
+        }
+    }
+}

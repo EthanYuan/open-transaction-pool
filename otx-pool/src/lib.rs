@@ -1,3 +1,4 @@
+pub mod built_in_plugin;
 pub mod error;
 pub mod notify;
 pub mod plugin;
