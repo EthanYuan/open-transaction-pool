@@ -3,7 +3,7 @@ use crate::IntegrationTest;
 
 use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_otx};
 use otx_format::types::packed;
-use utils::client::service_client::ServiceRpcClient;
+use utils::client::service_client::OtxPoolRpcClient;
 use utils::const_definition::SERVICE_URI;
 
 use ckb_jsonrpc_types::JsonBytes;
@@ -14,7 +14,7 @@ inventory::submit!(IntegrationTest {
     test_fn: test_service_rpc
 });
 fn test_service_rpc() {
-    let service_client = ServiceRpcClient::new(SERVICE_URI.to_string());
+    let service_client = OtxPoolRpcClient::new(SERVICE_URI.to_string());
     let ret = service_client.submit_otx(JsonBytes::default());
     assert!(ret.is_err());
     let ret = service_client.query_otx_by_id(H256::default());
@@ -31,7 +31,7 @@ fn test_service_rpc_submit_otx() {
     let otx = tx_view_to_otx(tx_view.clone()).unwrap();
     let otx: packed::OpenTransaction = otx.into();
 
-    let service_client = ServiceRpcClient::new(SERVICE_URI.to_string());
+    let service_client = OtxPoolRpcClient::new(SERVICE_URI.to_string());
     let id = service_client
         .submit_otx(JsonBytes::from_bytes(otx.as_bytes()))
         .unwrap();

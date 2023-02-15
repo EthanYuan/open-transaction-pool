@@ -6,8 +6,8 @@ use otx_format::jsonrpc_types::OpenTransaction;
 pub enum OpenTxStatus {
     /// Status "pending". The transaction is in the pool, and not proposed yet.
     Pending,
-    /// Status "proposed". The transaction is in the pool and has been proposed.
-    Proposed,
+    /// Status "proposed". The transaction is in the pool and has been proposed by some agent.
+    Proposed(String),
     /// Status "committed". The transaction has been committed to the canonical chain.
     Committed(H256),
     /// Status "unknown". The node has not seen the transaction,

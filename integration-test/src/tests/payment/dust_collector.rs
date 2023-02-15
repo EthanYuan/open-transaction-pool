@@ -4,7 +4,7 @@ use crate::IntegrationTest;
 use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_otx};
 use otx_format::types::packed;
 use otx_pool::types::OpenTxStatus;
-use utils::client::service_client::ServiceRpcClient;
+use utils::client::service_client::OtxPoolRpcClient;
 use utils::const_definition::SERVICE_URI;
 
 use anyhow::Result;
@@ -22,23 +22,25 @@ fn test_payment_dust_collect() {
     let alice_otx = alice_build_otx().unwrap();
     let bob_otx = bob_build_otx().unwrap();
 
-    let service_client = ServiceRpcClient::new(SERVICE_URI.to_string());
+    let service_client = OtxPoolRpcClient::new(SERVICE_URI.to_string());
     let alice_otx_id = service_client
         .submit_otx(JsonBytes::from_bytes(alice_otx.as_bytes()))
         .unwrap();
-    let otx = service_client
+    let alice_otx_with_status = service_client
         .query_otx_by_id(alice_otx_id)
         .unwrap()
         .unwrap();
-    assert_eq!(otx.status, OpenTxStatus::Pending);
+    assert_eq!(alice_otx_with_status.status, OpenTxStatus::Pending);
 
-    let _bob_otx_id = service_client
+    let bob_otx_id = service_client
         .submit_otx(JsonBytes::from_bytes(bob_otx.as_bytes()))
         .unwrap();
-
-    sleep(Duration::from_secs(5));
-
-    let _tx_view_rebuilt = otx_to_tx_view(otx.otx).unwrap();
+    sleep(Duration::from_secs(10));
+    let bob_otx_with_status = service_client.query_otx_by_id(bob_otx_id).unwrap().unwrap();
+    assert!(matches!(
+        bob_otx_with_status.status,
+        OpenTxStatus::Committed(_)
+    ));
 }
 
 fn alice_build_otx() -> Result<packed::OpenTransaction> {

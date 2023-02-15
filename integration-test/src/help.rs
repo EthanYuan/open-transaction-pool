@@ -1,6 +1,6 @@
 use utils::client::ckb_client::CkbRpcClient;
 use utils::client::mercury_client::MercuryRpcClient;
-use utils::client::service_client::ServiceRpcClient;
+use utils::client::service_client::OtxPoolRpcClient;
 use utils::const_definition::{
     ANYONE_CAN_PAY_DEVNET_TYPE_HASH, CHEQUE_DEVNET_TYPE_HASH, CKB_URI, DAO_DEVNET_TYPE_HASH,
     MERCURY_URI, PW_LOCK_DEVNET_TYPE_HASH, RPC_TRY_COUNT, RPC_TRY_INTERVAL_SECS, SERVICE_URI,
@@ -113,7 +113,7 @@ pub(crate) fn start_otx_pool(ckb: Child, mercury: Child) -> (Child, Child, Child
         teardown(vec![ckb, mercury]);
         panic!("start service payment");
     };
-    let client = ServiceRpcClient::new(SERVICE_URI.to_string());
+    let client = OtxPoolRpcClient::new(SERVICE_URI.to_string());
     for _try in 0..=RPC_TRY_COUNT {
         let resp = client.query_otx_by_id(H256::default());
         if resp.is_ok() {

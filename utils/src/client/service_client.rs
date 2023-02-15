@@ -6,14 +6,14 @@ use anyhow::Result;
 use ckb_jsonrpc_types::JsonBytes;
 use ckb_types::H256;
 
-pub struct ServiceRpcClient {
+pub struct OtxPoolRpcClient {
     client: RpcClient,
 }
 
-impl ServiceRpcClient {
+impl OtxPoolRpcClient {
     pub fn new(uri: String) -> Self {
         let client = RpcClient::new(uri);
-        ServiceRpcClient { client }
+        OtxPoolRpcClient { client }
     }
 
     pub fn submit_otx(&self, otx: JsonBytes) -> Result<H256> {
