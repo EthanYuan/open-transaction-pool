@@ -1,7 +1,7 @@
 use crate::tests::helper::{alice_build_signed_otx, bob_build_signed_otx};
 use crate::IntegrationTest;
 
-use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_otx};
+use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::types::packed;
 use otx_pool::types::OpenTxStatus;
 use utils::client::service_client::OtxPoolRpcClient;

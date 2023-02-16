@@ -1,4 +1,4 @@
-use super::host_service::HostServiceProvider;
+use super::host_service::{HostServiceProvider, ServiceHandler};
 use super::plugin_proxy::MsgHandler;
 use super::plugin_proxy::{PluginProxy, PluginState};
 use crate::notify::{NotifyController, RuntimeHandle};
@@ -22,9 +22,9 @@ pub struct PluginManager {
     plugin_configs: HashMap<String, (PluginState, PluginInfo)>,
 
     // proxies for activated plugin processes
-    plugin_proxies: HashMap<String, Box<dyn Plugin>>,
+    plugins: HashMap<String, Box<dyn Plugin>>,
 
-    _service_provider: HostServiceProvider,
+    service_provider: HostServiceProvider,
     _notify_thread: JoinHandle<()>,
 }
 
@@ -66,14 +66,14 @@ impl PluginManager {
     }
 
     pub fn init(
-        handle: RuntimeHandle,
+        runtime_handle: RuntimeHandle,
         notify_ctrl: NotifyController,
         host_dir: &Path,
     ) -> Result<PluginManager, String> {
         let plugin_dir = host_dir.join(PLUGINS_DIRNAME);
         let plugin_configs = Self::load_plugin_configs(host_dir).map_err(|err| err.to_string())?;
 
-        let mut plugin_proxies: HashMap<String, Box<dyn Plugin>> = HashMap::new();
+        let mut plugins: HashMap<String, Box<dyn Plugin>> = HashMap::new();
 
         // Make sure ServiceProvider start before all daemon processes
         let service_provider = HostServiceProvider::start()?;
@@ -81,28 +81,28 @@ impl PluginManager {
         for (plugin_name, (plugin_state, plugin_info)) in plugin_configs.iter() {
             if plugin_state.is_active {
                 let plugin_proxy = PluginProxy::start_process(
-                    handle.clone(),
+                    runtime_handle.clone(),
                     plugin_state.to_owned(),
                     plugin_info.to_owned(),
                     service_provider.handler().clone(),
                 )?;
-                plugin_proxies.insert(plugin_name.to_owned(), Box::new(plugin_proxy));
+                plugins.insert(plugin_name.to_owned(), Box::new(plugin_proxy));
             }
         }
 
-        let plugins: Vec<(String, MsgHandler)> = plugin_proxies
+        let plugin_msg_handlers: Vec<(String, MsgHandler)> = plugins
             .iter()
             .map(|(name, p)| (name.to_owned(), p.msg_handler()))
             .collect();
 
         // subscribe pool event
         let mut interval_receiver =
-            handle.block_on(notify_ctrl.subscribe_interval("plugin manager"));
-        let notify_thread = handle.spawn(async move {
+            runtime_handle.block_on(notify_ctrl.subscribe_interval("plugin manager"));
+        let notify_thread = runtime_handle.spawn(async move {
             loop {
                 tokio::select! {
                     Some(()) = interval_receiver.recv() => {
-                        plugins.iter().for_each(|(_, notify_handler)| {
+                        plugin_msg_handlers.iter().for_each(|(_, notify_handler)| {
                             let _ = notify_handler.send((0, MessageFromHost::NewInterval));
                         })
                     }
@@ -113,8 +113,8 @@ impl PluginManager {
         Ok(PluginManager {
             _plugin_dir: plugin_dir,
             plugin_configs,
-            plugin_proxies,
-            _service_provider: service_provider,
+            plugins,
+            service_provider,
             _notify_thread: notify_thread,
         })
     }
@@ -123,12 +123,16 @@ impl PluginManager {
         &self.plugin_configs
     }
 
+    pub fn service_handler(&self) -> ServiceHandler {
+        self.service_provider.handler()
+    }
+
     pub fn add_built_in_plugin(&mut self, plugin: Box<dyn Plugin>) -> Result<(), String> {
         let plugin_info = plugin.get_info();
         let plugin_state = plugin.get_state();
         self.plugin_configs
             .insert(plugin.get_name(), (plugin_state, plugin_info));
-        self.plugin_proxies.insert(plugin.get_name(), plugin);
+        self.plugins.insert(plugin.get_name(), plugin);
         Ok(())
     }
 }

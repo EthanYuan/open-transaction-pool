@@ -44,7 +44,7 @@ impl HostServiceProvider {
         })
     }
 
-    pub fn handler(&self) -> &ServiceHandler {
-        &self.handler
+    pub fn handler(&self) -> ServiceHandler {
+        self.handler.clone()
     }
 }

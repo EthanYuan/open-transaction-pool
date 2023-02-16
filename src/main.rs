@@ -1,10 +1,11 @@
 use otx_pool::{
+    built_in_plugin::DustCollector,
     notify::NotifyService,
     plugin::manager::PluginManager,
     rpc::{OtxPoolRpc, OtxPoolRpcImpl},
 };
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use ckb_async_runtime::new_global_runtime;
 use jsonrpc_core::IoHandler;
 use jsonrpc_http_server::ServerBuilder;
@@ -34,7 +35,7 @@ fn main() -> Result<()> {
 
 pub fn start() -> Result<()> {
     // runtime handle
-    let (handle, runtime) = new_global_runtime();
+    let (runtime_handle, runtime) = new_global_runtime();
 
     // bind address
     let bind: Vec<&str> = SERVICE_URI.split("//").collect();
@@ -42,11 +43,11 @@ pub fn start() -> Result<()> {
 
     // start notify service
     let notify_service = NotifyService::new();
-    let notify_ctrl = notify_service.start(handle.clone());
+    let notify_ctrl = notify_service.start(runtime_handle.clone());
 
     // interval loop
     let notifier = notify_ctrl.clone();
-    let interval_handler = handle.spawn(async move {
+    let interval_handler = runtime_handle.spawn(async move {
         let mut interval = time::interval(Duration::from_secs(5));
         loop {
             interval.tick().await;
@@ -55,10 +56,26 @@ pub fn start() -> Result<()> {
     });
 
     // init plugins
-    let plugin_manager =
-        PluginManager::init(handle, notify_ctrl.clone(), Path::new("./free-space")).unwrap();
+    let mut plugin_manager = PluginManager::init(
+        runtime_handle.clone(),
+        notify_ctrl.clone(),
+        Path::new("./free-space"),
+    )
+    .unwrap();
+
+    // init built-in plugins
+    let dust_collector = DustCollector::new(runtime_handle, plugin_manager.service_handler())
+        .map_err(|err| anyhow!(err))?;
+    plugin_manager
+        .add_built_in_plugin(Box::new(dust_collector))
+        .map_err(|err| anyhow!(err))?;
     let plugins = plugin_manager.plugin_configs();
+
+    // display all names of plugins
     log::info!("actived plugins count: {:?}", plugins.len());
+    plugins
+        .iter()
+        .for_each(|(_, plugin)| log::info!("plugin name: {:?}", plugin.1.name));
 
     // init otx pool rpc
     let rpc_impl = OtxPoolRpcImpl::new(notify_ctrl);
