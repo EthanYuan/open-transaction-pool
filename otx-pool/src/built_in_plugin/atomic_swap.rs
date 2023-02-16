@@ -51,11 +51,11 @@ impl DustCollector {
         runtime: RuntimeHandle,
         service_handler: ServiceHandler,
     ) -> Result<DustCollector, String> {
-        let name = "dust collector";
+        let name = "atomic swap";
         let state = PluginState::new(PathBuf::default(), true, true);
         let info = PluginInfo::new(
             name,
-            "Collect micropayment otx and aggregate them into ckb tx.",
+            "Atomic swap engine merges matched asset swaps open transactions.",
             "1.0",
         );
         let (msg_handler, request_handler, thread) =
