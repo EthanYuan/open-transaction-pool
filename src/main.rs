@@ -16,6 +16,7 @@ use std::{net::SocketAddr, path::Path};
 
 pub const MESSAGE_CHANNEL_SIZE: usize = 1024;
 const RUNTIME_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
+const INTERVAL: Duration = Duration::from_secs(2);
 pub const PLUGINS_DIRNAME: &str = "plugins";
 pub const SERVICE_URI: &str = "http://127.0.0.1:8118";
 
@@ -47,7 +48,7 @@ pub fn start() -> Result<()> {
     // interval loop
     let notifier = notify_ctrl.clone();
     let interval_handler = runtime_handle.spawn(async move {
-        let mut interval = time::interval(Duration::from_secs(5));
+        let mut interval = time::interval(INTERVAL);
         loop {
             interval.tick().await;
             notifier.notify_interval();

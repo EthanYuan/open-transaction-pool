@@ -3,13 +3,17 @@ use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
 
-use otx_plugin_protocol::{MessageFromPlugin, PluginInfo};
+use otx_format::jsonrpc_types::OpenTransaction;
+use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
 
 use ckb_types::core::service::Request;
 use crossbeam_channel::{bounded, select, unbounded};
+use dashmap::DashSet;
 use tokio::task::JoinHandle;
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 
 pub struct DustCollector {
     state: PluginState,
@@ -22,6 +26,9 @@ pub struct DustCollector {
     msg_handler: MsgHandler,
 
     _thread: JoinHandle<()>,
+
+    _raw_otxs: Arc<DashSet<OpenTransaction>>,
+    _interval_counter: Arc<AtomicU32>,
 }
 
 impl Plugin for DustCollector {
@@ -58,14 +65,23 @@ impl DustCollector {
             "Collect micropayment otx and aggregate them into ckb tx.",
             "1.0",
         );
-        let (msg_handler, request_handler, thread) =
-            DustCollector::start_process(name, runtime_handle, service_handler)?;
+        let raw_otxs = Arc::new(DashSet::default());
+        let interval_counter = Arc::new(AtomicU32::new(0));
+        let (msg_handler, request_handler, thread) = DustCollector::start_process(
+            name,
+            runtime_handle,
+            service_handler,
+            raw_otxs.clone(),
+            interval_counter.clone(),
+        )?;
         Ok(DustCollector {
             state,
             info,
             msg_handler,
             request_handler,
             _thread: thread,
+            _raw_otxs: raw_otxs,
+            _interval_counter: interval_counter,
         })
     }
 
@@ -81,6 +97,8 @@ impl DustCollector {
         plugin_name: &str,
         runtime: RuntimeHandle,
         _service_handler: ServiceHandler,
+        otx_set: Arc<DashSet<OpenTransaction>>,
+        intervel_counter: Arc<AtomicU32>,
     ) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>), String> {
         // the host request channel receives request from host to plugin
         let (host_request_sender, host_request_receiver) = bounded(1);
@@ -110,6 +128,19 @@ impl DustCollector {
                         match msg {
                             Ok(msg) => {
                                 log::debug!("dust collector receivers msg: {:?}", msg);
+                                match msg {
+                                    (_, MessageFromHost::NewInterval) => {
+                                        let _ = intervel_counter.fetch_add(1, Ordering::SeqCst);
+                                        if intervel_counter.load(Ordering::SeqCst) == 5 {
+                                            log::debug!("otx set len: {:?}", otx_set.len());
+                                            intervel_counter.store(0, Ordering::SeqCst);
+                                        }
+                                    }
+                                    (_, MessageFromHost::NewOtx(otx)) => {
+                                        otx_set.insert(otx);
+                                    }
+                                    _ => unreachable!(),
+                                }
                                 Ok(false)
                             }
                             Err(err) => Err(err.to_string())

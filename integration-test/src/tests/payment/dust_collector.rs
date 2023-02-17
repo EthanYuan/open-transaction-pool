@@ -35,13 +35,13 @@ fn test_payment_dust_collect() {
     let bob_otx_id = service_client
         .submit_otx(JsonBytes::from_bytes(bob_otx.as_bytes()))
         .unwrap();
-    let bob_otx_with_status = service_client.query_otx_by_id(bob_otx_id).unwrap().unwrap();
+    let bob_otx_with_status = service_client.query_otx_by_id(bob_otx_id.clone()).unwrap().unwrap();
     assert_eq!(bob_otx_with_status.status, OpenTxStatus::Pending);
 
-    sleep(Duration::from_secs(10));
+    sleep(Duration::from_secs(12));
 
     let bob_otx_with_status = service_client.query_otx_by_id(bob_otx_id).unwrap().unwrap();
-    
+
     assert!(matches!(
         bob_otx_with_status.status,
         OpenTxStatus::Committed(_)

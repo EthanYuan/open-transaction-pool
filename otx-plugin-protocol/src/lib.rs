@@ -13,7 +13,7 @@ pub enum MessageType {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum MessageFromHost {
     // Notify
-    NewOtx((Id, OpenTransaction)),
+    NewOtx(OpenTransaction),
     NewInterval,
     OtxPoolStart,
     OtxPoolStop,
