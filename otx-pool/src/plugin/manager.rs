@@ -1,6 +1,7 @@
 use super::host_service::{HostServiceProvider, ServiceHandler};
 use super::plugin_proxy::MsgHandler;
 use super::plugin_proxy::{PluginProxy, PluginState};
+use crate::built_in_plugin::DustCollector;
 use crate::notify::{NotifyController, RuntimeHandle};
 use crate::plugin::Plugin;
 
@@ -22,10 +23,10 @@ pub struct PluginManager {
     plugin_configs: HashMap<String, (PluginState, PluginInfo)>,
 
     // proxies for activated plugin processes
-    plugins: HashMap<String, Box<dyn Plugin>>,
+    _plugins: HashMap<String, Box<dyn Plugin>>,
 
     service_provider: HostServiceProvider,
-    _notify_thread: JoinHandle<()>,
+    _event_thread: JoinHandle<()>,
 }
 
 impl PluginManager {
@@ -70,40 +71,51 @@ impl PluginManager {
         notify_ctrl: NotifyController,
         host_dir: &Path,
     ) -> Result<PluginManager, String> {
-        let plugin_dir = host_dir.join(PLUGINS_DIRNAME);
-        let plugin_configs = Self::load_plugin_configs(host_dir).map_err(|err| err.to_string())?;
-
+        let mut plugin_configs: HashMap<String, (PluginState, PluginInfo)> = HashMap::new();
         let mut plugins: HashMap<String, Box<dyn Plugin>> = HashMap::new();
 
         // Make sure ServiceProvider start before all daemon processes
         let service_provider = HostServiceProvider::start()?;
 
-        for (plugin_name, (plugin_state, plugin_info)) in plugin_configs.iter() {
+        // load plugins
+        log::info!("load plugins");
+        for (plugin_name, (plugin_state, plugin_info)) in
+            Self::load_plugin_configs(host_dir).map_err(|err| err.to_string())?
+        {
+            plugin_configs.insert(
+                plugin_name.clone(),
+                (plugin_state.to_owned(), plugin_info.to_owned()),
+            );
             if plugin_state.is_active {
                 let plugin_proxy = PluginProxy::start_process(
                     runtime_handle.clone(),
-                    plugin_state.to_owned(),
-                    plugin_info.to_owned(),
+                    plugin_state,
+                    plugin_info,
                     service_provider.handler().clone(),
                 )?;
                 plugins.insert(plugin_name.to_owned(), Box::new(plugin_proxy));
             }
         }
 
+        // init built-in plugins
+        log::info!("init built-in plugins");
+        let dust_collector =
+            DustCollector::new(runtime_handle.clone(), service_provider.handler())?;
+        add_built_in_plugin(Box::new(dust_collector), &mut plugin_configs, &mut plugins);
+
+        // subscribe events
         let plugin_msg_handlers: Vec<(String, MsgHandler)> = plugins
             .iter()
             .map(|(name, p)| (name.to_owned(), p.msg_handler()))
             .collect();
-
-        // subscribe pool event
-        let mut interval_receiver =
+        let mut interval_event_receiver =
             runtime_handle.block_on(notify_ctrl.subscribe_interval("plugin manager"));
-        let notify_thread = runtime_handle.spawn(async move {
+        let event_listening_thread = runtime_handle.spawn(async move {
             loop {
                 tokio::select! {
-                    Some(()) = interval_receiver.recv() => {
-                        plugin_msg_handlers.iter().for_each(|(_, notify_handler)| {
-                            let _ = notify_handler.send((0, MessageFromHost::NewInterval));
+                    Some(()) = interval_event_receiver.recv() => {
+                        plugin_msg_handlers.iter().for_each(|(_, msg_handler)| {
+                            let _ = msg_handler.send((0, MessageFromHost::NewInterval));
                         })
                     }
                 }
@@ -111,11 +123,11 @@ impl PluginManager {
         });
 
         Ok(PluginManager {
-            _plugin_dir: plugin_dir,
+            _plugin_dir: host_dir.join(PLUGINS_DIRNAME),
             plugin_configs,
-            plugins,
+            _plugins: plugins,
             service_provider,
-            _notify_thread: notify_thread,
+            _event_thread: event_listening_thread,
         })
     }
 
@@ -126,13 +138,15 @@ impl PluginManager {
     pub fn service_handler(&self) -> ServiceHandler {
         self.service_provider.handler()
     }
+}
 
-    pub fn add_built_in_plugin(&mut self, plugin: Box<dyn Plugin>) -> Result<(), String> {
-        let plugin_info = plugin.get_info();
-        let plugin_state = plugin.get_state();
-        self.plugin_configs
-            .insert(plugin.get_name(), (plugin_state, plugin_info));
-        self.plugins.insert(plugin.get_name(), plugin);
-        Ok(())
-    }
+pub fn add_built_in_plugin(
+    plugin: Box<dyn Plugin>,
+    plugin_configs: &mut HashMap<String, (PluginState, PluginInfo)>,
+    plugins: &mut HashMap<String, Box<dyn Plugin>>,
+) {
+    let plugin_info = plugin.get_info();
+    let plugin_state = plugin.get_state();
+    plugin_configs.insert(plugin.get_name(), (plugin_state, plugin_info));
+    plugins.insert(plugin.get_name(), plugin);
 }

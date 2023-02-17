@@ -95,13 +95,14 @@ impl DustCollector {
                     // request from host to plugin
                     recv(host_request_receiver) -> msg => {
                         match msg {
-                            Ok(Request { responder, arguments:_ }) => {
+                            Ok(Request { responder, arguments }) => {
                                 // handle
+                                log::debug!("host request: {:?}", arguments);
                                 let response = (0, MessageFromPlugin::Ok);
                                 responder.send(response).map_err(|err| err.to_string())?;
                                 Ok(false)
                             }
-                            Err(err) => Err(err.to_string())
+                            Err(err) => Err(format!("host_request_receiver err: {}", err))
                         }
                     }
                     // repsonse/notification from host to plugin
@@ -110,7 +111,7 @@ impl DustCollector {
                             Ok(_msg) => {
                                 Ok(false)
                             }
-                            Err(err) => Err(err.to_string())
+                            Err(err) => Err(format!("host_msg_receiver err: {}", err))
                         }
                     }
                 }
@@ -122,7 +123,7 @@ impl DustCollector {
                     }
                     Ok(false) => (),
                     Err(err) => {
-                        log::error!("plugin {} stdin error: {}", plugin_name, err);
+                        log::error!("plugin {} error: {}", plugin_name, err);
                         break;
                     }
                 }

@@ -1,11 +1,10 @@
 use otx_pool::{
-    built_in_plugin::DustCollector,
     notify::NotifyService,
     plugin::manager::PluginManager,
     rpc::{OtxPoolRpc, OtxPoolRpcImpl},
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use ckb_async_runtime::new_global_runtime;
 use jsonrpc_core::IoHandler;
 use jsonrpc_http_server::ServerBuilder;
@@ -56,22 +55,15 @@ pub fn start() -> Result<()> {
     });
 
     // init plugins
-    let mut plugin_manager = PluginManager::init(
-        runtime_handle.clone(),
+    let plugin_manager = PluginManager::init(
+        runtime_handle,
         notify_ctrl.clone(),
         Path::new("./free-space"),
     )
     .unwrap();
 
-    // init built-in plugins
-    let dust_collector = DustCollector::new(runtime_handle, plugin_manager.service_handler())
-        .map_err(|err| anyhow!(err))?;
-    plugin_manager
-        .add_built_in_plugin(Box::new(dust_collector))
-        .map_err(|err| anyhow!(err))?;
-    let plugins = plugin_manager.plugin_configs();
-
     // display all names of plugins
+    let plugins = plugin_manager.plugin_configs();
     log::info!("actived plugins count: {:?}", plugins.len());
     plugins
         .iter()

@@ -192,7 +192,7 @@ impl NotifyService {
             responder,
             arguments: name,
         } = msg;
-        log::debug!("Register interval {:?}", name);
+        log::debug!("Register interval event plugin: {:?}", name);
         let (sender, receiver) = mpsc::channel(NOTIFY_CHANNEL_SIZE);
         self.interval_subscribers.insert(name, sender);
         let _ = responder.send(receiver);

@@ -48,7 +48,7 @@ impl Plugin for DustCollector {
 
 impl DustCollector {
     pub fn new(
-        runtime: RuntimeHandle,
+        runtime_handle: RuntimeHandle,
         service_handler: ServiceHandler,
     ) -> Result<DustCollector, String> {
         let name = "dust collector";
@@ -59,7 +59,7 @@ impl DustCollector {
             "1.0",
         );
         let (msg_handler, request_handler, thread) =
-            DustCollector::start_process(name, runtime, service_handler)?;
+            DustCollector::start_process(name, runtime_handle, service_handler)?;
         Ok(DustCollector {
             state,
             info,
@@ -95,7 +95,8 @@ impl DustCollector {
                     // request from host to plugin
                     recv(host_request_receiver) -> msg => {
                         match msg {
-                            Ok(Request { responder, arguments:_ }) => {
+                            Ok(Request { responder, arguments }) => {
+                                log::debug!("dust collector receives request arguments: {:?}", arguments);
                                 // handle
                                 let response = (0, MessageFromPlugin::Ok);
                                 responder.send(response).map_err(|err| err.to_string())?;
@@ -107,7 +108,8 @@ impl DustCollector {
                     // repsonse/notification from host to plugin
                     recv(host_msg_receiver) -> msg => {
                         match msg {
-                            Ok(_msg) => {
+                            Ok(msg) => {
+                                log::debug!("dust collector receivers msg: {:?}", msg);
                                 Ok(false)
                             }
                             Err(err) => Err(err.to_string())
@@ -122,7 +124,7 @@ impl DustCollector {
                     }
                     Ok(false) => (),
                     Err(err) => {
-                        log::error!("plugin {} stdin error: {}", plugin_name, err);
+                        log::error!("plugin {} error: {}", plugin_name, err);
                         break;
                     }
                 }
