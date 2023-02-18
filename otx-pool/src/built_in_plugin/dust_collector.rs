@@ -53,6 +53,21 @@ impl Plugin for DustCollector {
     }
 }
 
+#[derive(Clone)]
+pub struct Context {
+    pub otx_set: Arc<DashSet<OpenTransaction>>,
+    pub interval_counter: Arc<AtomicU32>,
+}
+
+impl Context {
+    fn new(otx_set: Arc<DashSet<OpenTransaction>>, interval_counter: Arc<AtomicU32>) -> Self {
+        Context {
+            otx_set,
+            interval_counter,
+        }
+    }
+}
+
 impl DustCollector {
     pub fn new(
         runtime_handle: RuntimeHandle,
@@ -67,13 +82,9 @@ impl DustCollector {
         );
         let raw_otxs = Arc::new(DashSet::default());
         let interval_counter = Arc::new(AtomicU32::new(0));
-        let (msg_handler, request_handler, thread) = DustCollector::start_process(
-            name,
-            runtime_handle,
-            service_handler,
-            raw_otxs.clone(),
-            interval_counter.clone(),
-        )?;
+        let context = Context::new(raw_otxs.clone(), interval_counter.clone());
+        let (msg_handler, request_handler, thread) =
+            DustCollector::start_process(name, runtime_handle, service_handler, context)?;
         Ok(DustCollector {
             state,
             info,
@@ -97,8 +108,7 @@ impl DustCollector {
         plugin_name: &str,
         runtime: RuntimeHandle,
         _service_handler: ServiceHandler,
-        otx_set: Arc<DashSet<OpenTransaction>>,
-        intervel_counter: Arc<AtomicU32>,
+        context: Context,
     ) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>), String> {
         // the host request channel receives request from host to plugin
         let (host_request_sender, host_request_receiver) = bounded(1);
@@ -130,14 +140,10 @@ impl DustCollector {
                                 log::debug!("dust collector receivers msg: {:?}", msg);
                                 match msg {
                                     (_, MessageFromHost::NewInterval) => {
-                                        let _ = intervel_counter.fetch_add(1, Ordering::SeqCst);
-                                        if intervel_counter.load(Ordering::SeqCst) == 5 {
-                                            log::debug!("otx set len: {:?}", otx_set.len());
-                                            intervel_counter.store(0, Ordering::SeqCst);
-                                        }
+                                        on_new_intervel(context.clone());
                                     }
                                     (_, MessageFromHost::NewOtx(otx)) => {
-                                        otx_set.insert(otx);
+                                        on_new_open_tx(otx, context.clone());
                                     }
                                     _ => unreachable!(),
                                 }
@@ -151,6 +157,7 @@ impl DustCollector {
             loop {
                 match do_select() {
                     Ok(true) => {
+                        log::info!("plugin {} quit", plugin_name);
                         break;
                     }
                     Ok(false) => (),
@@ -163,5 +170,17 @@ impl DustCollector {
         });
 
         Ok((host_msg_sender, host_request_sender, thread))
+    }
+}
+
+fn on_new_open_tx(otx: OpenTransaction, context: Context) {
+    context.otx_set.insert(otx);
+}
+
+fn on_new_intervel(context: Context) {
+    let _ = context.interval_counter.fetch_add(1, Ordering::SeqCst);
+    if context.interval_counter.load(Ordering::SeqCst) == 5 {
+        log::debug!("otx set len: {:?}", context.otx_set.len());
+        context.interval_counter.store(0, Ordering::SeqCst);
     }
 }
