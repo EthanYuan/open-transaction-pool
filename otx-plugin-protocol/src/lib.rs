@@ -14,7 +14,7 @@ pub enum MessageType {
 pub enum MessageFromHost {
     // Notify
     NewOtx(OpenTransaction),
-    NewInterval,
+    NewInterval(u64),
     OtxPoolStart,
     OtxPoolStop,
     DeleteOtx(Id),
@@ -31,7 +31,7 @@ impl MessageFromHost {
     pub fn get_message_type(&self) -> MessageType {
         match self {
             Self::NewOtx(_)
-            | Self::NewInterval
+            | Self::NewInterval(_)
             | Self::OtxPoolStart
             | Self::OtxPoolStop
             | Self::DeleteOtx(_) => MessageType::Notify,

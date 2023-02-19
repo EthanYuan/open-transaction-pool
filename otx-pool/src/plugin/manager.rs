@@ -155,9 +155,9 @@ fn subscribe_events(
     runtime_handle.spawn(async move {
         loop {
             tokio::select! {
-                Some(()) = interval_event_receiver.recv() => {
+                Some(elapsed) = interval_event_receiver.recv() => {
                     plugin_msg_handlers.iter().for_each(|(_, msg_handler)| {
-                        let _ = msg_handler.send((0, MessageFromHost::NewInterval));
+                        let _ = msg_handler.send((0, MessageFromHost::NewInterval(elapsed)));
                     })
                 }
                 Some(open_tx) = new_otx_event_receiver.recv() => {

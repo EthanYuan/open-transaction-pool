@@ -45,8 +45,8 @@ pub struct NotifyController {
     new_open_tx_notifier: Sender<OpenTransaction>,
     delete_open_tx_register: NotifyRegister<OpenTransaction>,
     delete_open_tx_notifier: Sender<OpenTransaction>,
-    interval_register: NotifyRegister<()>,
-    interval_notifier: Sender<()>,
+    interval_register: NotifyRegister<u64>,
+    interval_notifier: Sender<u64>,
     start_register: NotifyRegister<()>,
     start_notifier: Sender<()>,
     stop_register: NotifyRegister<()>,
@@ -63,7 +63,7 @@ impl Drop for NotifyController {
 pub struct NotifyService {
     new_open_tx_subscribers: HashMap<String, Sender<OpenTransaction>>,
     delete_open_tx_subscribers: HashMap<String, Sender<OpenTransaction>>,
-    interval_subscribers: HashMap<String, Sender<()>>,
+    interval_subscribers: HashMap<String, Sender<u64>>,
     start_subscribers: HashMap<String, Sender<()>>,
     stop_subscribers: HashMap<String, Sender<()>>,
 }
@@ -119,7 +119,7 @@ impl NotifyService {
                     Some(msg) = delete_open_tx_register_receiver.recv() => { self.handle_register_delete_open_tx(msg) },
                     Some(msg) = delete_open_tx_receiver.recv() => { self.handle_notify_delete_open_tx(msg).await },
                     Some(msg) = interval_register_receiver.recv() => { self.handle_register_interval(msg) },
-                    Some(()) = interval_receiver.recv() => { self.handle_notify_interval().await },
+                    Some(msg) = interval_receiver.recv() => { self.handle_notify_interval(msg).await },
                     Some(msg) = start_register_receiver.recv() => { self.handle_register_start(msg) },
                     Some(()) = start_receiver.recv() => { self.handle_notify_start().await },
                     Some(msg) = stop_register_receiver.recv() => { self.handle_register_stop(msg) },
@@ -187,7 +187,7 @@ impl NotifyService {
         }
     }
 
-    fn handle_register_interval(&mut self, msg: Request<String, Receiver<()>>) {
+    fn handle_register_interval(&mut self, msg: Request<String, Receiver<u64>>) {
         let Request {
             responder,
             arguments: name,
@@ -198,11 +198,11 @@ impl NotifyService {
         let _ = responder.send(receiver);
     }
 
-    async fn handle_notify_interval(&mut self) {
+    async fn handle_notify_interval(&mut self, elapsed_secs: u64) {
         log::trace!("event interval");
         // notify all subscribers
         for subscriber in self.interval_subscribers.values() {
-            let _ = subscriber.send(()).await;
+            let _ = subscriber.send(elapsed_secs).await;
         }
     }
 
@@ -275,16 +275,16 @@ impl NotifyController {
         });
     }
 
-    pub async fn subscribe_interval<S: ToString>(&self, name: S) -> Receiver<()> {
+    pub async fn subscribe_interval<S: ToString>(&self, name: S) -> Receiver<u64> {
         Request::call(&self.interval_register, name.to_string())
             .await
             .expect("Subscribe interval should be OK")
     }
 
-    pub fn notify_interval(&self) {
+    pub fn notify_interval(&self, elapsed_secs: u64) {
         let interval_notifier = self.interval_notifier.clone();
         self.handle.spawn(async move {
-            let _ = interval_notifier.send(()).await;
+            let _ = interval_notifier.send(elapsed_secs).await;
         });
     }
 

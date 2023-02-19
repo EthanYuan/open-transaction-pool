@@ -15,27 +15,22 @@ use crossbeam_channel::{bounded, select, unbounded};
 use dashmap::DashSet;
 use tokio::task::JoinHandle;
 
-use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Context {
     pub otx_set: Arc<DashSet<OpenTransaction>>,
-    pub interval_counter: Arc<AtomicU32>,
 }
 
 impl Context {
-    fn new(otx_set: Arc<DashSet<OpenTransaction>>, interval_counter: Arc<AtomicU32>) -> Self {
-        Context {
-            otx_set,
-            interval_counter,
-        }
+    fn new(otx_set: Arc<DashSet<OpenTransaction>>) -> Self {
+        Context { otx_set }
     }
 }
 
 pub trait BuiltInPlugin {
     fn on_new_open_tx(otx: OpenTransaction, context: Context);
-    fn on_new_intervel(context: Context);
+    fn on_new_intervel(elapsed: u64, context: Context);
     fn start_process(
         plugin_name: &str,
         runtime: RuntimeHandle,
@@ -71,8 +66,8 @@ pub trait BuiltInPlugin {
                             Ok(msg) => {
                                 log::debug!("dust collector receivers msg: {:?}", msg);
                                 match msg {
-                                    (_, MessageFromHost::NewInterval) => {
-                                        Self::on_new_intervel(context.clone());
+                                    (_, MessageFromHost::NewInterval(elapsed)) => {
+                                        Self::on_new_intervel(elapsed, context.clone());
                                     }
                                     (_, MessageFromHost::NewOtx(otx)) => {
                                         Self::on_new_open_tx(otx, context.clone());

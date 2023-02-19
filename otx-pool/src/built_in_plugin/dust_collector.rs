@@ -11,7 +11,6 @@ use dashmap::DashSet;
 use tokio::task::JoinHandle;
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
 pub struct DustCollector {
@@ -27,7 +26,6 @@ pub struct DustCollector {
     _thread: JoinHandle<()>,
 
     _raw_otxs: Arc<DashSet<OpenTransaction>>,
-    _interval_counter: Arc<AtomicU32>,
 }
 
 impl Plugin for DustCollector {
@@ -65,8 +63,7 @@ impl DustCollector {
             "1.0",
         );
         let raw_otxs = Arc::new(DashSet::default());
-        let interval_counter = Arc::new(AtomicU32::new(0));
-        let context = Context::new(raw_otxs.clone(), interval_counter.clone());
+        let context = Context::new(raw_otxs.clone());
         let (msg_handler, request_handler, thread) =
             DustCollector::start_process(name, runtime_handle, service_handler, context)?;
         Ok(DustCollector {
@@ -76,7 +73,6 @@ impl DustCollector {
             request_handler,
             _thread: thread,
             _raw_otxs: raw_otxs,
-            _interval_counter: interval_counter,
         })
     }
 }
@@ -86,11 +82,17 @@ impl BuiltInPlugin for DustCollector {
         context.otx_set.insert(otx);
     }
 
-    fn on_new_intervel(context: Context) {
-        let _ = context.interval_counter.fetch_add(1, Ordering::SeqCst);
-        if context.interval_counter.load(Ordering::SeqCst) == 5 {
+    fn on_new_intervel(elapsed: u64, context: Context) {
+        if elapsed % 10 == 0 {
             log::debug!("otx set len: {:?}", context.otx_set.len());
-            context.interval_counter.store(0, Ordering::SeqCst);
+
+            // merge_otx
+
+            // send_ckb
+
+            // notify service
+            // the ckb tx and otxs merged
+            // service notify the remove event
         }
     }
 }

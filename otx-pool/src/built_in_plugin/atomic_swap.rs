@@ -11,7 +11,6 @@ use dashmap::DashSet;
 use tokio::task::JoinHandle;
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
 pub struct AtomicSwap {
@@ -62,8 +61,7 @@ impl AtomicSwap {
             "1.0",
         );
         let raw_otxs = Arc::new(DashSet::default());
-        let interval_counter = Arc::new(AtomicU32::new(0));
-        let context = Context::new(raw_otxs, interval_counter);
+        let context = Context::new(raw_otxs);
         let (msg_handler, request_handler, thread) =
             AtomicSwap::start_process(name, runtime, service_handler, context)?;
         Ok(AtomicSwap {
@@ -80,11 +78,9 @@ impl BuiltInPlugin for AtomicSwap {
         context.otx_set.insert(otx);
     }
 
-    fn on_new_intervel(context: Context) {
-        let _ = context.interval_counter.fetch_add(1, Ordering::SeqCst);
-        if context.interval_counter.load(Ordering::SeqCst) == 5 {
+    fn on_new_intervel(elapsed: u64, context: Context) {
+        if elapsed % 10 == 0 {
             log::debug!("otx set len: {:?}", context.otx_set.len());
-            context.interval_counter.store(0, Ordering::SeqCst);
         }
     }
 }

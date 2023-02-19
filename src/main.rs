@@ -10,7 +10,7 @@ use jsonrpc_core::IoHandler;
 use jsonrpc_http_server::ServerBuilder;
 use jsonrpc_server_utils::cors::AccessControlAllowOrigin;
 use jsonrpc_server_utils::hosts::DomainsValidation;
-use tokio::time::{self, Duration};
+use tokio::time::{self, Duration, Instant};
 
 use std::{net::SocketAddr, path::Path};
 
@@ -48,10 +48,12 @@ pub fn start() -> Result<()> {
     // interval loop
     let notifier = notify_ctrl.clone();
     let interval_handler = runtime_handle.spawn(async move {
+        let mut now = Instant::now().elapsed().as_secs();
         let mut interval = time::interval(INTERVAL);
         loop {
+            now += INTERVAL.as_secs();
             interval.tick().await;
-            notifier.notify_interval();
+            notifier.notify_interval(now);
         }
     });
 
