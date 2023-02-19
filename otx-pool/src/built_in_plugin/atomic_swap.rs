@@ -1,17 +1,20 @@
+use super::{BuiltInPlugin, Context};
 use crate::notify::RuntimeHandle;
 use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
 
-use otx_plugin_protocol::{MessageFromPlugin, PluginInfo};
+use otx_format::jsonrpc_types::OpenTransaction;
+use otx_plugin_protocol::PluginInfo;
 
-use ckb_types::core::service::Request;
-use crossbeam_channel::{bounded, select, unbounded};
+use dashmap::DashSet;
 use tokio::task::JoinHandle;
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 
-pub struct DustCollector {
+pub struct AtomicSwap {
     state: PluginState,
     info: PluginInfo,
 
@@ -24,7 +27,7 @@ pub struct DustCollector {
     _thread: JoinHandle<()>,
 }
 
-impl Plugin for DustCollector {
+impl Plugin for AtomicSwap {
     fn get_name(&self) -> String {
         self.info.name.clone()
     }
@@ -46,11 +49,11 @@ impl Plugin for DustCollector {
     }
 }
 
-impl DustCollector {
+impl AtomicSwap {
     pub fn new(
         runtime: RuntimeHandle,
         service_handler: ServiceHandler,
-    ) -> Result<DustCollector, String> {
+    ) -> Result<AtomicSwap, String> {
         let name = "atomic swap";
         let state = PluginState::new(PathBuf::default(), true, true);
         let info = PluginInfo::new(
@@ -58,9 +61,12 @@ impl DustCollector {
             "Atomic swap engine merges matched asset swaps open transactions.",
             "1.0",
         );
+        let raw_otxs = Arc::new(DashSet::default());
+        let interval_counter = Arc::new(AtomicU32::new(0));
+        let context = Context::new(raw_otxs, interval_counter);
         let (msg_handler, request_handler, thread) =
-            DustCollector::start_process(name, runtime, service_handler)?;
-        Ok(DustCollector {
+            AtomicSwap::start_process(name, runtime, service_handler, context)?;
+        Ok(AtomicSwap {
             state,
             info,
             msg_handler,
@@ -68,68 +74,17 @@ impl DustCollector {
             _thread: thread,
         })
     }
-
-    pub fn get_plugin_info(&self) -> PluginInfo {
-        self.info.clone()
+}
+impl BuiltInPlugin for AtomicSwap {
+    fn on_new_open_tx(otx: OpenTransaction, context: Context) {
+        context.otx_set.insert(otx);
     }
 
-    pub fn get_plugin_state(&self) -> PluginState {
-        self.state.clone()
-    }
-
-    pub fn start_process(
-        plugin_name: &str,
-        runtime: RuntimeHandle,
-        _service_handler: ServiceHandler,
-    ) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>), String> {
-        // the host request channel receives request from host to plugin
-        let (host_request_sender, host_request_receiver) = bounded(1);
-        // the channel sends notifications or responses from the host to plugin
-        let (host_msg_sender, host_msg_receiver) = unbounded();
-
-        let plugin_name = plugin_name.to_owned();
-        // this thread processes information from host to plugin
-        let thread = runtime.spawn(async move {
-            let do_select = || -> Result<bool, String> {
-                select! {
-                    // request from host to plugin
-                    recv(host_request_receiver) -> msg => {
-                        match msg {
-                            Ok(Request { responder, arguments }) => {
-                                // handle
-                                log::debug!("host request: {:?}", arguments);
-                                let response = (0, MessageFromPlugin::Ok);
-                                responder.send(response).map_err(|err| err.to_string())?;
-                                Ok(false)
-                            }
-                            Err(err) => Err(format!("host_request_receiver err: {}", err))
-                        }
-                    }
-                    // repsonse/notification from host to plugin
-                    recv(host_msg_receiver) -> msg => {
-                        match msg {
-                            Ok(_msg) => {
-                                Ok(false)
-                            }
-                            Err(err) => Err(format!("host_msg_receiver err: {}", err))
-                        }
-                    }
-                }
-            };
-            loop {
-                match do_select() {
-                    Ok(true) => {
-                        break;
-                    }
-                    Ok(false) => (),
-                    Err(err) => {
-                        log::error!("plugin {} error: {}", plugin_name, err);
-                        break;
-                    }
-                }
-            }
-        });
-
-        Ok((host_msg_sender, host_request_sender, thread))
+    fn on_new_intervel(context: Context) {
+        let _ = context.interval_counter.fetch_add(1, Ordering::SeqCst);
+        if context.interval_counter.load(Ordering::SeqCst) == 5 {
+            log::debug!("otx set len: {:?}", context.otx_set.len());
+            context.interval_counter.store(0, Ordering::SeqCst);
+        }
     }
 }

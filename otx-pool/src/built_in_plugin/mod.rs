@@ -5,19 +5,17 @@ pub use dust_collector::DustCollector;
 
 use crate::notify::RuntimeHandle;
 use crate::plugin::host_service::ServiceHandler;
-use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
-use crate::plugin::Plugin;
+use crate::plugin::plugin_proxy::{MsgHandler, RequestHandler};
 
 use otx_format::jsonrpc_types::OpenTransaction;
-use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
+use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin};
 
 use ckb_types::core::service::Request;
 use crossbeam_channel::{bounded, select, unbounded};
 use dashmap::DashSet;
 use tokio::task::JoinHandle;
 
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -36,11 +34,6 @@ impl Context {
 }
 
 pub trait BuiltInPlugin {
-    fn get_name(&self) -> String;
-    fn msg_handler(&self) -> MsgHandler;
-    fn request_handler(&self) -> RequestHandler;
-    fn get_info(&self) -> PluginInfo;
-    fn get_state(&self) -> PluginState;
     fn on_new_open_tx(otx: OpenTransaction, context: Context);
     fn on_new_intervel(context: Context);
     fn start_process(
