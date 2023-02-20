@@ -1,3 +1,4 @@
+mod const_definition;
 mod help;
 mod tests;
 

@@ -63,7 +63,7 @@ impl AtomicSwap {
         let raw_otxs = Arc::new(DashSet::default());
         let context = Context::new(raw_otxs);
         let (msg_handler, request_handler, thread) =
-            AtomicSwap::start_process(name, runtime, service_handler, context)?;
+            AtomicSwap::start_process(context, name, runtime, service_handler)?;
         Ok(AtomicSwap {
             state,
             info,
@@ -74,11 +74,11 @@ impl AtomicSwap {
     }
 }
 impl BuiltInPlugin for AtomicSwap {
-    fn on_new_open_tx(otx: OpenTransaction, context: Context) {
+    fn on_new_open_tx(context: Context, otx: OpenTransaction) {
         context.otx_set.insert(otx);
     }
 
-    fn on_new_intervel(elapsed: u64, context: Context) {
+    fn on_new_intervel(context: Context, elapsed: u64) {
         if elapsed % 10 == 0 {
             log::debug!("otx set len: {:?}", context.otx_set.len());
         }

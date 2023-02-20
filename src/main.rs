@@ -1,11 +1,17 @@
+use ckb_sdk::Address;
+use ckb_types::H256;
 use otx_pool::{
+    built_in_plugin::DustCollector,
     notify::NotifyService,
+    plugin::host_service::HostServiceProvider,
     plugin::manager::PluginManager,
     rpc::{OtxPoolRpc, OtxPoolRpcImpl},
 };
+use utils::aggregator::SecpSignInfo;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use ckb_async_runtime::new_global_runtime;
+use clap::Parser;
 use jsonrpc_core::IoHandler;
 use jsonrpc_http_server::ServerBuilder;
 use jsonrpc_server_utils::cors::AccessControlAllowOrigin;
@@ -19,6 +25,19 @@ const RUNTIME_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 const INTERVAL: Duration = Duration::from_secs(2);
 pub const PLUGINS_DIRNAME: &str = "plugins";
 pub const SERVICE_URI: &str = "http://127.0.0.1:8118";
+
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    #[clap(short, long)]
+    address: Address,
+
+    #[clap(short, long)]
+    key: H256,
+
+    #[clap(short, long)]
+    ckb_uri: String,
+}
 
 fn main() -> Result<()> {
     if std::env::var("RUST_LOG").is_err() {
@@ -34,6 +53,8 @@ fn main() -> Result<()> {
 }
 
 pub fn start() -> Result<()> {
+    let args = Args::parse();
+
     // runtime handle
     let (runtime_handle, runtime) = new_global_runtime();
 
@@ -57,11 +78,25 @@ pub fn start() -> Result<()> {
         }
     });
 
+    // Make sure ServiceProvider start before all daemon processes
+    let service_provider = HostServiceProvider::start().map_err(|err| anyhow!(err))?;
+
+    // init built-in plugins
+    let dust_collector = DustCollector::new(
+        runtime_handle.clone(),
+        service_provider.handler(),
+        SecpSignInfo::new(&args.address, &args.key),
+        &args.ckb_uri,
+    )
+    .map_err(|err| anyhow!(err))?;
+
     // init plugins
     let plugin_manager = PluginManager::init(
         runtime_handle,
         notify_ctrl.clone(),
+        service_provider,
         Path::new("./free-space"),
+        vec![Box::new(dust_collector)],
     )
     .unwrap();
 

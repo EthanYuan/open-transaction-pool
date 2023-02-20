@@ -2,8 +2,7 @@ use crate::tests::helper::{alice_build_signed_otx, bob_build_signed_otx};
 use crate::IntegrationTest;
 
 use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
-use otx_format::types::packed;
-use otx_pool::types::OpenTxStatus;
+use otx_format::types::{packed, OpenTxStatus};
 use utils::client::service_client::OtxPoolRpcClient;
 use utils::const_definition::SERVICE_URI;
 
@@ -35,7 +34,10 @@ fn test_payment_dust_collect() {
     let bob_otx_id = service_client
         .submit_otx(JsonBytes::from_bytes(bob_otx.as_bytes()))
         .unwrap();
-    let bob_otx_with_status = service_client.query_otx_by_id(bob_otx_id.clone()).unwrap().unwrap();
+    let bob_otx_with_status = service_client
+        .query_otx_by_id(bob_otx_id.clone())
+        .unwrap()
+        .unwrap();
     assert_eq!(bob_otx_with_status.status, OpenTxStatus::Pending);
 
     sleep(Duration::from_secs(12));

@@ -1078,6 +1078,7 @@ dependencies = [
  "common",
  "core-rpc-types",
  "inventory",
+ "once_cell",
  "otx-format",
  "otx-pool",
  "secp256k1 0.24.3",
@@ -1483,6 +1484,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "utils",
 ]
 
 [[package]]
@@ -2271,11 +2273,11 @@ dependencies = [
  "ckb-sdk",
  "ckb-types",
  "core-rpc-types",
+ "faster-hex",
  "hex",
  "jsonrpc-core",
  "once_cell",
  "otx-format",
- "otx-pool",
  "rand 0.8.5",
  "reqwest",
  "secp256k1 0.24.3",

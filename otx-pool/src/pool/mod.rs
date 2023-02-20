@@ -1,11 +1,11 @@
-pub mod types;
-
 use crate::error::InnerResult;
 use crate::notify::NotifyController;
-use crate::pool::types::OpenTxWithStatus;
 
 use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
-use otx_format::{jsonrpc_types::OpenTransaction, types::packed};
+use otx_format::{
+    jsonrpc_types::OpenTransaction,
+    types::{packed, OpenTxWithStatus},
+};
 
 use ckb_jsonrpc_types::JsonBytes;
 use ckb_types::{prelude::Entity, H256};

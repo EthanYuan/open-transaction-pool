@@ -1,3 +1,5 @@
+use super::const_definition::{OTX_POOL_AGENT_ADDRESS, OTX_POOL_AGENT_PK};
+
 use utils::client::ckb_client::CkbRpcClient;
 use utils::client::mercury_client::MercuryRpcClient;
 use utils::client::service_client::OtxPoolRpcClient;
@@ -16,6 +18,7 @@ use common::lazy::{
 };
 
 use ckb_types::H256;
+use utils::lock::secp::generate_rand_secp_address_pk_pair;
 
 use std::panic;
 use std::process::Child;
@@ -106,7 +109,28 @@ pub(crate) fn start_mercury(ckb: Child) -> (Child, Child) {
 }
 
 pub(crate) fn start_otx_pool(ckb: Child, mercury: Child) -> (Child, Child, Child) {
-    let service = run_command_spawn("cargo", vec!["run", "--manifest-path", "../Cargo.toml"]);
+    let (address, pk) = generate_rand_secp_address_pk_pair();
+    OTX_POOL_AGENT_ADDRESS
+        .set(address.clone())
+        .expect("init OTX_POOL_AGENT_ADDRESS");
+    OTX_POOL_AGENT_PK
+        .set(pk.clone())
+        .expect("init OTX_POOL_AGENT_PK");
+    let service = run_command_spawn(
+        "cargo",
+        vec![
+            "run",
+            "--manifest-path",
+            "../Cargo.toml",
+            "--",
+            "--address",
+            &address.to_string(),
+            "--key",
+            &pk.to_string(),
+            "--ckb-uri",
+            CKB_URI,
+        ],
+    );
     let service = if let Ok(service) = service {
         service
     } else {

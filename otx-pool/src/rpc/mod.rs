@@ -1,7 +1,9 @@
 mod r#impl;
 
 use super::pool::OtxPool;
-use crate::{notify::NotifyController, pool::types::OpenTxWithStatus};
+use crate::notify::NotifyController;
+
+use otx_format::types::OpenTxWithStatus;
 
 use ckb_jsonrpc_types::JsonBytes;
 use ckb_types::H256;

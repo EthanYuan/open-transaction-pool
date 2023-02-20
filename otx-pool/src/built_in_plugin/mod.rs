@@ -29,13 +29,13 @@ impl Context {
 }
 
 pub trait BuiltInPlugin {
-    fn on_new_open_tx(otx: OpenTransaction, context: Context);
-    fn on_new_intervel(elapsed: u64, context: Context);
+    fn on_new_open_tx(context: Context, otx: OpenTransaction);
+    fn on_new_intervel(context: Context, elapsed: u64);
     fn start_process(
+        context: Context,
         plugin_name: &str,
         runtime: RuntimeHandle,
         _service_handler: ServiceHandler,
-        context: Context,
     ) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>), String> {
         // the host request channel receives request from host to plugin
         let (host_request_sender, host_request_receiver) = bounded(1);
@@ -67,10 +67,10 @@ pub trait BuiltInPlugin {
                                 log::debug!("dust collector receivers msg: {:?}", msg);
                                 match msg {
                                     (_, MessageFromHost::NewInterval(elapsed)) => {
-                                        Self::on_new_intervel(elapsed, context.clone());
+                                        Self::on_new_intervel(context.clone(), elapsed);
                                     }
                                     (_, MessageFromHost::NewOtx(otx)) => {
-                                        Self::on_new_open_tx(otx, context.clone());
+                                        Self::on_new_open_tx(context.clone(), otx);
                                     }
                                     _ => unreachable!(),
                                 }

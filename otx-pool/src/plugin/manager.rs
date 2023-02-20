@@ -1,7 +1,6 @@
 use super::host_service::{HostServiceProvider, ServiceHandler};
 use super::plugin_proxy::MsgHandler;
 use super::plugin_proxy::{PluginProxy, PluginState};
-use crate::built_in_plugin::DustCollector;
 use crate::notify::{NotifyController, RuntimeHandle};
 use crate::plugin::Plugin;
 
@@ -34,18 +33,17 @@ impl PluginManager {
     pub fn init(
         runtime_handle: RuntimeHandle,
         notify_ctrl: NotifyController,
-        host_dir: &Path,
+        service_provider: HostServiceProvider,
+        plugin_dir: &Path,
+        built_in_plugins: Vec<Box<dyn Plugin>>,
     ) -> Result<PluginManager, String> {
         let mut plugin_configs: HashMap<String, (PluginState, PluginInfo)> = HashMap::new();
         let mut plugins: HashMap<String, Box<dyn Plugin>> = HashMap::new();
 
-        // Make sure ServiceProvider start before all daemon processes
-        let service_provider = HostServiceProvider::start()?;
-
         // load plugins
         log::info!("load plugins");
         for (plugin_name, (plugin_state, plugin_info)) in
-            load_plugin_configs(host_dir).map_err(|err| err.to_string())?
+            load_plugin_configs(plugin_dir).map_err(|err| err.to_string())?
         {
             plugin_configs.insert(
                 plugin_name.clone(),
@@ -64,9 +62,9 @@ impl PluginManager {
 
         // init built-in plugins
         log::info!("init built-in plugins");
-        let dust_collector =
-            DustCollector::new(runtime_handle.clone(), service_provider.handler())?;
-        add_built_in_plugin(Box::new(dust_collector), &mut plugin_configs, &mut plugins);
+        built_in_plugins.into_iter().for_each(|built_in_plugin| {
+            add_built_in_plugin(built_in_plugin, &mut plugin_configs, &mut plugins);
+        });
 
         // subscribe events
         let event_listening_thread = subscribe_events(
@@ -79,7 +77,7 @@ impl PluginManager {
         );
 
         Ok(PluginManager {
-            _plugin_dir: host_dir.join(PLUGINS_DIRNAME),
+            _plugin_dir: plugin_dir.join(PLUGINS_DIRNAME),
             plugin_configs,
             _plugins: plugins,
             service_provider,

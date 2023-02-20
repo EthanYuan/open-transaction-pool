@@ -1,6 +1,6 @@
-use crate::pool::types::OpenTxWithStatus;
-
 use super::{OtxPoolRpc, OtxPoolRpcImpl};
+
+use otx_format::types::OpenTxWithStatus;
 
 use ckb_jsonrpc_types::JsonBytes;
 use ckb_types::H256;

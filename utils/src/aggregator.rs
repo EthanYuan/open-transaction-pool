@@ -20,15 +20,21 @@ use std::io::Read;
 use std::path::PathBuf;
 
 pub struct OtxAggregator {
-    pub signer: SecpSigner,
+    pub signer: SecpSignInfo,
     pub committer: Committer,
 }
 
 impl OtxAggregator {
-    pub fn new(address: Address, key_path: PathBuf, ckb_uri: &str) -> Self {
-        let signer = SecpSigner::init_account(address, key_path);
+    pub fn new(address: &Address, key: &H256, ckb_uri: &str) -> Self {
+        let signer = SecpSignInfo::new(address, key);
         let committer = Committer::new(ckb_uri);
         OtxAggregator { signer, committer }
+    }
+
+    pub fn try_new(address: Address, key_path: PathBuf, ckb_uri: &str) -> Result<Self> {
+        let signer = SecpSignInfo::try_new(address, key_path)?;
+        let committer = Committer::new(ckb_uri);
+        Ok(OtxAggregator { signer, committer })
     }
 
     pub fn add_input_and_output(
@@ -40,7 +46,7 @@ impl OtxAggregator {
         let tx_info = add_input(open_tx, input.tx_hash, input.index)?;
         add_output(
             tx_info,
-            self.signer.get_secp_address(),
+            self.signer.secp_address(),
             output.capacity,
             output.udt_amount,
         )
@@ -89,27 +95,35 @@ impl Committer {
     }
 }
 
-pub struct SecpSigner {
+pub struct SecpSignInfo {
     secp_address: Address,
-    pk_path: PathBuf,
+    pk: H256,
 }
 
-impl SecpSigner {
-    pub fn init_account(secp_address: Address, pk: PathBuf) -> Self {
-        SecpSigner {
-            secp_address,
-            pk_path: pk,
+impl SecpSignInfo {
+    pub fn new(secp_address: &Address, pk: &H256) -> Self {
+        SecpSignInfo {
+            secp_address: secp_address.clone(),
+            pk: pk.clone(),
         }
     }
 
-    pub fn get_secp_address(&self) -> &Address {
+    pub fn try_new(secp_address: Address, pk_file: PathBuf) -> Result<Self> {
+        let pk = parse_key(pk_file)?;
+        Ok(SecpSignInfo { secp_address, pk })
+    }
+
+    pub fn secp_address(&self) -> &Address {
         &self.secp_address
+    }
+
+    pub fn privkey(&self) -> &H256 {
+        &self.pk
     }
 
     pub fn sign_tx(&self, tx_info: TxInfo) -> Result<json_types::TransactionView> {
         let tx = Transaction::from(tx_info.tx.inner).into_view();
-        let key_path = parse_key(self.pk_path.clone())?;
-        let (tx, _) = sighash_sign(&[key_path], tx)?;
+        let (tx, _) = sighash_sign(&[self.pk.clone()], tx)?;
         let witness_args =
             WitnessArgs::from_slice(tx.witnesses().get(0).unwrap().raw_data().as_ref())?;
         let lock_field = witness_args.lock().to_opt().unwrap().raw_data();

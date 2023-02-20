@@ -1,6 +1,6 @@
 use super::{request, RpcClient};
 
-use otx_pool::types::OpenTxWithStatus;
+use otx_format::types::OpenTxWithStatus;
 
 use anyhow::Result;
 use ckb_jsonrpc_types::JsonBytes;
