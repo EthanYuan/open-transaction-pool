@@ -1,7 +1,6 @@
 use super::build_tx::{add_input, add_output, sighash_sign};
 use super::const_definition::{CKB_URI, OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX};
 use super::lock::omni::{build_cell_dep, TxInfo};
-use super::lock::secp::generate_rand_secp_address_pk_pair;
 
 use anyhow::{anyhow, Result};
 use ckb_jsonrpc_types as json_types;
@@ -14,23 +13,22 @@ use ckb_types::{
     prelude::*,
     H256,
 };
+use faster_hex::hex_decode;
 
-pub struct OtxService {
-    pub signer: Signer,
-    pub builder: OtxBuilder,
+use std::fs::File;
+use std::io::Read;
+use std::path::PathBuf;
+
+pub struct OtxAggregator {
+    pub signer: SecpSigner,
     pub committer: Committer,
 }
 
-impl OtxService {
-    pub fn new(otx_list: Vec<TxInfo>, ckb_uri: &str) -> Self {
-        let signer = Signer::init_account();
-        let builder = OtxBuilder::new(otx_list);
+impl OtxAggregator {
+    pub fn new(address: Address, key_path: PathBuf, ckb_uri: &str) -> Self {
+        let signer = SecpSigner::init_account(address, key_path);
         let committer = Committer::new(ckb_uri);
-        OtxService {
-            signer,
-            builder,
-            committer,
-        }
+        OtxAggregator { signer, committer }
     }
 
     pub fn add_input_and_output(
@@ -46,6 +44,29 @@ impl OtxService {
             output.capacity,
             output.udt_amount,
         )
+    }
+
+    pub fn merge_otxs(otx_list: Vec<TxInfo>) -> Result<TxInfo> {
+        let mut txes = vec![];
+        let mut omnilock_config = None;
+        for tx_info in otx_list {
+            // println!("> tx: {}", serde_json::to_string_pretty(&tx_info.tx)?);
+            let tx = Transaction::from(tx_info.tx.inner.clone()).into_view();
+            txes.push(tx);
+            omnilock_config = Some(tx_info.omnilock_config.clone());
+        }
+        if !txes.is_empty() {
+            let mut ckb_client = CkbRpcClient::new(CKB_URI);
+            let cell = build_cell_dep(&mut ckb_client, &OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX)?;
+            let tx_dep_provider = DefaultTransactionDependencyProvider::new(CKB_URI, 10);
+            let tx = assemble_new_tx(txes, &tx_dep_provider, cell.type_hash.pack())?;
+            let tx_info = TxInfo {
+                tx: json_types::TransactionView::from(tx),
+                omnilock_config: omnilock_config.unwrap(),
+            };
+            return Ok(tx_info);
+        }
+        Err(anyhow!("merge otxs failed!"))
     }
 }
 
@@ -68,15 +89,17 @@ impl Committer {
     }
 }
 
-pub struct Signer {
-    pk: H256,
+pub struct SecpSigner {
     secp_address: Address,
+    pk_path: PathBuf,
 }
 
-impl Signer {
-    pub fn init_account() -> Self {
-        let (secp_address, pk) = generate_rand_secp_address_pk_pair();
-        Signer { pk, secp_address }
+impl SecpSigner {
+    pub fn init_account(secp_address: Address, pk: PathBuf) -> Self {
+        SecpSigner {
+            secp_address,
+            pk_path: pk,
+        }
     }
 
     pub fn get_secp_address(&self) -> &Address {
@@ -85,7 +108,8 @@ impl Signer {
 
     pub fn sign_tx(&self, tx_info: TxInfo) -> Result<json_types::TransactionView> {
         let tx = Transaction::from(tx_info.tx.inner).into_view();
-        let (tx, _) = sighash_sign(&[self.pk.clone()], tx)?;
+        let key_path = parse_key(self.pk_path.clone())?;
+        let (tx, _) = sighash_sign(&[key_path], tx)?;
         let witness_args =
             WitnessArgs::from_slice(tx.witnesses().get(0).unwrap().raw_data().as_ref())?;
         let lock_field = witness_args.lock().to_opt().unwrap().raw_data();
@@ -98,37 +122,30 @@ impl Signer {
     }
 }
 
-pub struct OtxBuilder {
-    otx_list: Vec<TxInfo>,
+fn parse_key(key_path: PathBuf) -> Result<H256> {
+    let mut content = String::new();
+    let mut file = File::open(key_path)?;
+    file.read_to_string(&mut content)?;
+    let privkey_string: String = content
+        .split_whitespace()
+        .next()
+        .map(ToOwned::to_owned)
+        .ok_or_else(|| anyhow!("File is empty"))?;
+
+    let bytes = decode_hex(&privkey_string)?;
+    H256::from_slice(&bytes).map_err(Into::into)
 }
 
-impl OtxBuilder {
-    pub fn new(otx_list: Vec<TxInfo>) -> Self {
-        OtxBuilder { otx_list }
+fn decode_hex(mut input: &str) -> Result<Vec<u8>> {
+    if input.starts_with("0x") || input.starts_with("0X") {
+        input = &input[2..];
     }
-
-    pub fn merge_otxs(&self) -> Result<TxInfo> {
-        let mut txes = vec![];
-        let mut omnilock_config = None;
-        for tx_info in &self.otx_list {
-            // println!("> tx: {}", serde_json::to_string_pretty(&tx_info.tx)?);
-            let tx = Transaction::from(tx_info.tx.inner.clone()).into_view();
-            txes.push(tx);
-            omnilock_config = Some(tx_info.omnilock_config.clone());
-        }
-        if !txes.is_empty() {
-            let mut ckb_client = CkbRpcClient::new(CKB_URI);
-            let cell = build_cell_dep(&mut ckb_client, &OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX)?;
-            let tx_dep_provider = DefaultTransactionDependencyProvider::new(CKB_URI, 10);
-            let tx = assemble_new_tx(txes, &tx_dep_provider, cell.type_hash.pack())?;
-            let tx_info = TxInfo {
-                tx: json_types::TransactionView::from(tx),
-                omnilock_config: omnilock_config.unwrap(),
-            };
-            return Ok(tx_info);
-        }
-        Err(anyhow!("merge otxs failed!"))
+    if input.len() % 2 != 0 {
+        return Err(anyhow!("Invalid hex string lenth: {}", input.len()));
     }
+    let mut bytes = vec![0u8; input.len() / 2];
+    hex_decode(input.as_bytes(), &mut bytes)?;
+    Ok(bytes)
 }
 
 pub struct AddInputArgs {
