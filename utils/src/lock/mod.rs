@@ -1,6 +1,5 @@
 pub mod acp;
 pub mod omni;
-pub mod secp;
 
 use crate::const_definition::XUDT_DEVNET_TYPE_HASH;
 

@@ -9,11 +9,13 @@ use ckb_sdk::{
     unlock::opentx::assembler::assemble_new_tx, unlock::OmniUnlockMode, Address, HumanCapacity,
 };
 use ckb_types::{
-    packed::{Transaction, WitnessArgs},
+    packed::{Script, Transaction, WitnessArgs},
     prelude::*,
     H256,
 };
 use faster_hex::hex_decode;
+use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_otx};
+use otx_format::jsonrpc_types::OpenTransaction;
 
 use std::fs::File;
 use std::io::Read;
@@ -42,6 +44,7 @@ impl OtxAggregator {
         open_tx: TxInfo,
         input: AddInputArgs,
         output: AddOutputArgs,
+        udt_issuer_script: Script,
     ) -> Result<TxInfo> {
         let tx_info = add_input(open_tx, input.tx_hash, input.index)?;
         add_output(
@@ -49,10 +52,31 @@ impl OtxAggregator {
             self.signer.secp_address(),
             output.capacity,
             output.udt_amount,
+            udt_issuer_script,
         )
     }
 
-    pub fn merge_otxs(otx_list: Vec<TxInfo>) -> Result<TxInfo> {
+    pub fn merge_otxs(otx_list: Vec<OpenTransaction>) -> Result<OpenTransaction> {
+        let mut txs = vec![];
+        for otx in otx_list {
+            let tx = otx_to_tx_view(otx).map_err(|err| anyhow!(err.to_string()))?;
+            let tx = Transaction::from(tx.inner.clone()).into_view();
+            txs.push(tx);
+        }
+        if !txs.is_empty() {
+            let ckb_uri = CKB_URI.get().ok_or_else(|| anyhow!("CKB_URI is none"))?;
+            let mut ckb_client = CkbRpcClient::new(ckb_uri);
+            let cell = build_cell_dep(&mut ckb_client, &OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX)?;
+            let tx_dep_provider = DefaultTransactionDependencyProvider::new(ckb_uri, 10);
+            let tx = assemble_new_tx(txs, &tx_dep_provider, cell.type_hash.pack())?;
+            let tx = json_types::TransactionView::from(tx);
+
+            return tx_view_to_otx(tx).map_err(|err| anyhow!(err.to_string()));
+        }
+        Err(anyhow!("merge otxs failed!"))
+    }
+
+    pub fn merge_open_txs(otx_list: Vec<TxInfo>) -> Result<TxInfo> {
         let mut txes = vec![];
         let mut omnilock_config = None;
         for tx_info in otx_list {
@@ -62,9 +86,10 @@ impl OtxAggregator {
             omnilock_config = Some(tx_info.omnilock_config.clone());
         }
         if !txes.is_empty() {
-            let mut ckb_client = CkbRpcClient::new(CKB_URI);
+            let ckb_uri = CKB_URI.get().ok_or_else(|| anyhow!("CKB_URI is none"))?;
+            let mut ckb_client = CkbRpcClient::new(ckb_uri);
             let cell = build_cell_dep(&mut ckb_client, &OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX)?;
-            let tx_dep_provider = DefaultTransactionDependencyProvider::new(CKB_URI, 10);
+            let tx_dep_provider = DefaultTransactionDependencyProvider::new(ckb_uri, 10);
             let tx = assemble_new_tx(txes, &tx_dep_provider, cell.type_hash.pack())?;
             let tx_info = TxInfo {
                 tx: json_types::TransactionView::from(tx),

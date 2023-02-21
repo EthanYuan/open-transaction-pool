@@ -1,8 +1,11 @@
+use crate::const_definition::{CKB_URI, MERCURY_URI, UDT_1_HOLDER_SECP_ADDRESS};
+use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
+use crate::utils::instruction::ckb::dump_data;
+use crate::utils::instruction::mercury::prepare_udt;
+
 use utils::client::ckb_cli_client::{ckb_cli_get_capacity, ckb_cli_transfer_ckb};
 use utils::client::mercury_client::MercuryRpcClient;
-use utils::const_definition::{MERCURY_URI, UDT_1_HOLDER_SECP_ADDRESS, XUDT_DEVNET_TYPE_HASH};
-use utils::instruction::ckb::dump_data;
-use utils::instruction::mercury::prepare_udt;
+use utils::const_definition::XUDT_DEVNET_TYPE_HASH;
 use utils::lock::omni::{MultiSigArgs, TxInfo};
 use utils::wallet::{GenOpenTxArgs, Wallet};
 
@@ -19,13 +22,18 @@ use core_rpc_types::{GetBalancePayload, JsonItem};
 use std::collections::HashSet;
 use std::str::FromStr;
 
+use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
+
 pub fn alice_build_signed_otx() -> Result<TxInfo> {
     // 1. init wallet instance
-    let alice_wallet = Wallet::init_account();
+    let (address, pk) = generate_rand_secp_address_pk_pair();
+    let alice_wallet = Wallet::init_account(address, pk, CKB_URI);
     let alice_omni_address = alice_wallet.get_omni_otx_address();
 
     // 2. transfer capacity to alice omni address
     let _tx_hash = ckb_cli_transfer_ckb(alice_omni_address, 151).unwrap();
+    aggregate_transactions_into_blocks()?;
+
     let capacity = ckb_cli_get_capacity(alice_omni_address).unwrap();
     assert_eq!(151f64, capacity);
 
@@ -58,7 +66,8 @@ pub fn alice_build_signed_otx() -> Result<TxInfo> {
 
 pub fn bob_build_signed_otx() -> Result<TxInfo> {
     // 1. init bob's wallet
-    let bob_wallet = Wallet::init_account();
+    let (address, pk) = generate_rand_secp_address_pk_pair();
+    let bob_wallet = Wallet::init_account(address, pk, CKB_URI);
     let bob_otx_address = bob_wallet.get_omni_otx_address();
     let bob_omni_otx_script: Script = bob_otx_address.into();
 

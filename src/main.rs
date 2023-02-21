@@ -8,6 +8,7 @@ use otx_pool::{
     rpc::{OtxPoolRpc, OtxPoolRpcImpl},
 };
 use utils::aggregator::SecpSignInfo;
+use utils::const_definition::CKB_URI;
 
 use anyhow::{anyhow, Result};
 use ckb_async_runtime::new_global_runtime;
@@ -20,7 +21,6 @@ use tokio::time::{self, Duration, Instant};
 
 use std::{net::SocketAddr, path::Path};
 
-pub const MESSAGE_CHANNEL_SIZE: usize = 1024;
 const RUNTIME_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 const INTERVAL: Duration = Duration::from_secs(2);
 pub const PLUGINS_DIRNAME: &str = "plugins";
@@ -54,6 +54,7 @@ fn main() -> Result<()> {
 
 pub fn start() -> Result<()> {
     let args = Args::parse();
+    CKB_URI.set(args.ckb_uri).map_err(|err| anyhow!(err))?;
 
     // runtime handle
     let (runtime_handle, runtime) = new_global_runtime();
@@ -86,7 +87,7 @@ pub fn start() -> Result<()> {
         runtime_handle.clone(),
         service_provider.handler(),
         SecpSignInfo::new(&args.address, &args.key),
-        &args.ckb_uri,
+        CKB_URI.get().unwrap(),
     )
     .map_err(|err| anyhow!(err))?;
 

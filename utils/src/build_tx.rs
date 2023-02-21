@@ -1,6 +1,4 @@
-use crate::const_definition::{
-    CKB_URI, UDT_1_HOLDER_SECP_ADDRESS, XUDT_DEVNET_TYPE_HASH, XUDT_TX_HASH, XUDT_TX_IDX,
-};
+use crate::const_definition::{CKB_URI, XUDT_DEVNET_TYPE_HASH, XUDT_TX_HASH, XUDT_TX_IDX};
 use crate::lock::omni::TxInfo;
 
 use anyhow::{anyhow, Result};
@@ -15,7 +13,6 @@ use ckb_sdk::{
     unlock::SecpSighashUnlocker,
     Address, HumanCapacity, ScriptGroup, ScriptId,
 };
-
 use ckb_types::{
     bytes::Bytes,
     core::{BlockView, Capacity, ScriptHashType, TransactionView},
@@ -41,7 +38,8 @@ fn add_live_cell(
     tx_hash: H256,
     output_index: usize,
 ) -> Result<TransactionView> {
-    let mut ckb_client = CkbRpcClient::new(CKB_URI);
+    let ckb_uri = CKB_URI.get().ok_or_else(|| anyhow!("CKB_URI is none"))?;
+    let mut ckb_client = CkbRpcClient::new(ckb_uri);
     let out_point_json = ckb_jsonrpc_types::OutPoint {
         tx_hash: tx_hash.clone(),
         index: ckb_jsonrpc_types::Uint32::from(output_index as u32),
@@ -72,10 +70,10 @@ pub fn add_output(
     payee_address: &Address,
     capacity: HumanCapacity,
     udt_amount: Option<u128>,
+    udt_issuer_script: Script,
 ) -> Result<TxInfo> {
     let tx = Transaction::from(tx_info.tx.inner).into_view();
     let lock_script = Script::from(payee_address.payload());
-    let udt_issuer_script: Script = UDT_1_HOLDER_SECP_ADDRESS.get().unwrap().into();
 
     let mut output = CellOutput::new_builder()
         .capacity(Capacity::shannons(capacity.0).pack())
@@ -152,7 +150,8 @@ pub fn sighash_sign(
     //     &unlockers,
     // )?;
 
-    let tx_dep_provider = DefaultTransactionDependencyProvider::new(CKB_URI, 10);
+    let ckb_uri = CKB_URI.get().ok_or_else(|| anyhow!("CKB_URI is none"))?;
+    let tx_dep_provider = DefaultTransactionDependencyProvider::new(ckb_uri, 10);
     let (new_tx, new_still_locked_groups) = unlock_tx(tx, &tx_dep_provider, &unlockers)?;
     Ok((new_tx, new_still_locked_groups))
 }

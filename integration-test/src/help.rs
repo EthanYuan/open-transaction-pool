@@ -1,16 +1,18 @@
-use super::const_definition::{OTX_POOL_AGENT_ADDRESS, OTX_POOL_AGENT_PK};
+use super::const_definition::{
+    CKB_URI, MERCURY_URI, OTX_POOL_AGENT_ADDRESS, OTX_POOL_AGENT_PK, OTX_POOL_URI,
+};
+use crate::utils::instruction::{ckb::generate_blocks, ckb::unlock_frozen_capacity_in_genesis};
+use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 
 use utils::client::ckb_client::CkbRpcClient;
 use utils::client::mercury_client::MercuryRpcClient;
 use utils::client::service_client::OtxPoolRpcClient;
 use utils::const_definition::{
-    ANYONE_CAN_PAY_DEVNET_TYPE_HASH, CHEQUE_DEVNET_TYPE_HASH, CKB_URI, DAO_DEVNET_TYPE_HASH,
-    MERCURY_URI, PW_LOCK_DEVNET_TYPE_HASH, RPC_TRY_COUNT, RPC_TRY_INTERVAL_SECS, SERVICE_URI,
-    SIGHASH_TYPE_HASH, XUDT_DEVNET_TYPE_HASH,
+    ANYONE_CAN_PAY_DEVNET_TYPE_HASH, CHEQUE_DEVNET_TYPE_HASH, DAO_DEVNET_TYPE_HASH,
+    PW_LOCK_DEVNET_TYPE_HASH, RPC_TRY_COUNT, RPC_TRY_INTERVAL_SECS, SIGHASH_TYPE_HASH,
+    XUDT_DEVNET_TYPE_HASH,
 };
-use utils::instruction::{
-    ckb::generate_blocks, ckb::unlock_frozen_capacity_in_genesis, command::run_command_spawn,
-};
+use utils::instruction::command::run_command_spawn;
 
 use common::lazy::{
     ACP_CODE_HASH, CHEQUE_CODE_HASH, DAO_CODE_HASH, PW_LOCK_CODE_HASH, SECP256K1_CODE_HASH,
@@ -18,7 +20,6 @@ use common::lazy::{
 };
 
 use ckb_types::H256;
-use utils::lock::secp::generate_rand_secp_address_pk_pair;
 
 use std::panic;
 use std::process::Child;
@@ -49,7 +50,7 @@ pub fn start_ckb_node() -> Child {
     for _try in 0..=RPC_TRY_COUNT {
         let resp = ckb_client.local_node_info();
         if resp.is_ok() {
-            unlock_frozen_capacity_in_genesis();
+            unlock_frozen_capacity_in_genesis().expect("unlock frozen capacity in genesis");
             return ckb;
         } else {
             sleep(Duration::from_secs(RPC_TRY_INTERVAL_SECS))
@@ -137,7 +138,7 @@ pub(crate) fn start_otx_pool(ckb: Child, mercury: Child) -> (Child, Child, Child
         teardown(vec![ckb, mercury]);
         panic!("start service payment");
     };
-    let client = OtxPoolRpcClient::new(SERVICE_URI.to_string());
+    let client = OtxPoolRpcClient::new(OTX_POOL_URI.to_string());
     for _try in 0..=RPC_TRY_COUNT {
         let resp = client.query_otx_by_id(H256::default());
         if resp.is_ok() {

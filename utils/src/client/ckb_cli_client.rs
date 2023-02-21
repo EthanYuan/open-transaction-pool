@@ -1,4 +1,4 @@
-use crate::instruction::{ckb::aggregate_transactions_into_blocks, command::run_command_output};
+use crate::instruction::command::run_command_output;
 
 use anyhow::Result;
 use ckb_sdk::Address;
@@ -29,8 +29,6 @@ pub fn ckb_cli_transfer_ckb(address: &Address, capacity: usize) -> Result<H256> 
         .split(' ')
         .collect::<Vec<&str>>()[0]
         .to_string();
-
-    aggregate_transactions_into_blocks()?;
 
     H256::from_str(&tx_hash).map_err(Into::into)
 }

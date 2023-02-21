@@ -1,6 +1,7 @@
 mod const_definition;
 mod help;
 mod tests;
+mod utils;
 
 use help::{setup, teardown};
 

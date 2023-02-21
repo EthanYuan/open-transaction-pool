@@ -14,9 +14,9 @@ use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin};
 use ckb_types::core::service::Request;
 use crossbeam_channel::{bounded, select, unbounded};
 use dashmap::DashSet;
-use tokio::task::JoinHandle;
 
 use std::sync::Arc;
+use std::thread::{self, JoinHandle};
 
 #[derive(Clone)]
 pub struct Context {
@@ -45,7 +45,7 @@ pub trait BuiltInPlugin {
     fn start_process(
         context: Context,
         plugin_name: &str,
-        runtime: RuntimeHandle,
+        _runtime: RuntimeHandle,
         _service_handler: ServiceHandler,
     ) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>), String> {
         // the host request channel receives request from host to plugin
@@ -55,7 +55,7 @@ pub trait BuiltInPlugin {
 
         let plugin_name = plugin_name.to_owned();
         // this thread processes information from host to plugin
-        let thread = runtime.spawn(async move {
+        let thread = thread::spawn(move || {
             let do_select = || -> Result<bool, String> {
                 select! {
                     // request from host to plugin

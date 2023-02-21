@@ -1,7 +1,6 @@
-use crate::const_definition::{CKB_URI, OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX};
+use crate::const_definition::{OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX};
 
 use anyhow::Result;
-
 use ckb_jsonrpc_types as json_types;
 use ckb_sdk::{
     rpc::CkbRpcClient, types::NetworkType, unlock::OmniLockConfig, Address, AddressPayload,
@@ -13,7 +12,6 @@ use ckb_types::{
     prelude::*,
     H160, H256,
 };
-
 use serde::{Deserialize, Serialize};
 
 pub struct ScriptInfo {
@@ -39,8 +37,8 @@ pub struct TxInfo {
     pub omnilock_config: OmniLockConfig,
 }
 
-pub fn build_otx_omnilock_addr_from_secp(address: &Address) -> Result<Address> {
-    let mut ckb_client = CkbRpcClient::new(CKB_URI);
+pub fn build_otx_omnilock_addr_from_secp(address: &Address, ckb_uri: &str) -> Result<Address> {
+    let mut ckb_client = CkbRpcClient::new(ckb_uri);
     let cell = build_cell_dep(&mut ckb_client, &OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX)?;
     let mut config = {
         let arg = H160::from_slice(&address.payload().args()).unwrap();

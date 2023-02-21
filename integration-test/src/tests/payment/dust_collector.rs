@@ -1,10 +1,10 @@
+use crate::const_definition::OTX_POOL_URI;
 use crate::tests::helper::{alice_build_signed_otx, bob_build_signed_otx};
 use crate::IntegrationTest;
 
 use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::types::{packed, OpenTxStatus};
 use utils::client::service_client::OtxPoolRpcClient;
-use utils::const_definition::SERVICE_URI;
 
 use anyhow::Result;
 use ckb_jsonrpc_types::JsonBytes;
@@ -21,7 +21,7 @@ fn test_payment_dust_collect() {
     let alice_otx = alice_build_otx().unwrap();
     let bob_otx = bob_build_otx().unwrap();
 
-    let service_client = OtxPoolRpcClient::new(SERVICE_URI.to_string());
+    let service_client = OtxPoolRpcClient::new(OTX_POOL_URI.to_string());
     let alice_otx_id = service_client
         .submit_otx(JsonBytes::from_bytes(alice_otx.as_bytes()))
         .unwrap();

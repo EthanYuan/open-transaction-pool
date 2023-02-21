@@ -10,10 +10,10 @@ use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::PluginInfo;
 
 use dashmap::DashSet;
-use tokio::task::JoinHandle;
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::thread::JoinHandle;
 
 pub struct DustCollector {
     state: PluginState,
@@ -28,8 +28,8 @@ pub struct DustCollector {
     _thread: JoinHandle<()>,
 
     _raw_otxs: Arc<DashSet<OpenTransaction>>,
-    secp_sign_info: Arc<SecpSignInfo>,
-    ckb_uri: Arc<String>,
+    _secp_sign_info: Arc<SecpSignInfo>,
+    _ckb_uri: Arc<String>,
 }
 
 impl Plugin for DustCollector {
@@ -81,8 +81,8 @@ impl DustCollector {
             request_handler,
             _thread: thread,
             _raw_otxs: raw_otxs,
-            secp_sign_info,
-            ckb_uri,
+            _secp_sign_info: secp_sign_info,
+            _ckb_uri: ckb_uri,
         })
     }
 }
@@ -93,23 +93,31 @@ impl BuiltInPlugin for DustCollector {
     }
 
     fn on_new_intervel(context: Context, elapsed: u64) {
-        if elapsed % 10 == 0 {
+        if elapsed % 10 == 0 && context.otx_set.len() > 1 {
             log::debug!("otx set len: {:?}", context.otx_set.len());
 
             // merge_otx
-            OtxAggregator::new(
+            let _aggregator = OtxAggregator::new(
                 context.secp_sign_info.secp_address(),
                 context.secp_sign_info.privkey(),
                 &context.ckb_uri,
             );
+            let otx_list: Vec<OpenTransaction> =
+                context.otx_set.iter().map(|otx| otx.clone()).collect();
+            let merged_otx = OtxAggregator::merge_otxs(otx_list);
+            log::debug!("merged_otx: {}", merged_otx.is_ok());
+            if let Ok(_merged_otx) = merged_otx {
 
-            // add inputs and outputs
+                // add inputs and outputs
 
-            // send_ckb
+                // send_ckb
 
-            // notify service
-            // the ckb tx and otxs merged
-            // service notify the remove event
+                // notify service
+                // the ckb tx and otxs merged
+                // service notify the remove event
+            }
+
+            context.otx_set.clear();
         }
     }
 }
