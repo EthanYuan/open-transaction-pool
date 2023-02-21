@@ -4,7 +4,7 @@ use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
 
-use utils::aggregator::SecpSignInfo;
+use utils::aggregator::{OtxAggregator, SecpSignInfo};
 
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::PluginInfo;
@@ -28,8 +28,8 @@ pub struct DustCollector {
     _thread: JoinHandle<()>,
 
     _raw_otxs: Arc<DashSet<OpenTransaction>>,
-    secp_sign_info: SecpSignInfo,
-    ckb_uri: String,
+    secp_sign_info: Arc<SecpSignInfo>,
+    ckb_uri: Arc<String>,
 }
 
 impl Plugin for DustCollector {
@@ -69,7 +69,9 @@ impl DustCollector {
             "1.0",
         );
         let raw_otxs = Arc::new(DashSet::default());
-        let context = Context::new(raw_otxs.clone());
+        let secp_sign_info = Arc::new(secp_sign_info);
+        let ckb_uri = Arc::new(ckb_uri.to_owned());
+        let context = Context::new(raw_otxs.clone(), secp_sign_info.clone(), ckb_uri.clone());
         let (msg_handler, request_handler, thread) =
             DustCollector::start_process(context, name, runtime_handle, service_handler)?;
         Ok(DustCollector {
@@ -80,7 +82,7 @@ impl DustCollector {
             _thread: thread,
             _raw_otxs: raw_otxs,
             secp_sign_info,
-            ckb_uri: ckb_uri.to_owned(),
+            ckb_uri,
         })
     }
 }
@@ -95,11 +97,11 @@ impl BuiltInPlugin for DustCollector {
             log::debug!("otx set len: {:?}", context.otx_set.len());
 
             // merge_otx
-            // OtxAggregator::new(
-            //     self.secp_sign_info.secp_address(),
-            //     self.secp_sign_info.privkey(),
-            //     &self.ckb_uri,
-            // );
+            OtxAggregator::new(
+                context.secp_sign_info.secp_address(),
+                context.secp_sign_info.privkey(),
+                &context.ckb_uri,
+            );
 
             // add inputs and outputs
 

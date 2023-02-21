@@ -6,6 +6,7 @@ pub use dust_collector::DustCollector;
 use crate::notify::RuntimeHandle;
 use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, RequestHandler};
+use utils::aggregator::SecpSignInfo;
 
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin};
@@ -20,11 +21,21 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct Context {
     pub otx_set: Arc<DashSet<OpenTransaction>>,
+    pub secp_sign_info: Arc<SecpSignInfo>,
+    pub ckb_uri: Arc<String>,
 }
 
 impl Context {
-    fn new(otx_set: Arc<DashSet<OpenTransaction>>) -> Self {
-        Context { otx_set }
+    fn new(
+        otx_set: Arc<DashSet<OpenTransaction>>,
+        secp_sign_info: Arc<SecpSignInfo>,
+        ckb_uri: Arc<String>,
+    ) -> Self {
+        Context {
+            otx_set,
+            secp_sign_info,
+            ckb_uri,
+        }
     }
 }
 

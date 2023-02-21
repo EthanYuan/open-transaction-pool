@@ -4,6 +4,8 @@ use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
 
+use utils::aggregator::SecpSignInfo;
+
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::PluginInfo;
 
@@ -50,8 +52,10 @@ impl Plugin for AtomicSwap {
 
 impl AtomicSwap {
     pub fn new(
-        runtime: RuntimeHandle,
+        runtime_handle: RuntimeHandle,
         service_handler: ServiceHandler,
+        secp_sign_info: SecpSignInfo,
+        ckb_uri: &str,
     ) -> Result<AtomicSwap, String> {
         let name = "atomic swap";
         let state = PluginState::new(PathBuf::default(), true, true);
@@ -61,9 +65,11 @@ impl AtomicSwap {
             "1.0",
         );
         let raw_otxs = Arc::new(DashSet::default());
-        let context = Context::new(raw_otxs);
+        let secp_sign_info = Arc::new(secp_sign_info);
+        let ckb_uri = Arc::new(ckb_uri.to_owned());
+        let context = Context::new(raw_otxs.clone(), secp_sign_info.clone(), ckb_uri.clone());
         let (msg_handler, request_handler, thread) =
-            AtomicSwap::start_process(context, name, runtime, service_handler)?;
+            AtomicSwap::start_process(context, name, runtime_handle, service_handler)?;
         Ok(AtomicSwap {
             state,
             info,
