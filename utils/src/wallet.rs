@@ -1,6 +1,6 @@
 use super::const_definition::{
-    OMNI_LOCK_DEVNET_TYPE_HASH, OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX,
-    SECP_DATA_TX_HASH, SECP_DATA_TX_IDX,
+    OMNI_LOCK_DEVNET_TYPE_HASH, OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX, SECP_DATA_TX_HASH,
+    SECP_DATA_TX_IDX,
 };
 use super::lock::omni::{build_cell_dep, build_otx_omnilock_addr_from_secp, MultiSigArgs, TxInfo};
 
@@ -367,26 +367,26 @@ impl Wallet {
         Ok(omnilock_config)
     }
 
-    
-fn sign_otx(
-    &self,
-    mut tx: TransactionView,
-    omnilock_config: &OmniLockConfig,
-    keys: Vec<secp256k1::SecretKey>,
-) -> Result<(TransactionView, Vec<ScriptGroup>)> {
-    // Unlock transaction
-    let tx_dep_provider = DefaultTransactionDependencyProvider::new(&self.ckb_uri, 10);
+    fn sign_otx(
+        &self,
+        mut tx: TransactionView,
+        omnilock_config: &OmniLockConfig,
+        keys: Vec<secp256k1::SecretKey>,
+    ) -> Result<(TransactionView, Vec<ScriptGroup>)> {
+        // Unlock transaction
+        let tx_dep_provider = DefaultTransactionDependencyProvider::new(&self.ckb_uri, 10);
 
-    let mut ckb_client = CkbRpcClient::new(&self.ckb_uri);
-    let cell = build_cell_dep(&mut ckb_client, &OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX)?;
+        let mut ckb_client = CkbRpcClient::new(&self.ckb_uri);
+        let cell = build_cell_dep(&mut ckb_client, &OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX)?;
 
-    let mut _still_locked_groups = None;
-    let unlockers = build_omnilock_unlockers(keys, omnilock_config.clone(), cell.type_hash);
-    let (new_tx, new_still_locked_groups) = unlock_tx(tx.clone(), &tx_dep_provider, &unlockers)?;
-    tx = new_tx;
-    _still_locked_groups = Some(new_still_locked_groups);
-    Ok((tx, _still_locked_groups.unwrap_or_default()))
-}
+        let mut _still_locked_groups = None;
+        let unlockers = build_omnilock_unlockers(keys, omnilock_config.clone(), cell.type_hash);
+        let (new_tx, new_still_locked_groups) =
+            unlock_tx(tx.clone(), &tx_dep_provider, &unlockers)?;
+        tx = new_tx;
+        _still_locked_groups = Some(new_still_locked_groups);
+        Ok((tx, _still_locked_groups.unwrap_or_default()))
+    }
 }
 
 fn build_omnilock_unlockers(
@@ -435,4 +435,3 @@ fn build_multisig_config(
         threshold,
     )?)
 }
-

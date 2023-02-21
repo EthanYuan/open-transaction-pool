@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
 use crate::const_definition::{CKB_URI, MERCURY_URI};
+use crate::utils::client::mercury_client::MercuryRpcClient;
 
 use utils::client::ckb_client::CkbRpcClient;
-use utils::client::mercury_client::MercuryRpcClient;
 use utils::const_definition::{CELL_BASE_MATURE_EPOCH, GENESIS_EPOCH_LENGTH};
 
 use anyhow::Result;

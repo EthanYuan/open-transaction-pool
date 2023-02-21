@@ -1,11 +1,11 @@
 use super::const_definition::{
     CKB_URI, MERCURY_URI, OTX_POOL_AGENT_ADDRESS, OTX_POOL_AGENT_PK, OTX_POOL_URI,
 };
+use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::{ckb::generate_blocks, ckb::unlock_frozen_capacity_in_genesis};
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 
 use utils::client::ckb_client::CkbRpcClient;
-use utils::client::mercury_client::MercuryRpcClient;
 use utils::client::service_client::OtxPoolRpcClient;
 use utils::const_definition::{
     ANYONE_CAN_PAY_DEVNET_TYPE_HASH, CHEQUE_DEVNET_TYPE_HASH, DAO_DEVNET_TYPE_HASH,

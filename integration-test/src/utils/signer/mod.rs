@@ -2,7 +2,7 @@ mod secp;
 
 use secp::{get_secp_lock_arg, sign_secp};
 
-use crate::const_definition::{
+use utils::const_definition::{
     ANYONE_CAN_PAY_DEVNET_TYPE_HASH, CHEQUE_DEVNET_TYPE_HASH, SIGHASH_TYPE_HASH,
 };
 

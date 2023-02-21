@@ -1,6 +1,5 @@
 pub mod ckb_cli_client;
 pub mod ckb_client;
-pub mod mercury_client;
 pub mod service_client;
 
 use anyhow::{anyhow, Result};
@@ -11,13 +10,13 @@ use reqwest::blocking::Client;
 use serde::{de::DeserializeOwned, Serialize};
 
 #[derive(Clone, Debug)]
-pub(crate) struct RpcClient {
+pub struct RpcClient {
     client: Client,
     uri: String,
 }
 
 impl RpcClient {
-    pub(crate) fn new(uri: String) -> Self {
+    pub fn new(uri: String) -> Self {
         RpcClient {
             client: Client::new(),
             uri,
@@ -35,7 +34,7 @@ impl RpcClient {
     }
 }
 
-fn request<T: Serialize, U: DeserializeOwned>(
+pub fn request<T: Serialize, U: DeserializeOwned>(
     client: &RpcClient,
     method: &str,
     params: T,

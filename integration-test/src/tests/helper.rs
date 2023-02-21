@@ -1,10 +1,10 @@
 use crate::const_definition::{CKB_URI, MERCURY_URI, UDT_1_HOLDER_SECP_ADDRESS};
+use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
 use crate::utils::instruction::ckb::dump_data;
 use crate::utils::instruction::mercury::prepare_udt;
 
 use utils::client::ckb_cli_client::{ckb_cli_get_capacity, ckb_cli_transfer_ckb};
-use utils::client::mercury_client::MercuryRpcClient;
 use utils::const_definition::XUDT_DEVNET_TYPE_HASH;
 use utils::lock::omni::{MultiSigArgs, TxInfo};
 use utils::wallet::{GenOpenTxArgs, Wallet};

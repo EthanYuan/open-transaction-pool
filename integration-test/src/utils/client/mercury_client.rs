@@ -1,5 +1,7 @@
-use super::{request, RpcClient};
-use crate::const_definition::RPC_TRY_INTERVAL_SECS;
+#![allow(dead_code)]
+
+use utils::client::{request, RpcClient};
+use utils::const_definition::RPC_TRY_INTERVAL_SECS;
 
 use anyhow::Result;
 use ckb_types::H256;
