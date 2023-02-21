@@ -12,15 +12,23 @@ use ckb_types::{prelude::Entity, H256};
 use dashmap::mapref::entry::Entry;
 use dashmap::DashMap;
 
+use std::sync::Arc;
+
 pub struct OtxPool {
-    raw_otxs: DashMap<H256, OpenTxWithStatus>,
+    raw_otxs: Arc<DashMap<H256, OpenTxWithStatus>>,
+    _sent_txs: Arc<DashMap<H256, Vec<H256>>>,
     notify_ctrl: NotifyController,
 }
 
 impl OtxPool {
-    pub fn new(notify_ctrl: NotifyController) -> Self {
+    pub fn new(
+        raw_otxs: Arc<DashMap<H256, OpenTxWithStatus>>,
+        sent_txs: Arc<DashMap<H256, Vec<H256>>>,
+        notify_ctrl: NotifyController,
+    ) -> Self {
         OtxPool {
-            raw_otxs: DashMap::new(),
+            raw_otxs,
+            _sent_txs: sent_txs,
             notify_ctrl,
         }
     }

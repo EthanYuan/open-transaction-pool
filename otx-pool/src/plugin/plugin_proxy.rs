@@ -1,6 +1,6 @@
-use super::host_service::ServiceHandler;
 use super::Plugin;
 use crate::notify::RuntimeHandle;
+use crate::plugin::host_service::ServiceHandler;
 
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, MessageType, PluginInfo};
 

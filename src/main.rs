@@ -13,12 +13,14 @@ use utils::const_definition::CKB_URI;
 use anyhow::{anyhow, Result};
 use ckb_async_runtime::new_global_runtime;
 use clap::Parser;
+use dashmap::DashMap;
 use jsonrpc_core::IoHandler;
 use jsonrpc_http_server::ServerBuilder;
 use jsonrpc_server_utils::cors::AccessControlAllowOrigin;
 use jsonrpc_server_utils::hosts::DomainsValidation;
 use tokio::time::{self, Duration, Instant};
 
+use std::sync::Arc;
 use std::{net::SocketAddr, path::Path};
 
 const RUNTIME_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
@@ -79,8 +81,13 @@ pub fn start() -> Result<()> {
         }
     });
 
+    // pool data
+    let raw_otxs = Arc::new(DashMap::new());
+    let sent_txs = Arc::new(DashMap::new());
+
     // Make sure ServiceProvider start before all daemon processes
-    let service_provider = HostServiceProvider::start().map_err(|err| anyhow!(err))?;
+    let service_provider = HostServiceProvider::start(raw_otxs.clone(), sent_txs.clone())
+        .map_err(|err| anyhow!(err))?;
 
     // init built-in plugins
     let dust_collector = DustCollector::new(
@@ -109,7 +116,7 @@ pub fn start() -> Result<()> {
         .for_each(|(_, plugin)| log::info!("plugin name: {:?}", plugin.1.name));
 
     // init otx pool rpc
-    let rpc_impl = OtxPoolRpcImpl::new(notify_ctrl);
+    let rpc_impl = OtxPoolRpcImpl::new(raw_otxs, sent_txs, notify_ctrl);
     let mut io_handler = IoHandler::new();
     io_handler.extend_with(rpc_impl.to_delegate());
 

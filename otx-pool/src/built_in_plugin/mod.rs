@@ -1,4 +1,3 @@
-pub mod atomic_swap;
 pub mod dust_collector;
 
 pub use dust_collector::DustCollector;
@@ -23,6 +22,7 @@ pub struct Context {
     pub otx_set: Arc<DashSet<OpenTransaction>>,
     pub secp_sign_info: Arc<SecpSignInfo>,
     pub ckb_uri: Arc<String>,
+    pub service_handler: ServiceHandler,
 }
 
 impl Context {
@@ -30,11 +30,13 @@ impl Context {
         otx_set: Arc<DashSet<OpenTransaction>>,
         secp_sign_info: Arc<SecpSignInfo>,
         ckb_uri: Arc<String>,
+        service_handler: ServiceHandler,
     ) -> Self {
         Context {
             otx_set,
             secp_sign_info,
             ckb_uri,
+            service_handler,
         }
     }
 }

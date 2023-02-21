@@ -1,7 +1,7 @@
-use super::host_service::{HostServiceProvider, ServiceHandler};
 use super::plugin_proxy::MsgHandler;
 use super::plugin_proxy::{PluginProxy, PluginState};
 use crate::notify::{NotifyController, RuntimeHandle};
+use crate::plugin::host_service::{HostServiceProvider, ServiceHandler};
 use crate::plugin::Plugin;
 
 use ckb_async_runtime::Handle;

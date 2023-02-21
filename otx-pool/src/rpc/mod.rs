@@ -7,8 +7,11 @@ use otx_format::types::OpenTxWithStatus;
 
 use ckb_jsonrpc_types::JsonBytes;
 use ckb_types::H256;
+use dashmap::DashMap;
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_derive::rpc;
+
+use std::sync::Arc;
 
 #[rpc(server)]
 pub trait OtxPoolRpc {
@@ -24,8 +27,12 @@ pub struct OtxPoolRpcImpl {
 }
 
 impl OtxPoolRpcImpl {
-    pub fn new(notify_ctrl: NotifyController) -> Self {
-        let otx_pool = OtxPool::new(notify_ctrl);
+    pub fn new(
+        raw_otxs: Arc<DashMap<H256, OpenTxWithStatus>>,
+        sent_txs: Arc<DashMap<H256, Vec<H256>>>,
+        notify_ctrl: NotifyController,
+    ) -> Self {
+        let otx_pool = OtxPool::new(raw_otxs, sent_txs, notify_ctrl);
         OtxPoolRpcImpl { otx_pool }
     }
 }

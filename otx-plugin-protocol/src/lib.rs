@@ -1,8 +1,7 @@
 use otx_format::jsonrpc_types::OpenTransaction;
 
+use ckb_types::H256;
 use serde_derive::{Deserialize, Serialize};
-
-pub type Id = u64;
 
 pub enum MessageType {
     Request,
@@ -17,7 +16,7 @@ pub enum MessageFromHost {
     NewInterval(u64),
     OtxPoolStart,
     OtxPoolStop,
-    DeleteOtx(Id),
+    DeleteOtx(H256),
 
     // Request
     GetPluginInfo,
@@ -49,9 +48,9 @@ pub enum MessageFromPlugin {
 
     // Request
     NewOtx(OpenTransaction),
-    DiscardOtx(Id),
-    ModifyOtx((Id, OpenTransaction)),
-    SendCkbTx(OpenTransaction),
+    DiscardOtx((H256, OpenTransaction)),
+    ModifyOtx((H256, OpenTransaction)),
+    SendCkbTx((H256, Vec<H256>)),
 }
 
 impl MessageFromPlugin {

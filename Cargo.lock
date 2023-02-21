@@ -1315,6 +1315,7 @@ dependencies = [
  "ckb-types",
  "clap",
  "ctrlc",
+ "dashmap",
  "env_logger",
  "jsonrpc-core",
  "jsonrpc-http-server",
@@ -1398,6 +1399,7 @@ dependencies = [
 name = "otx-plugin-protocol"
 version = "0.1.0"
 dependencies = [
+ "ckb-types",
  "log",
  "otx-format",
  "serde",
