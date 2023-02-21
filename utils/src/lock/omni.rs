@@ -1,4 +1,4 @@
-use crate::const_definition::{OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX};
+use crate::const_definition::devnet::{OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX};
 
 use anyhow::Result;
 use ckb_jsonrpc_types as json_types;

@@ -1,5 +1,8 @@
 use super::build_tx::{add_input, add_output, sighash_sign};
-use super::const_definition::{CKB_URI, OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX};
+use super::const_definition::{
+    devnet::{OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX},
+    CKB_URI,
+};
 use super::lock::omni::{build_cell_dep, TxInfo};
 
 use anyhow::{anyhow, Result};

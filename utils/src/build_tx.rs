@@ -1,4 +1,7 @@
-use crate::const_definition::{CKB_URI, XUDT_DEVNET_TYPE_HASH, XUDT_TX_HASH, XUDT_TX_IDX};
+use crate::const_definition::{
+    devnet::{XUDT_DEVNET_TYPE_HASH, XUDT_TX_HASH, XUDT_TX_IDX},
+    CKB_URI,
+};
 use crate::lock::omni::TxInfo;
 
 use anyhow::{anyhow, Result};

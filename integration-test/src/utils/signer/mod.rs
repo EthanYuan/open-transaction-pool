@@ -1,10 +1,9 @@
 mod secp;
 
+use crate::const_definition::CHEQUE_DEVNET_TYPE_HASH;
 use secp::{get_secp_lock_arg, sign_secp};
 
-use utils::const_definition::{
-    ANYONE_CAN_PAY_DEVNET_TYPE_HASH, CHEQUE_DEVNET_TYPE_HASH, SIGHASH_TYPE_HASH,
-};
+use utils::const_definition::devnet::{ANYONE_CAN_PAY_DEVNET_TYPE_HASH, SIGHASH_TYPE_HASH};
 
 use anyhow::Result;
 use ckb_jsonrpc_types::{Script, Transaction};

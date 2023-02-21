@@ -1,4 +1,4 @@
-use crate::const_definition::ANYONE_CAN_PAY_DEVNET_TYPE_HASH;
+use crate::const_definition::devnet::ANYONE_CAN_PAY_DEVNET_TYPE_HASH;
 
 use anyhow::Result;
 use ckb_sdk::{Address, AddressPayload, NetworkType};

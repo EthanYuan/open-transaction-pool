@@ -1,5 +1,4 @@
 use ckb_types::{h256, H256};
-use once_cell::sync::OnceCell;
 
 pub const SIGHASH_TYPE_HASH: H256 =
     h256!("0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8");
@@ -21,5 +20,3 @@ pub const OMNI_OPENTX_TX_IDX: usize = 9;
 pub const XUDT_TX_HASH: H256 =
     h256!("0x8592d17f7d574cf51b744d66fe9e14a09b915ecaf7ff40450d270c8b2a7a1372");
 pub const XUDT_TX_IDX: usize = 10;
-
-pub static CKB_URI: OnceCell<String> = OnceCell::new();

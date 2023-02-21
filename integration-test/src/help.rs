@@ -1,5 +1,7 @@
 use super::const_definition::{
-    CKB_URI, MERCURY_URI, OTX_POOL_AGENT_ADDRESS, OTX_POOL_AGENT_PK, OTX_POOL_URI,
+    CHEQUE_DEVNET_TYPE_HASH, CKB_URI, DAO_DEVNET_TYPE_HASH, MERCURY_URI, OTX_POOL_AGENT_ADDRESS,
+    OTX_POOL_AGENT_PK, OTX_POOL_URI, PW_LOCK_DEVNET_TYPE_HASH, RPC_TRY_COUNT,
+    RPC_TRY_INTERVAL_SECS,
 };
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::{ckb::generate_blocks, ckb::unlock_frozen_capacity_in_genesis};
@@ -7,10 +9,8 @@ use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 
 use utils::client::ckb_client::CkbRpcClient;
 use utils::client::service_client::OtxPoolRpcClient;
-use utils::const_definition::{
-    ANYONE_CAN_PAY_DEVNET_TYPE_HASH, CHEQUE_DEVNET_TYPE_HASH, DAO_DEVNET_TYPE_HASH,
-    PW_LOCK_DEVNET_TYPE_HASH, RPC_TRY_COUNT, RPC_TRY_INTERVAL_SECS, SIGHASH_TYPE_HASH,
-    XUDT_DEVNET_TYPE_HASH,
+use utils::const_definition::devnet::{
+    ANYONE_CAN_PAY_DEVNET_TYPE_HASH, SIGHASH_TYPE_HASH, XUDT_DEVNET_TYPE_HASH,
 };
 use utils::instruction::command::run_command_spawn;
 

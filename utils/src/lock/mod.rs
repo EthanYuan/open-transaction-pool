@@ -1,7 +1,7 @@
 pub mod acp;
 pub mod omni;
 
-use crate::const_definition::XUDT_DEVNET_TYPE_HASH;
+use crate::const_definition::devnet::XUDT_DEVNET_TYPE_HASH;
 
 use anyhow::Result;
 use ckb_hash::blake2b_256;

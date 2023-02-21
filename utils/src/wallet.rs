@@ -1,4 +1,4 @@
-use super::const_definition::{
+use super::const_definition::devnet::{
     OMNI_LOCK_DEVNET_TYPE_HASH, OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX, SECP_DATA_TX_HASH,
     SECP_DATA_TX_IDX,
 };

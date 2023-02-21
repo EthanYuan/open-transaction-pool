@@ -5,7 +5,7 @@ use crate::utils::instruction::ckb::dump_data;
 use crate::utils::instruction::mercury::prepare_udt;
 
 use utils::client::ckb_cli_client::{ckb_cli_get_capacity, ckb_cli_transfer_ckb};
-use utils::const_definition::XUDT_DEVNET_TYPE_HASH;
+use utils::const_definition::devnet::XUDT_DEVNET_TYPE_HASH;
 use utils::lock::omni::{MultiSigArgs, TxInfo};
 use utils::wallet::{GenOpenTxArgs, Wallet};
 
