@@ -16,7 +16,7 @@ pub enum MessageFromHost {
     NewInterval(u64),
     OtxPoolStart,
     OtxPoolStop,
-    DeleteOtx(H256),
+    CommitOtx(Vec<H256>),
 
     // Request
     GetPluginInfo,
@@ -33,7 +33,7 @@ impl MessageFromHost {
             | Self::NewInterval(_)
             | Self::OtxPoolStart
             | Self::OtxPoolStop
-            | Self::DeleteOtx(_) => MessageType::Notify,
+            | Self::CommitOtx(_) => MessageType::Notify,
             Self::GetPluginInfo | Self::Ok | Self::Error(_) => MessageType::Request,
         }
     }

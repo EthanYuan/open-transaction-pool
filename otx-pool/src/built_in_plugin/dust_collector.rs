@@ -11,7 +11,7 @@ use ckb_types::core::service::Request;
 use ckb_types::H256;
 
 use crossbeam_channel::{bounded, select, unbounded};
-use dashmap::DashSet;
+use dashmap::DashMap;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -21,7 +21,7 @@ use std::thread::JoinHandle;
 #[derive(Clone)]
 pub struct Context {
     pub plugin_name: String,
-    pub otx_set: Arc<DashSet<OpenTransaction>>,
+    pub otx_set: Arc<DashMap<H256, OpenTransaction>>,
     pub secp_sign_info: SecpSignInfo,
     pub ckb_uri: String,
     pub service_handler: ServiceHandler,
@@ -36,7 +36,7 @@ impl Context {
     ) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
-            otx_set: Arc::new(DashSet::new()),
+            otx_set: Arc::new(DashMap::new()),
             secp_sign_info,
             ckb_uri: ckb_uri.to_owned(),
             service_handler,
@@ -94,9 +94,12 @@ impl DustCollector {
             "Collect micropayment otx and aggregate them into ckb tx.",
             "1.0",
         );
-        let (msg_handler, request_handler, thread) = DustCollector::start_process(
-            Context::new(name, secp_sign_info, ckb_uri, service_handler),
-        )?;
+        let (msg_handler, request_handler, thread) = DustCollector::start_process(Context::new(
+            name,
+            secp_sign_info,
+            ckb_uri,
+            service_handler,
+        ))?;
         Ok(DustCollector {
             state,
             info,
@@ -146,6 +149,9 @@ impl DustCollector {
                                     (_, MessageFromHost::NewOtx(otx)) => {
                                         Self::on_new_open_tx(context.clone(), otx);
                                     }
+                                    (_, MessageFromHost::CommitOtx(otx_hashes)) => {
+                                        Self::on_commit_open_tx(context.clone(), otx_hashes);
+                                    }
                                     _ => unreachable!(),
                                 }
                                 Ok(false)
@@ -173,7 +179,15 @@ impl DustCollector {
     }
 
     fn on_new_open_tx(context: Context, otx: OpenTransaction) {
-        context.otx_set.insert(otx);
+        let otx_hash = otx_to_tx_view(otx.clone()).unwrap().hash;
+        context.otx_set.insert(otx_hash, otx);
+    }
+
+    fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
+        log::debug!("dust collector remove committed otx: {:?}", otx_hashes);
+        otx_hashes.iter().for_each(|otx_hash| {
+            context.otx_set.remove(otx_hash);
+        })
     }
 
     fn on_new_intervel(context: Context, elapsed: u64) {

@@ -1,5 +1,6 @@
 use ckb_async_runtime::Handle;
 use ckb_stop_handler::{SignalSender, StopHandler};
+use ckb_types::H256;
 use otx_format::jsonrpc_types::OpenTransaction;
 use tokio::sync::{
     mpsc::{self, Receiver, Sender},
@@ -43,8 +44,8 @@ pub struct NotifyController {
     stop: StopHandler<()>,
     new_open_tx_register: NotifyRegister<OpenTransaction>,
     new_open_tx_notifier: Sender<OpenTransaction>,
-    delete_open_tx_register: NotifyRegister<OpenTransaction>,
-    delete_open_tx_notifier: Sender<OpenTransaction>,
+    commit_open_tx_register: NotifyRegister<Vec<H256>>,
+    commit_open_tx_notifier: Sender<Vec<H256>>,
     interval_register: NotifyRegister<u64>,
     interval_notifier: Sender<u64>,
     start_register: NotifyRegister<()>,
@@ -62,7 +63,7 @@ impl Drop for NotifyController {
 
 pub struct NotifyService {
     new_open_tx_subscribers: HashMap<String, Sender<OpenTransaction>>,
-    delete_open_tx_subscribers: HashMap<String, Sender<OpenTransaction>>,
+    commit_open_tx_subscribers: HashMap<String, Sender<Vec<H256>>>,
     interval_subscribers: HashMap<String, Sender<u64>>,
     start_subscribers: HashMap<String, Sender<()>>,
     stop_subscribers: HashMap<String, Sender<()>>,
@@ -78,7 +79,7 @@ impl NotifyService {
     pub fn new() -> Self {
         Self {
             new_open_tx_subscribers: HashMap::default(),
-            delete_open_tx_subscribers: HashMap::default(),
+            commit_open_tx_subscribers: HashMap::default(),
             interval_subscribers: HashMap::default(),
             start_subscribers: HashMap::default(),
             stop_subscribers: HashMap::default(),
@@ -93,9 +94,9 @@ impl NotifyService {
             mpsc::channel(REGISTER_CHANNEL_SIZE);
         let (new_open_tx_sender, mut new_open_tx_receiver) = mpsc::channel(NOTIFY_CHANNEL_SIZE);
 
-        let (delete_open_tx_register, mut delete_open_tx_register_receiver) =
+        let (commit_open_tx_register, mut commit_open_tx_register_receiver) =
             mpsc::channel(REGISTER_CHANNEL_SIZE);
-        let (delete_open_tx_sender, mut delete_open_tx_receiver) =
+        let (commit_open_tx_sender, mut commit_open_tx_receiver) =
             mpsc::channel(NOTIFY_CHANNEL_SIZE);
 
         let (interval_register, mut interval_register_receiver) =
@@ -116,8 +117,8 @@ impl NotifyService {
                     }
                     Some(msg) = new_open_tx_register_receiver.recv() => { self.handle_register_new_open_tx(msg) },
                     Some(msg) = new_open_tx_receiver.recv() => { self.handle_notify_new_open_tx(msg).await },
-                    Some(msg) = delete_open_tx_register_receiver.recv() => { self.handle_register_delete_open_tx(msg) },
-                    Some(msg) = delete_open_tx_receiver.recv() => { self.handle_notify_delete_open_tx(msg).await },
+                    Some(msg) = commit_open_tx_register_receiver.recv() => { self.handle_register_commit_open_tx(msg) },
+                    Some(msg) = commit_open_tx_receiver.recv() => { self.handle_notify_commit_open_tx(msg).await },
                     Some(msg) = interval_register_receiver.recv() => { self.handle_register_interval(msg) },
                     Some(msg) = interval_receiver.recv() => { self.handle_notify_interval(msg).await },
                     Some(msg) = start_register_receiver.recv() => { self.handle_register_start(msg) },
@@ -132,8 +133,8 @@ impl NotifyService {
         NotifyController {
             new_open_tx_register,
             new_open_tx_notifier: new_open_tx_sender,
-            delete_open_tx_register,
-            delete_open_tx_notifier: delete_open_tx_sender,
+            commit_open_tx_register,
+            commit_open_tx_notifier: commit_open_tx_sender,
             interval_register,
             interval_notifier: interval_sender,
             start_register,
@@ -168,22 +169,22 @@ impl NotifyService {
         }
     }
 
-    fn handle_register_delete_open_tx(&mut self, msg: Request<String, Receiver<OpenTransaction>>) {
+    fn handle_register_commit_open_tx(&mut self, msg: Request<String, Receiver<Vec<H256>>>) {
         let Request {
             responder,
             arguments: name,
         } = msg;
-        log::debug!("Register delete_open_tx {:?}", name);
+        log::debug!("Register commit_open_tx {:?}", name);
         let (sender, receiver) = mpsc::channel(NOTIFY_CHANNEL_SIZE);
-        self.delete_open_tx_subscribers.insert(name, sender);
+        self.commit_open_tx_subscribers.insert(name, sender);
         let _ = responder.send(receiver);
     }
 
-    async fn handle_notify_delete_open_tx(&mut self, otx_entry: OpenTransaction) {
-        log::trace!("event delete open tx {:?}", otx_entry);
+    async fn handle_notify_commit_open_tx(&mut self, otx_hashes: Vec<H256>) {
+        log::trace!("event commit open tx {:?}", otx_hashes);
         // notify all subscribers
-        for subscriber in self.delete_open_tx_subscribers.values() {
-            let _ = subscriber.send(otx_entry.clone()).await;
+        for subscriber in self.commit_open_tx_subscribers.values() {
+            let _ = subscriber.send(otx_hashes.clone()).await;
         }
     }
 
@@ -259,19 +260,16 @@ impl NotifyController {
         });
     }
 
-    pub async fn subscribe_delete_open_tx<S: ToString>(
-        &self,
-        name: S,
-    ) -> Receiver<OpenTransaction> {
-        Request::call(&self.delete_open_tx_register, name.to_string())
+    pub async fn subscribe_commit_open_tx<S: ToString>(&self, name: S) -> Receiver<Vec<H256>> {
+        Request::call(&self.commit_open_tx_register, name.to_string())
             .await
-            .expect("Subscribe delete open tx should be OK")
+            .expect("Subscribe commit open tx should be OK")
     }
 
-    pub fn notify_delete_open_tx(&self, otx: OpenTransaction) {
-        let delete_open_tx_notifier = self.delete_open_tx_notifier.clone();
+    pub fn notify_commit_open_tx(&self, otx_hashes: Vec<H256>) {
+        let commit_open_tx_notifier = self.commit_open_tx_notifier.clone();
         self.handle.spawn(async move {
-            let _ = delete_open_tx_notifier.send(otx).await;
+            let _ = commit_open_tx_notifier.send(otx_hashes).await;
         });
     }
 

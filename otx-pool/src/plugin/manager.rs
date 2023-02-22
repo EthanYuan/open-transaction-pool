@@ -150,6 +150,8 @@ fn subscribe_events(
         runtime_handle.block_on(notify_ctrl.subscribe_interval("plugin manager"));
     let mut new_otx_event_receiver =
         runtime_handle.block_on(notify_ctrl.subscribe_new_open_tx("plugin manager"));
+    let mut commit_otx_event_receiver =
+        runtime_handle.block_on(notify_ctrl.subscribe_commit_open_tx("plugin manager"));
     runtime_handle.spawn(async move {
         loop {
             tokio::select! {
@@ -161,6 +163,11 @@ fn subscribe_events(
                 Some(open_tx) = new_otx_event_receiver.recv() => {
                     plugin_msg_handlers.iter().for_each(|(_, msg_handler)| {
                         let _ = msg_handler.send((0, MessageFromHost::NewOtx(open_tx.clone())));
+                    })
+                }
+                Some(otx_hash) = commit_otx_event_receiver.recv() => {
+                    plugin_msg_handlers.iter().for_each(|(_, msg_handler)| {
+                        let _ = msg_handler.send((0, MessageFromHost::CommitOtx(otx_hash.clone())));
                     })
                 }
             }

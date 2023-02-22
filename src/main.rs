@@ -86,8 +86,9 @@ pub fn start() -> Result<()> {
     let sent_txs = Arc::new(DashMap::new());
 
     // Make sure ServiceProvider start before all daemon processes
-    let service_provider = HostServiceProvider::start(raw_otxs.clone(), sent_txs.clone())
-        .map_err(|err| anyhow!(err))?;
+    let service_provider =
+        HostServiceProvider::start(notify_ctrl.clone(), raw_otxs.clone(), sent_txs.clone())
+            .map_err(|err| anyhow!(err))?;
 
     // init built-in plugins
     let dust_collector = DustCollector::new(

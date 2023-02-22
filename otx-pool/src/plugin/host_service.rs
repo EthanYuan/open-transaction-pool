@@ -1,3 +1,5 @@
+use crate::notify::NotifyController;
+
 use otx_format::types::{OpenTxStatus, OpenTxWithStatus};
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin};
 
@@ -19,6 +21,7 @@ pub struct HostServiceProvider {
 
 impl HostServiceProvider {
     pub fn start(
+        notify_ctrl: NotifyController,
         raw_otxs: Arc<DashMap<H256, OpenTxWithStatus>>,
         sent_txs: Arc<DashMap<H256, Vec<H256>>>,
     ) -> Result<HostServiceProvider, String> {
@@ -44,6 +47,7 @@ impl HostServiceProvider {
                                 raw_otxs.get_mut(otx_hash).unwrap().status =
                                     OpenTxStatus::Committed(tx_hash.clone());
                             }
+                            notify_ctrl.notify_commit_open_tx(otx_hashes.clone());
                             sent_txs.insert(tx_hash, otx_hashes);
                         }
                         _ => unreachable!(),
