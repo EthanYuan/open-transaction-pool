@@ -1,38 +1,62 @@
-use super::{BuiltInPlugin, Context};
-use crate::notify::RuntimeHandle;
 use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
 
+use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
+use otx_format::jsonrpc_types::OpenTransaction;
+use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
 use utils::aggregator::{OtxAggregator, SecpSignInfo};
 
 use ckb_types::core::service::Request;
 use ckb_types::H256;
-use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
-use otx_format::jsonrpc_types::OpenTransaction;
-use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
 
+use crossbeam_channel::{bounded, select, unbounded};
 use dashmap::DashSet;
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::thread;
 use std::thread::JoinHandle;
+
+#[derive(Clone)]
+pub struct Context {
+    pub plugin_name: String,
+    pub otx_set: Arc<DashSet<OpenTransaction>>,
+    pub secp_sign_info: SecpSignInfo,
+    pub ckb_uri: String,
+    pub service_handler: ServiceHandler,
+}
+
+impl Context {
+    fn new(
+        plugin_name: &str,
+        secp_sign_info: SecpSignInfo,
+        ckb_uri: &str,
+        service_handler: ServiceHandler,
+    ) -> Self {
+        Context {
+            plugin_name: plugin_name.to_owned(),
+            otx_set: Arc::new(DashSet::new()),
+            secp_sign_info,
+            ckb_uri: ckb_uri.to_owned(),
+            service_handler,
+        }
+    }
+}
+
+impl Context {}
 
 pub struct DustCollector {
     state: PluginState,
     info: PluginInfo,
 
-    /// Send request to stdin thread, and expect a response from stdout thread.
+    /// Send request to plugin thread, and expect a response.
     request_handler: RequestHandler,
 
-    /// Send notifaction/response to stdin thread.
+    /// Send notifaction/response to plugin thread.
     msg_handler: MsgHandler,
 
     _thread: JoinHandle<()>,
-
-    _raw_otxs: Arc<DashSet<OpenTransaction>>,
-    _secp_sign_info: Arc<SecpSignInfo>,
-    _ckb_uri: Arc<String>,
 }
 
 impl Plugin for DustCollector {
@@ -59,7 +83,6 @@ impl Plugin for DustCollector {
 
 impl DustCollector {
     pub fn new(
-        runtime_handle: RuntimeHandle,
         service_handler: ServiceHandler,
         secp_sign_info: SecpSignInfo,
         ckb_uri: &str,
@@ -71,31 +94,84 @@ impl DustCollector {
             "Collect micropayment otx and aggregate them into ckb tx.",
             "1.0",
         );
-        let raw_otxs = Arc::new(DashSet::default());
-        let secp_sign_info = Arc::new(secp_sign_info);
-        let ckb_uri = Arc::new(ckb_uri.to_owned());
-        let context = Context::new(
-            raw_otxs.clone(),
-            secp_sign_info.clone(),
-            ckb_uri.clone(),
-            service_handler.clone(),
-        );
-        let (msg_handler, request_handler, thread) =
-            DustCollector::start_process(context, name, runtime_handle, service_handler)?;
+        let (msg_handler, request_handler, thread) = DustCollector::start_process(
+            Context::new(name, secp_sign_info, ckb_uri, service_handler),
+        )?;
         Ok(DustCollector {
             state,
             info,
             msg_handler,
             request_handler,
             _thread: thread,
-            _raw_otxs: raw_otxs,
-            _secp_sign_info: secp_sign_info,
-            _ckb_uri: ckb_uri,
         })
     }
 }
 
-impl BuiltInPlugin for DustCollector {
+impl DustCollector {
+    fn start_process(
+        context: Context,
+    ) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>), String> {
+        // the host request channel receives request from host to plugin
+        let (host_request_sender, host_request_receiver) = bounded(1);
+        // the channel sends notifications or responses from the host to plugin
+        let (host_msg_sender, host_msg_receiver) = unbounded();
+
+        let plugin_name = context.plugin_name.to_owned();
+        // this thread processes information from host to plugin
+        let thread = thread::spawn(move || {
+            let do_select = || -> Result<bool, String> {
+                select! {
+                    // request from host to plugin
+                    recv(host_request_receiver) -> msg => {
+                        match msg {
+                            Ok(Request { responder, arguments }) => {
+                                log::debug!("dust collector receives request arguments: {:?}", arguments);
+                                // handle
+                                let response = (0, MessageFromPlugin::Ok);
+                                responder.send(response).map_err(|err| err.to_string())?;
+                                Ok(false)
+                            }
+                            Err(err) => Err(err.to_string())
+                        }
+                    }
+                    // repsonse/notification from host to plugin
+                    recv(host_msg_receiver) -> msg => {
+                        match msg {
+                            Ok(msg) => {
+                                log::debug!("dust collector receivers msg: {:?}", msg);
+                                match msg {
+                                    (_, MessageFromHost::NewInterval(elapsed)) => {
+                                        Self::on_new_intervel(context.clone(), elapsed);
+                                    }
+                                    (_, MessageFromHost::NewOtx(otx)) => {
+                                        Self::on_new_open_tx(context.clone(), otx);
+                                    }
+                                    _ => unreachable!(),
+                                }
+                                Ok(false)
+                            }
+                            Err(err) => Err(err.to_string())
+                        }
+                    }
+                }
+            };
+            loop {
+                match do_select() {
+                    Ok(true) => {
+                        break;
+                    }
+                    Ok(false) => (),
+                    Err(err) => {
+                        log::error!("plugin {} error: {}", plugin_name, err);
+                        break;
+                    }
+                }
+            }
+        });
+
+        Ok((host_msg_sender, host_request_sender, thread))
+    }
+
     fn on_new_open_tx(context: Context, otx: OpenTransaction) {
         context.otx_set.insert(otx);
     }

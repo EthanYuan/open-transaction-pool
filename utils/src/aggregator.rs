@@ -123,6 +123,7 @@ impl Committer {
     }
 }
 
+#[derive(Clone)]
 pub struct SecpSignInfo {
     secp_address: Address,
     pk: H256,

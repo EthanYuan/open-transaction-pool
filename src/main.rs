@@ -91,7 +91,6 @@ pub fn start() -> Result<()> {
 
     // init built-in plugins
     let dust_collector = DustCollector::new(
-        runtime_handle.clone(),
         service_provider.handler(),
         SecpSignInfo::new(&args.address, &args.key),
         CKB_URI.get().unwrap(),
