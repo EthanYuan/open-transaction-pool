@@ -5,11 +5,14 @@ use crate::plugin::Plugin;
 use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
-use utils::aggregator::{OtxAggregator, SecpSignInfo};
+use utils::aggregator::{AddOutputArgs, OtxAggregator, SecpSignInfo};
 
+use ckb_sdk::rpc::ckb_indexer::{Order, ScriptType, SearchKey};
 use ckb_sdk::rpc::IndexerRpcClient;
+use ckb_sdk_open_tx::types::HumanCapacity;
 use ckb_types::core::service::Request;
-use ckb_types::H256;
+use ckb_types::packed::Script;
+use ckb_types::{packed, H256};
 use crossbeam_channel::{bounded, select, unbounded};
 use dashmap::DashMap;
 
@@ -198,49 +201,100 @@ impl DustCollector {
     }
 
     fn on_new_intervel(context: Context, elapsed: u64) {
-        if elapsed % 10 == 0 && context.otx_set.len() > 1 {
+        if elapsed % 10 != 0 || context.otx_set.len() <= 1 {
+            return;
+        }
+
+        log::info!(
+            "on new 10 intervals otx set len: {:?}",
+            context.otx_set.len()
+        );
+
+        // merge_otx
+        let otx_list: Vec<OpenTransaction> =
+            context.otx_set.iter().map(|otx| otx.clone()).collect();
+        let merged_otx = if let Ok(merged_otx) = OtxAggregator::merge_otxs(otx_list) {
+            log::debug!("otxs merge successfully.");
+            merged_otx
+        } else {
             log::info!(
-                "on new 10 intervals otx set len: {:?}",
-                context.otx_set.len()
+                "Failed to merge otxs, all otxs staged by the duster itself will be cleared."
             );
+            context.otx_set.clear();
+            return;
+        };
 
-            // merge_otx
-            let _aggregator = OtxAggregator::new(
-                context.secp_sign_info.secp_address(),
-                context.secp_sign_info.privkey(),
-                &context.ckb_uri,
+        // find a cell to receive assets
+        let mut indexer = IndexerRpcClient::new(&context.ckb_uri);
+        let lock_script: packed::Script = context.secp_sign_info.secp_address().into();
+        let search_key = SearchKey {
+            script: lock_script.into(),
+            script_type: ScriptType::Lock,
+            filter: None,
+            with_data: None,
+            group_by_transaction: None,
+        };
+        let cell = if let Ok(cell) = indexer.get_cells(search_key, Order::Asc, 1.into(), None) {
+            let cell = &cell.objects[0];
+            log::info!(
+                "the broker identified an available cell: {:?}",
+                cell.out_point
             );
-            let otx_list: Vec<OpenTransaction> =
-                context.otx_set.iter().map(|otx| otx.clone()).collect();
-            let hashes: Vec<H256> = context
-                .otx_set
-                .iter()
-                .map(|otx| {
-                    let tx_view = otx_to_tx_view(otx.clone()).unwrap();
-                    tx_view.hash
-                })
-                .collect();
-            let merged_otx = OtxAggregator::merge_otxs(otx_list);
-            log::debug!("merged_otx: {}", merged_otx.is_ok());
-            if let Ok(_merged_otx) = merged_otx {
-                // add inputs and outputs
-                let _indexer = IndexerRpcClient::new(&context.ckb_uri);
-                // indexer.get_cells(search_key, order, limit, after)
+            cell.clone()
+        } else {
+            log::error!("broker has no cells available for input");
+            return;
+        };
 
-                // send_ckb
-                log::info!("commit final Ckb tx: {:?}", H256::default().to_string());
+        // add input and output
+        let tx = if let Ok(tx) = otx_to_tx_view(merged_otx) {
+            tx
+        } else {
+            log::error!("open tx converts to Ckb tx failed.");
+            return;
+        };
+        let aggregator = OtxAggregator::new(
+            context.secp_sign_info.secp_address(),
+            context.secp_sign_info.privkey(),
+            &context.ckb_uri,
+        );
+        let output = AddOutputArgs {
+            capacity: HumanCapacity::from(cell.output.capacity.value()),
+            udt_amount: None,
+        };
+        let ckb_tx = if let Ok(ckb_tx) =
+            aggregator.add_input_and_output(tx, cell.out_point, output, Script::default())
+        {
+            ckb_tx
+        } else {
+            log::error!("failed to assemble final tx.");
+            return;
+        };
 
-                // call host service
-                let message = MessageFromPlugin::SendCkbTx((H256::default(), hashes));
-                if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message)
-                {
-                }
-            } else {
-                log::info!(
-                    "Failed to merge otxs, all otxs staged by the duster itself will be cleared."
-                );
-            }
-            context.otx_set.clear()
+        // sign
+        let signed_ckb_tx = aggregator.signer.sign_ckb_tx(ckb_tx).unwrap();
+        let tx_hash = if let Ok(tx_hash) = aggregator.committer.send_tx(signed_ckb_tx) {
+            tx_hash
+        } else {
+            log::error!("failed to send final tx.");
+            return;
+        };
+
+        // send_ckb
+        log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
+
+        // call host service
+        let hashes: Vec<H256> = context
+            .otx_set
+            .iter()
+            .map(|otx| {
+                let tx_view = otx_to_tx_view(otx.clone()).unwrap();
+                tx_view.hash
+            })
+            .collect();
+        let message = MessageFromPlugin::SendCkbTx((H256::default(), hashes));
+        if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
+            context.otx_set.clear();
         }
     }
 }

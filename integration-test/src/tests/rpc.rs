@@ -1,5 +1,5 @@
-use super::helper::alice_build_signed_otx;
 use crate::const_definition::OTX_POOL_URI;
+use crate::tests::helper::build_pay_ckb_signed_otx;
 use crate::IntegrationTest;
 
 use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_otx};
@@ -26,7 +26,7 @@ inventory::submit!(IntegrationTest {
     test_fn: test_service_rpc_submit_otx
 });
 fn test_service_rpc_submit_otx() {
-    let tx_info = alice_build_signed_otx().unwrap();
+    let tx_info = build_pay_ckb_signed_otx("alice", 151, 100, 51).unwrap();
     let tx_view = tx_info.tx;
     let otx = tx_view_to_otx(tx_view.clone()).unwrap();
     let otx: packed::OpenTransaction = otx.into();

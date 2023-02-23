@@ -7,6 +7,7 @@ use super::lock::omni::{build_cell_dep, TxInfo};
 
 use anyhow::{anyhow, Result};
 use ckb_jsonrpc_types as json_types;
+use ckb_jsonrpc_types::TransactionView;
 use ckb_sdk::{
     rpc::CkbRpcClient, traits::DefaultTransactionDependencyProvider,
     unlock::opentx::assembler::assemble_new_tx, unlock::OmniUnlockMode, Address, HumanCapacity,
@@ -17,6 +18,7 @@ use ckb_types::{
     H256,
 };
 use faster_hex::hex_decode;
+use json_types::OutPoint;
 use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_otx};
 use otx_format::jsonrpc_types::OpenTransaction;
 
@@ -44,12 +46,16 @@ impl OtxAggregator {
 
     pub fn add_input_and_output(
         &self,
-        open_tx: TxInfo,
-        input: AddInputArgs,
+        open_tx: TransactionView,
+        input: OutPoint,
         output: AddOutputArgs,
         udt_issuer_script: Script,
-    ) -> Result<TxInfo> {
-        let tx_info = add_input(open_tx, input.tx_hash, input.index)?;
+    ) -> Result<TransactionView> {
+        let tx_info = add_input(
+            open_tx,
+            input.tx_hash,
+            std::convert::Into::<u32>::into(input.index) as usize,
+        )?;
         add_output(
             tx_info,
             self.signer.secp_address(),
@@ -150,6 +156,12 @@ impl SecpSignInfo {
         &self.pk
     }
 
+    pub fn sign_ckb_tx(&self, tx_view: TransactionView) -> Result<json_types::TransactionView> {
+        let tx = Transaction::from(tx_view.inner).into_view();
+        let (tx, _) = sighash_sign(&[self.pk.clone()], tx)?;
+        Ok(json_types::TransactionView::from(tx))
+    }
+
     pub fn sign_tx(&self, tx_info: TxInfo) -> Result<json_types::TransactionView> {
         let tx = Transaction::from(tx_info.tx.inner).into_view();
         let (tx, _) = sighash_sign(&[self.pk.clone()], tx)?;
@@ -191,16 +203,7 @@ fn decode_hex(mut input: &str) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
-pub struct AddInputArgs {
-    /// omnilock script deploy transaction hash
-    pub tx_hash: H256,
-
-    /// cell index of omnilock script deploy transaction's outputs
-    pub index: usize,
-}
-
 pub struct AddOutputArgs {
-    /// The capacity to transfer (unit: CKB, example: 102.43)
     pub capacity: HumanCapacity,
     pub udt_amount: Option<u128>,
 }

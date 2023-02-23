@@ -3,6 +3,7 @@ use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
 use crate::utils::instruction::ckb::dump_data;
 use crate::utils::instruction::mercury::prepare_udt;
+use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 
 use utils::client::ckb_cli_client::{ckb_cli_get_capacity, ckb_cli_transfer_ckb};
 use utils::const_definition::devnet::XUDT_DEVNET_TYPE_HASH;
@@ -22,24 +23,27 @@ use core_rpc_types::{GetBalancePayload, JsonItem};
 use std::collections::HashSet;
 use std::str::FromStr;
 
-use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
-
-pub fn alice_build_signed_otx() -> Result<TxInfo> {
+pub fn build_pay_ckb_signed_otx(
+    payer: &str,
+    prepare_capacity: usize,
+    remain_capacity: usize,
+    open_capacity: usize,
+) -> Result<TxInfo> {
     // 1. init wallet instance
     let (address, pk) = generate_rand_secp_address_pk_pair();
-    let alice_wallet = Wallet::init_account(address, pk, CKB_URI);
-    let alice_omni_address = alice_wallet.get_omni_otx_address();
+    let wallet = Wallet::init_account(address, pk, CKB_URI);
+    let omni_address = wallet.get_omni_otx_address();
 
-    // 2. transfer capacity to alice omni address
-    let capacity = 151;
-    log::info!("prepare alice wallet: {:?} CKB", capacity);
-    let _tx_hash = ckb_cli_transfer_ckb(alice_omni_address, capacity).unwrap();
+    // 2. transfer capacity to omni address
+    let capacity = prepare_capacity;
+    log::info!("{} prepare wallet: {:?} CKB", payer, capacity);
+    let _tx_hash = ckb_cli_transfer_ckb(omni_address, capacity).unwrap();
     aggregate_transactions_into_blocks()?;
 
-    let capacity = ckb_cli_get_capacity(alice_omni_address).unwrap();
-    assert_eq!(151f64, capacity);
+    let capacity = ckb_cli_get_capacity(omni_address).unwrap();
+    assert_eq!(prepare_capacity as f64, capacity);
 
-    // 3. generate open transaction, pay 51 CKB
+    // 3. generate open transaction
     let gen_open_tx_args = GenOpenTxArgs {
         omni_identity_flag: IdentityFlag::PubkeyHash,
         multis_args: MultiSigArgs {
@@ -47,26 +51,30 @@ pub fn alice_build_signed_otx() -> Result<TxInfo> {
             threshold: 1,
             sighash_address: vec![],
         },
-        receiver: alice_omni_address.to_owned(),
+        receiver: omni_address.to_owned(),
         capacity_with_open: Some((
-            HumanCapacity::from_str("100.0").unwrap(),
-            HumanCapacity::from_str("51.0").unwrap(),
+            HumanCapacity::from_str(&remain_capacity.to_string()).unwrap(),
+            HumanCapacity::from_str(&open_capacity.to_string()).unwrap(),
         )),
         udt_amount_with_open: None,
         fee_rate: 0,
     };
-    let open_tx = alice_wallet.gen_open_tx(&gen_open_tx_args).unwrap();
-    let file = "./free-space/usercase_alice_otx_unsigned.json";
-    dump_data(&open_tx, file).unwrap();
+    let open_tx = wallet.gen_open_tx(&gen_open_tx_args).unwrap();
+    let file = format!("./free-space/usercase_{}_otx_unsigned.json", payer);
+    dump_data(&open_tx, &file).unwrap();
 
     // 4. sign the otx
-    let open_tx = alice_wallet.sign_open_tx(open_tx).unwrap();
-    dump_data(&open_tx, "./free-space/usercase_alice_otx_signed.json").unwrap();
+    let open_tx = wallet.sign_open_tx(open_tx).unwrap();
+    dump_data(
+        &open_tx,
+        &format!("./free-space/usercase_{}_otx_signed.json", payer),
+    )
+    .unwrap();
 
     Ok(open_tx)
 }
 
-pub fn bob_build_signed_otx() -> Result<TxInfo> {
+pub fn _bob_build_signed_otx() -> Result<TxInfo> {
     // 1. init bob's wallet
     let (address, pk) = generate_rand_secp_address_pk_pair();
     let bob_wallet = Wallet::init_account(address, pk, CKB_URI);

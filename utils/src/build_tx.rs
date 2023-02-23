@@ -2,10 +2,8 @@ use crate::const_definition::{
     devnet::{XUDT_DEVNET_TYPE_HASH, XUDT_TX_HASH, XUDT_TX_IDX},
     CKB_URI,
 };
-use crate::lock::omni::TxInfo;
 
 use anyhow::{anyhow, Result};
-
 use ckb_jsonrpc_types as json_types;
 use ckb_sdk::{
     constants::SIGHASH_TYPE_HASH,
@@ -26,14 +24,14 @@ use ckb_types::{
 
 use std::collections::HashMap;
 
-pub fn add_input(tx_info: TxInfo, tx_hash: H256, output_index: usize) -> Result<TxInfo> {
-    let tx = Transaction::from(tx_info.tx.inner).into_view();
+pub fn add_input(
+    tx_view: json_types::TransactionView,
+    tx_hash: H256,
+    output_index: usize,
+) -> Result<json_types::TransactionView> {
+    let tx = Transaction::from(tx_view.inner).into_view();
     let tx = add_live_cell(tx, tx_hash, output_index)?;
-    let tx_info = TxInfo {
-        tx: json_types::TransactionView::from(tx),
-        omnilock_config: tx_info.omnilock_config,
-    };
-    Ok(tx_info)
+    Ok(json_types::TransactionView::from(tx))
 }
 
 fn add_live_cell(
@@ -69,13 +67,13 @@ fn add_live_cell(
 }
 
 pub fn add_output(
-    tx_info: TxInfo,
+    tx_view: ckb_jsonrpc_types::TransactionView,
     payee_address: &Address,
     capacity: HumanCapacity,
     udt_amount: Option<u128>,
     udt_issuer_script: Script,
-) -> Result<TxInfo> {
-    let tx = Transaction::from(tx_info.tx.inner).into_view();
+) -> Result<json_types::TransactionView> {
+    let tx = Transaction::from(tx_view.inner).into_view();
     let lock_script = Script::from(payee_address.payload());
 
     let mut output = CellOutput::new_builder()
@@ -112,11 +110,7 @@ pub fn add_output(
         .cell_dep(xudt_cell_dep)
         .build();
 
-    let tx_info = TxInfo {
-        tx: json_types::TransactionView::from(tx),
-        omnilock_config: tx_info.omnilock_config,
-    };
-    Ok(tx_info)
+    Ok(json_types::TransactionView::from(tx))
 }
 
 pub fn sighash_sign(

@@ -4,7 +4,7 @@ use super::const_definition::{
     RPC_TRY_INTERVAL_SECS,
 };
 use crate::utils::client::mercury_client::MercuryRpcClient;
-use crate::utils::instruction::mercury::prepare_udt;
+use crate::utils::instruction::mercury::{prepare_ckb_capacity, prepare_udt};
 use crate::utils::instruction::{ckb::generate_blocks, ckb::unlock_frozen_capacity_in_genesis};
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 
@@ -145,9 +145,15 @@ pub(crate) fn start_otx_pool(ckb: Child, mercury: Child) -> (Child, Child, Child
     for _try in 0..=RPC_TRY_COUNT {
         let resp = client.query_otx_by_id(H256::default());
         if resp.is_ok() {
-            let udt_amount = 100u128;
-            log::info!("prepare udt for dust collector agent: {:?} UDT", udt_amount);
+            let capacity = 200_0000_0000u64;
+            log::info!("prepare CKB for dust collector agent: {:?} CKB", capacity);
+            prepare_ckb_capacity(OTX_POOL_AGENT_ADDRESS.get().unwrap(), capacity)
+                .expect("prepare ckb capacity for broker");
+
+            let udt_amount = 200u128;
+            log::info!("prepare UDT for broker: {:?} UDT", udt_amount);
             prepare_udt_for_dust_collector(udt_amount);
+
             return (ckb, mercury, service);
         } else {
             sleep(Duration::from_secs(RPC_TRY_INTERVAL_SECS))
@@ -169,7 +175,7 @@ fn prepare_udt_for_dust_collector(udt_amount: u128) {
     let mercury_client = MercuryRpcClient::new(MERCURY_URI.to_string());
     let response = mercury_client.get_balance(payload).unwrap();
     assert_eq!(response.balances.len(), 2);
-    assert_eq!(0u128, response.balances[0].free.into());
+    assert_eq!(200_0000_0000u128, response.balances[0].free.into());
     assert_eq!(142_0000_0000u128, response.balances[0].occupied.into());
-    assert_eq!(100u128, response.balances[1].free.into());
+    assert_eq!(200u128, response.balances[1].free.into());
 }
