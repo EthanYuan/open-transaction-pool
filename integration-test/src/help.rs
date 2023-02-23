@@ -4,6 +4,7 @@ use super::const_definition::{
     RPC_TRY_INTERVAL_SECS,
 };
 use crate::utils::client::mercury_client::MercuryRpcClient;
+use crate::utils::instruction::mercury::prepare_udt;
 use crate::utils::instruction::{ckb::generate_blocks, ckb::unlock_frozen_capacity_in_genesis};
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 
@@ -18,9 +19,11 @@ use common::lazy::{
     ACP_CODE_HASH, CHEQUE_CODE_HASH, DAO_CODE_HASH, PW_LOCK_CODE_HASH, SECP256K1_CODE_HASH,
     SUDT_CODE_HASH,
 };
+use core_rpc_types::{GetBalancePayload, JsonItem};
 
 use ckb_types::H256;
 
+use std::collections::HashSet;
 use std::panic;
 use std::process::Child;
 use std::thread::sleep;
@@ -142,6 +145,7 @@ pub(crate) fn start_otx_pool(ckb: Child, mercury: Child) -> (Child, Child, Child
     for _try in 0..=RPC_TRY_COUNT {
         let resp = client.query_otx_by_id(H256::default());
         if resp.is_ok() {
+            prepare_udt_for_dust_collector();
             return (ckb, mercury, service);
         } else {
             sleep(Duration::from_secs(RPC_TRY_INTERVAL_SECS))
@@ -149,4 +153,21 @@ pub(crate) fn start_otx_pool(ckb: Child, mercury: Child) -> (Child, Child, Child
     }
     teardown(vec![ckb, mercury, service]);
     panic!("Setup test environment failed");
+}
+
+fn prepare_udt_for_dust_collector() {
+    let otx_pool_agent_address = OTX_POOL_AGENT_ADDRESS.get().unwrap();
+    let _tx_hash = prepare_udt(100u128, otx_pool_agent_address).unwrap();
+    let payload = GetBalancePayload {
+        item: JsonItem::Address(otx_pool_agent_address.to_string()),
+        asset_infos: HashSet::new(),
+        extra: None,
+        tip_block_number: None,
+    };
+    let mercury_client = MercuryRpcClient::new(MERCURY_URI.to_string());
+    let response = mercury_client.get_balance(payload).unwrap();
+    assert_eq!(response.balances.len(), 2);
+    assert_eq!(0u128, response.balances[0].free.into());
+    assert_eq!(142_0000_0000u128, response.balances[0].occupied.into());
+    assert_eq!(100u128, response.balances[1].free.into());
 }

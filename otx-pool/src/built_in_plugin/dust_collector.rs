@@ -214,8 +214,10 @@ impl DustCollector {
             log::debug!("merged_otx: {}", merged_otx.is_ok());
             if let Ok(_merged_otx) = merged_otx {
                 // add inputs and outputs
+                
 
                 // send_ckb
+                
 
                 // call host service
                 let message = MessageFromPlugin::SendCkbTx((H256::default(), hashes));
