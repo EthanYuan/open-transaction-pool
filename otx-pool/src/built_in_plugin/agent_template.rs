@@ -5,48 +5,35 @@ use crate::plugin::Plugin;
 use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
-use utils::aggregator::{OtxAggregator, SecpSignInfo};
 
-use ckb_sdk::rpc::IndexerRpcClient;
 use ckb_types::core::service::Request;
 use ckb_types::H256;
 use crossbeam_channel::{bounded, select, unbounded};
-use dashmap::DashMap;
 
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
 
 #[derive(Clone)]
 struct Context {
     pub plugin_name: String,
-    pub otx_set: Arc<DashMap<H256, OpenTransaction>>,
-    pub secp_sign_info: SecpSignInfo,
-    pub ckb_uri: String,
-    pub service_handler: ServiceHandler,
+    pub _ckb_uri: String,
+    pub _service_handler: ServiceHandler,
 }
 
 impl Context {
-    fn new(
-        plugin_name: &str,
-        secp_sign_info: SecpSignInfo,
-        ckb_uri: &str,
-        service_handler: ServiceHandler,
-    ) -> Self {
+    fn new(plugin_name: &str, ckb_uri: &str, service_handler: ServiceHandler) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
-            otx_set: Arc::new(DashMap::new()),
-            secp_sign_info,
-            ckb_uri: ckb_uri.to_owned(),
-            service_handler,
+            _ckb_uri: ckb_uri.to_owned(),
+            _service_handler: service_handler,
         }
     }
 }
 
 impl Context {}
 
-pub struct DustCollector {
+pub struct Agent {
     state: PluginState,
     info: PluginInfo,
 
@@ -59,7 +46,7 @@ pub struct DustCollector {
     _thread: JoinHandle<()>,
 }
 
-impl Plugin for DustCollector {
+impl Plugin for Agent {
     fn get_name(&self) -> String {
         self.info.name.clone()
     }
@@ -81,26 +68,18 @@ impl Plugin for DustCollector {
     }
 }
 
-impl DustCollector {
-    pub fn new(
-        service_handler: ServiceHandler,
-        secp_sign_info: SecpSignInfo,
-        ckb_uri: &str,
-    ) -> Result<DustCollector, String> {
-        let name = "dust collector";
+impl Agent {
+    pub fn new(service_handler: ServiceHandler, ckb_uri: &str) -> Result<Agent, String> {
+        let name = "agent template";
         let state = PluginState::new(PathBuf::default(), true, true);
         let info = PluginInfo::new(
             name,
             "Collect micropayment otx and aggregate them into ckb tx.",
             "1.0",
         );
-        let (msg_handler, request_handler, thread) = DustCollector::start_process(Context::new(
-            name,
-            secp_sign_info,
-            ckb_uri,
-            service_handler,
-        ))?;
-        Ok(DustCollector {
+        let (msg_handler, request_handler, thread) =
+            Agent::start_process(Context::new(name, ckb_uri, service_handler))?;
+        Ok(Agent {
             state,
             info,
             msg_handler,
@@ -110,7 +89,7 @@ impl DustCollector {
     }
 }
 
-impl DustCollector {
+impl Agent {
     fn start_process(
         context: Context,
     ) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>), String> {
@@ -128,7 +107,8 @@ impl DustCollector {
                     recv(host_request_receiver) -> msg => {
                         match msg {
                             Ok(Request { responder, arguments }) => {
-                                log::debug!("dust collector receives request arguments: {:?}", arguments);
+                                log::debug!("{} receives request arguments: {:?}",
+                                    context.plugin_name, arguments);
                                 // handle
                                 let response = (0, MessageFromPlugin::Ok);
                                 responder.send(response).map_err(|err| err.to_string())?;
@@ -146,7 +126,8 @@ impl DustCollector {
                                         Self::on_new_intervel(context.clone(), elapsed);
                                     }
                                     (_, MessageFromHost::NewOtx(otx)) => {
-                                        log::info!("dust collector receivers msg NewOtx hash: {:?}",
+                                        log::info!("{} receivers msg NewOtx hash: {:?}",
+                                            context.plugin_name,
                                             otx_to_tx_view(otx.clone()).unwrap().hash.to_string());
                                         Self::on_new_open_tx(context.clone(), otx);
                                     }
@@ -179,68 +160,18 @@ impl DustCollector {
         Ok((host_msg_sender, host_request_sender, thread))
     }
 
-    fn on_new_open_tx(context: Context, otx: OpenTransaction) {
-        let otx_hash = otx_to_tx_view(otx.clone()).unwrap().hash;
-        context.otx_set.insert(otx_hash, otx);
-    }
+    fn on_new_open_tx(_context: Context, _otx: OpenTransaction) {}
 
     fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
         log::info!(
-            "dust collector on commit open tx remove committed otx: {:?}",
+            "{} on commit open tx remove committed otx: {:?}",
+            context.plugin_name,
             otx_hashes
                 .iter()
                 .map(|hash| hash.to_string())
                 .collect::<Vec<String>>()
         );
-        otx_hashes.iter().for_each(|otx_hash| {
-            context.otx_set.remove(otx_hash);
-        })
     }
 
-    fn on_new_intervel(context: Context, elapsed: u64) {
-        if elapsed % 10 == 0 && context.otx_set.len() > 1 {
-            log::info!(
-                "on new 10 intervals otx set len: {:?}",
-                context.otx_set.len()
-            );
-
-            // merge_otx
-            let _aggregator = OtxAggregator::new(
-                context.secp_sign_info.secp_address(),
-                context.secp_sign_info.privkey(),
-                &context.ckb_uri,
-            );
-            let otx_list: Vec<OpenTransaction> =
-                context.otx_set.iter().map(|otx| otx.clone()).collect();
-            let hashes: Vec<H256> = context
-                .otx_set
-                .iter()
-                .map(|otx| {
-                    let tx_view = otx_to_tx_view(otx.clone()).unwrap();
-                    tx_view.hash
-                })
-                .collect();
-            let merged_otx = OtxAggregator::merge_otxs(otx_list);
-            log::debug!("merged_otx: {}", merged_otx.is_ok());
-            if let Ok(_merged_otx) = merged_otx {
-                // add inputs and outputs
-                let _indexer = IndexerRpcClient::new(&context.ckb_uri);
-                // indexer.get_cells(search_key, order, limit, after)
-
-                // send_ckb
-                log::info!("commit final Ckb tx: {:?}", H256::default().to_string());
-
-                // call host service
-                let message = MessageFromPlugin::SendCkbTx((H256::default(), hashes));
-                if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message)
-                {
-                }
-            } else {
-                log::info!(
-                    "Failed to merge otxs, all otxs staged by the duster itself will be cleared."
-                );
-            }
-            context.otx_set.clear()
-        }
-    }
+    fn on_new_intervel(_context: Context, _elapsed: u64) {}
 }
