@@ -145,7 +145,9 @@ pub(crate) fn start_otx_pool(ckb: Child, mercury: Child) -> (Child, Child, Child
     for _try in 0..=RPC_TRY_COUNT {
         let resp = client.query_otx_by_id(H256::default());
         if resp.is_ok() {
-            prepare_udt_for_dust_collector();
+            let udt_amount = 100u128;
+            log::info!("prepare udt for dust collector agent: {:?} UDT", udt_amount);
+            prepare_udt_for_dust_collector(udt_amount);
             return (ckb, mercury, service);
         } else {
             sleep(Duration::from_secs(RPC_TRY_INTERVAL_SECS))
@@ -155,9 +157,9 @@ pub(crate) fn start_otx_pool(ckb: Child, mercury: Child) -> (Child, Child, Child
     panic!("Setup test environment failed");
 }
 
-fn prepare_udt_for_dust_collector() {
+fn prepare_udt_for_dust_collector(udt_amount: u128) {
     let otx_pool_agent_address = OTX_POOL_AGENT_ADDRESS.get().unwrap();
-    let _tx_hash = prepare_udt(100u128, otx_pool_agent_address).unwrap();
+    let _tx_hash = prepare_udt(udt_amount, otx_pool_agent_address).unwrap();
     let payload = GetBalancePayload {
         item: JsonItem::Address(otx_pool_agent_address.to_string()),
         asset_infos: HashSet::new(),

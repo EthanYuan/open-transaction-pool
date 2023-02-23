@@ -19,7 +19,7 @@ pub fn unlock_frozen_capacity_in_genesis() -> Result<()> {
         for _ in 0..=(CELL_BASE_MATURE_EPOCH - current_epoch_number) * GENESIS_EPOCH_LENGTH {
             let ckb_client = CkbRpcClient::new(ckb_uri.to_string());
             let block_hash = ckb_client.generate_block().expect("generate block");
-            println!("generate new block: {:?}", block_hash.to_string());
+            log::trace!("generate new block: {:?}", block_hash.to_string());
         }
     }
     Ok(())
@@ -34,7 +34,7 @@ pub fn generate_blocks(number: usize) -> Result<()> {
     let ckb_rpc_client = CkbRpcClient::new(ckb_uri.to_string());
     for _ in 0..number {
         let block_hash = ckb_rpc_client.generate_block()?;
-        println!("generate new block: {:?}", block_hash.to_string());
+        log::trace!("generate new block: {:?}", block_hash.to_string());
     }
     Ok(())
 }
@@ -51,7 +51,7 @@ pub fn send_transaction_to_ckb(tx: Transaction) -> Result<H256> {
     let ckb_uri = CKB_URI;
     let ckb_client = CkbRpcClient::new(ckb_uri.to_string());
     let tx_hash = ckb_client.send_transaction(tx, OutputsValidator::Passthrough)?;
-    println!("send tx: 0x{}", tx_hash);
+    log::info!("send tx: 0x{}", tx_hash);
     aggregate_transactions_into_blocks()?;
     Ok(tx_hash)
 }

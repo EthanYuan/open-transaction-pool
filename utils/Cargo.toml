@@ -13,6 +13,7 @@ ckb-jsonrpc-types = "0.105"
 ckb-sdk = { git = "https://github.com/EthanYuan/ckb-sdk-rust.git", branch = "opentx_sign_tx_ethan"}
 ckb-types = "0.105"
 faster-hex = "0.6"
+log = "0.4"
 jsonrpc-core = "18.0"
 once_cell = "1.10"
 rand = "0.8"

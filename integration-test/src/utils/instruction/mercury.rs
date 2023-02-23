@@ -21,6 +21,8 @@ use core_rpc_types::{
 };
 
 pub fn issue_udt_1() -> Result<()> {
+    log::info!("issue udt for test");
+
     if UDT_1_HASH.get().is_some() {
         return Ok(());
     }
@@ -110,7 +112,6 @@ pub(crate) fn issue_udt_with_acp(
 }
 
 pub fn prepare_udt(amount: u128, to_address: &Address) -> Result<H256> {
-    // prepare udt
     issue_udt_1().unwrap();
     let udt_hash = UDT_1_HASH.get().unwrap();
     let acp_address_with_udt = UDT_1_HOLDER_ACP_ADDRESS.get().unwrap();

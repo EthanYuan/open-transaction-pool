@@ -31,7 +31,9 @@ pub fn alice_build_signed_otx() -> Result<TxInfo> {
     let alice_omni_address = alice_wallet.get_omni_otx_address();
 
     // 2. transfer capacity to alice omni address
-    let _tx_hash = ckb_cli_transfer_ckb(alice_omni_address, 151).unwrap();
+    let capacity = 151;
+    log::info!("prepare alice wallet: {:?} CKB", capacity);
+    let _tx_hash = ckb_cli_transfer_ckb(alice_omni_address, capacity).unwrap();
     aggregate_transactions_into_blocks()?;
 
     let capacity = ckb_cli_get_capacity(alice_omni_address).unwrap();
@@ -72,7 +74,9 @@ pub fn bob_build_signed_otx() -> Result<TxInfo> {
     let bob_omni_otx_script: Script = bob_otx_address.into();
 
     // 2. transfer udt to bob omni address
-    let tx_hash = prepare_udt(51u128, bob_otx_address).unwrap();
+    let udt_amount = 51u128;
+    log::info!("prepare bob wallet: {:?} UDT", udt_amount);
+    let tx_hash = prepare_udt(udt_amount, bob_otx_address).unwrap();
     let out_point = OutPoint::new(Byte32::from_slice(tx_hash.as_bytes())?, 0u32);
     let balance_payload = GetBalancePayload {
         item: JsonItem::OutPoint(out_point.clone().into()),

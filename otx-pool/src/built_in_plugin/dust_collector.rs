@@ -7,9 +7,9 @@ use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
 use utils::aggregator::{OtxAggregator, SecpSignInfo};
 
+use ckb_sdk::rpc::IndexerRpcClient;
 use ckb_types::core::service::Request;
 use ckb_types::H256;
-
 use crossbeam_channel::{bounded, select, unbounded};
 use dashmap::DashMap;
 
@@ -141,12 +141,13 @@ impl DustCollector {
                     recv(host_msg_receiver) -> msg => {
                         match msg {
                             Ok(msg) => {
-                                log::debug!("dust collector receivers msg: {:?}", msg);
                                 match msg {
                                     (_, MessageFromHost::NewInterval(elapsed)) => {
                                         Self::on_new_intervel(context.clone(), elapsed);
                                     }
                                     (_, MessageFromHost::NewOtx(otx)) => {
+                                        log::info!("dust collector receivers msg NewOtx hash: {:?}",
+                                            otx_to_tx_view(otx.clone()).unwrap().hash.to_string());
                                         Self::on_new_open_tx(context.clone(), otx);
                                     }
                                     (_, MessageFromHost::CommitOtx(otx_hashes)) => {
@@ -184,7 +185,13 @@ impl DustCollector {
     }
 
     fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
-        log::debug!("dust collector remove committed otx: {:?}", otx_hashes);
+        log::info!(
+            "dust collector on commit open tx remove committed otx: {:?}",
+            otx_hashes
+                .iter()
+                .map(|hash| hash.to_string())
+                .collect::<Vec<String>>()
+        );
         otx_hashes.iter().for_each(|otx_hash| {
             context.otx_set.remove(otx_hash);
         })
@@ -192,7 +199,10 @@ impl DustCollector {
 
     fn on_new_intervel(context: Context, elapsed: u64) {
         if elapsed % 10 == 0 && context.otx_set.len() > 1 {
-            log::debug!("otx set len: {:?}", context.otx_set.len());
+            log::info!(
+                "on new 10 intervals otx set len: {:?}",
+                context.otx_set.len()
+            );
 
             // merge_otx
             let _aggregator = OtxAggregator::new(
@@ -214,16 +224,21 @@ impl DustCollector {
             log::debug!("merged_otx: {}", merged_otx.is_ok());
             if let Ok(_merged_otx) = merged_otx {
                 // add inputs and outputs
-                
+                let _indexer = IndexerRpcClient::new(&context.ckb_uri);
+                // indexer.get_cells(search_key, order, limit, after)
 
                 // send_ckb
-                
+                log::info!("commit final Ckb tx: {:?}", H256::default().to_string());
 
                 // call host service
                 let message = MessageFromPlugin::SendCkbTx((H256::default(), hashes));
                 if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message)
                 {
                 }
+            } else {
+                log::info!(
+                    "Failed to merge otxs, all otxs staged by the duster itself will be cleared."
+                );
             }
             context.otx_set.clear()
         }

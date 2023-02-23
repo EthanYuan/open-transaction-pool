@@ -219,9 +219,9 @@ impl Wallet {
             WitnessArgs::from_slice(tx.witnesses().get(0).unwrap().raw_data().as_ref())?;
         let lock_field = witness_args.lock().to_opt().unwrap().raw_data();
         if lock_field != tx_info.omnilock_config.zero_lock(OmniUnlockMode::Normal)? {
-            println!("> transaction has been signed!");
+            log::info!("open transaction has been signed");
         } else {
-            println!("failed to sign tx");
+            log::info!("failed to sign tx");
         }
         let tx_info = TxInfo {
             tx: json_types::TransactionView::from(tx),
