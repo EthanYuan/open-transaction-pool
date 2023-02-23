@@ -1,1 +1,1 @@
-pub mod dust_collector;
+mod dust_collector;
