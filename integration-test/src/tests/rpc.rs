@@ -1,8 +1,8 @@
-use crate::const_definition::OTX_POOL_URI;
+use crate::const_definition::{CKB_URI, OTX_POOL_URI};
 use crate::tests::helper::build_pay_ckb_signed_otx;
 use crate::IntegrationTest;
 
-use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_basic_otx};
+use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_otx};
 use otx_format::types::packed;
 use utils::client::service_client::OtxPoolRpcClient;
 
@@ -28,7 +28,7 @@ inventory::submit!(IntegrationTest {
 fn test_service_rpc_submit_otx() {
     let tx_info = build_pay_ckb_signed_otx("alice", 151, 100, 51).unwrap();
     let tx_view = tx_info.tx;
-    let otx = tx_view_to_basic_otx(tx_view.clone()).unwrap();
+    let otx = tx_view_to_otx(tx_view.clone(), None, None, CKB_URI).unwrap();
     let otx: packed::OpenTransaction = otx.into();
 
     let service_client = OtxPoolRpcClient::new(OTX_POOL_URI.to_string());

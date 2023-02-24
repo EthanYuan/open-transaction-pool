@@ -5,13 +5,14 @@ use super::constant::basic_keys::{
     OTX_OUTPUT_LOCK_HASH_TYPE, OTX_OUTPUT_TYPE_ARGS, OTX_OUTPUT_TYPE_CODE_HASH,
     OTX_OUTPUT_TYPE_HASH_TYPE, OTX_WITNESS_RAW,
 };
+use super::constant::extra_keys::{OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_CKB};
 use crate::error::OtxFormatError;
 use crate::types::packed::{self, OpenTransactionBuilder, OtxMapBuilder, OtxMapVecBuilder};
 
 use ckb_jsonrpc_types::{CellDep, CellInput, CellOutput, DepType, JsonBytes, Script, Uint32};
 use ckb_types::bytes::Bytes;
 use ckb_types::core::{self, ScriptHashType};
-use ckb_types::packed::{Byte32, OutPointBuilder, WitnessArgs};
+use ckb_types::packed::{Byte32, OutPointBuilder, Uint64, WitnessArgs};
 use ckb_types::{self, prelude::*, H256};
 use serde::{Deserialize, Serialize};
 
@@ -520,4 +521,46 @@ fn to_kv_map(
         }
     }
     Ok(map)
+}
+
+#[derive(Debug)]
+pub struct PaymentAmount {
+    pub capacity: i128,
+    pub s_udt_amount: Option<i128>,
+    pub x_udt_amount: Option<i128>,
+}
+
+pub fn get_payment_amount(otx: &OpenTransaction) -> Result<PaymentAmount, OtxFormatError> {
+    let mut kv_map = to_kv_map(&otx.meta)?;
+
+    // capacity
+    let input_capacity = kv_map
+        .remove(&OTX_ACCOUNTING_META_INPUT_CKB)
+        .map(|(_, input_ckb)| {
+            let capacity: u64 = Uint64::from_slice(input_ckb.as_bytes())
+                .expect("get input ckb")
+                .unpack();
+            capacity
+        })
+        .ok_or_else(|| {
+            OtxFormatError::OtxMapParseMissingField(OTX_ACCOUNTING_META_INPUT_CKB.to_string())
+        })?;
+
+    let output_capacity = kv_map
+        .remove(&OTX_ACCOUNTING_META_OUTPUT_CKB)
+        .map(|(_, output_ckb)| {
+            let capacity: u64 = Uint64::from_slice(output_ckb.as_bytes())
+                .expect("get input ckb")
+                .unpack();
+            capacity
+        })
+        .ok_or_else(|| {
+            OtxFormatError::OtxMapParseMissingField(OTX_ACCOUNTING_META_OUTPUT_CKB.to_string())
+        })?;
+
+    Ok(PaymentAmount {
+        capacity: input_capacity as i128 - output_capacity as i128,
+        s_udt_amount: None,
+        x_udt_amount: None,
+    })
 }

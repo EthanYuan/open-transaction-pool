@@ -1,10 +1,10 @@
-use crate::const_definition::{MERCURY_URI, OTX_POOL_AGENT_ADDRESS, OTX_POOL_URI};
+use crate::const_definition::{CKB_URI, MERCURY_URI, OTX_POOL_AGENT_ADDRESS, OTX_POOL_URI};
 use crate::tests::helper::{_bob_build_signed_otx, build_pay_ckb_signed_otx};
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
 use crate::IntegrationTest;
 
-use otx_format::jsonrpc_types::tx_view::tx_view_to_basic_otx;
+use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::types::{packed, OpenTxStatus};
 use utils::client::service_client::OtxPoolRpcClient;
 
@@ -84,7 +84,7 @@ fn test_payment_dust_collect_ckb() {
     // check dust collector assets
     let response = mercury_client.get_balance(payload).unwrap();
     assert_eq!(response.balances.len(), 2);
-    assert_eq!(200_0000_0000u128, response.balances[0].free.into());
+    assert_eq!(200_0000_0000u128 + 53_0000_0000u128 - 1_0000_0000u128, response.balances[0].free.into());
     assert_eq!(142_0000_0000u128, response.balances[0].occupied.into());
     assert_eq!(200u128, response.balances[1].free.into());
 }
@@ -98,13 +98,13 @@ fn build_pay_ckb_otx(
     let tx_info =
         build_pay_ckb_signed_otx(payer, prepare_capacity, remain_capacity, open_capacity).unwrap();
     let tx_view = tx_info.tx;
-    let otx = tx_view_to_basic_otx(tx_view).unwrap();
+    let otx = tx_view_to_otx(tx_view, None, None, CKB_URI).unwrap();
     Ok(otx.into())
 }
 
 fn _bob_build_otx() -> Result<packed::OpenTransaction> {
     let tx_info = _bob_build_signed_otx().unwrap();
     let tx_view = tx_info.tx;
-    let otx = tx_view_to_basic_otx(tx_view).unwrap();
+    let otx = tx_view_to_otx(tx_view, None, None, CKB_URI).unwrap();
     Ok(otx.into())
 }

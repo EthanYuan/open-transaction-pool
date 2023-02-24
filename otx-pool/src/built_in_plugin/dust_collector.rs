@@ -2,6 +2,7 @@ use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
 
+use otx_format::jsonrpc_types::get_payment_amount;
 use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
@@ -22,6 +23,8 @@ use std::thread;
 use std::thread::JoinHandle;
 
 const EVERY_INTERVALS: usize = 10;
+const MIN_PAYMENT: usize = 1_0000_0000;
+const DEFAULT_FEE: usize = 1_0000_0000;
 
 #[derive(Clone)]
 struct Context {
@@ -185,6 +188,17 @@ impl DustCollector {
     }
 
     fn on_new_open_tx(context: Context, otx: OpenTransaction) {
+        if let Ok(payment_amount) = get_payment_amount(&otx) {
+            log::info!("payment: {:?}", payment_amount);
+            if payment_amount.capacity < MIN_PAYMENT as i128
+                || payment_amount.s_udt_amount.is_some()
+                || payment_amount.x_udt_amount.is_some()
+            {
+                return;
+            }
+        } else {
+            return;
+        };
         let otx_hash = otx_to_tx_view(otx.clone()).unwrap().hash;
         context.otx_set.insert(otx_hash, otx);
     }
@@ -214,8 +228,15 @@ impl DustCollector {
         );
 
         // merge_otx
-        let otx_list: Vec<OpenTransaction> =
-            context.otx_set.iter().map(|otx| otx.clone()).collect();
+        let mut receive_ckb_capacity = 0;
+        let otx_list: Vec<OpenTransaction> = context
+            .otx_set
+            .iter()
+            .map(|otx| {
+                receive_ckb_capacity += get_payment_amount(&otx).unwrap().capacity;
+                otx.clone()
+            })
+            .collect();
         let merged_otx = if let Ok(merged_otx) = OtxAggregator::merge_otxs(otx_list) {
             log::debug!("otxs merge successfully.");
             merged_otx
@@ -261,8 +282,10 @@ impl DustCollector {
             context.secp_sign_info.privkey(),
             &context.ckb_uri,
         );
+        let output_capacity =
+            receive_ckb_capacity as u64 + cell.output.capacity.value() - DEFAULT_FEE as u64;
         let output = AddOutputArgs {
-            capacity: HumanCapacity::from(cell.output.capacity.value()),
+            capacity: HumanCapacity::from(output_capacity),
             udt_amount: None,
         };
         let ckb_tx = if let Ok(ckb_tx) =
@@ -295,7 +318,7 @@ impl DustCollector {
                 tx_view.hash
             })
             .collect();
-        let message = MessageFromPlugin::SendCkbTx((H256::default(), hashes));
+        let message = MessageFromPlugin::SendCkbTx((tx_hash, hashes));
         if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
             context.otx_set.clear();
         }

@@ -1,7 +1,8 @@
 use super::{HeaderDep, OutputData, Witness};
 use crate::constant::basic_keys::OTX_META_VERSION;
 use crate::constant::extra_keys::{
-    OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_CKB, OTX_LOCATING_INPUT_CAPACITY,
+    OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_CKB, OTX_IDENTIFYING_META_TX_HASH,
+    OTX_IDENTIFYING_META_TX_WITNESS_HASH, OTX_LOCATING_INPUT_CAPACITY,
     OTX_VERSIONING_META_OPEN_TX_VERSION,
 };
 use crate::error::OtxFormatError;
@@ -14,6 +15,7 @@ use ckb_jsonrpc_types::{CellDep, CellInput, CellOutput, JsonBytes, TransactionVi
 use ckb_sdk::{CkbRpcClient, IndexerRpcClient};
 use ckb_types::constants::TX_VERSION;
 use ckb_types::core::TransactionBuilder;
+use ckb_types::packed::Transaction;
 use ckb_types::prelude::{Entity, Pack};
 
 use std::convert::Into;
@@ -81,6 +83,8 @@ pub fn tx_view_to_otx(
     let mut _output_xudt_amount = 0;
     let mut _input_sudt_amount = 0;
     let mut _output_sudt_amount = 0;
+    let core_tx_view = Transaction::from(tx_view.inner.clone()).into_view();
+
     let mut meta = vec![
         OtxKeyPair::new(
             OTX_META_VERSION.into(),
@@ -91,6 +95,16 @@ pub fn tx_view_to_otx(
             OTX_VERSIONING_META_OPEN_TX_VERSION.into(),
             None,
             JsonBytes::from_bytes(Uint32::from(1).pack().as_bytes()),
+        ),
+        OtxKeyPair::new(
+            OTX_IDENTIFYING_META_TX_HASH.into(),
+            None,
+            core_tx_view.hash().as_bytes().pack().into(),
+        ),
+        OtxKeyPair::new(
+            OTX_IDENTIFYING_META_TX_WITNESS_HASH.into(),
+            None,
+            core_tx_view.witness_hash().as_bytes().pack().into(),
         ),
     ];
 
