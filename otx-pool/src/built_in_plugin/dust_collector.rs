@@ -21,6 +21,8 @@ use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
 
+const EVERY_INTERVALS: usize = 10;
+
 #[derive(Clone)]
 struct Context {
     pub plugin_name: String,
@@ -201,12 +203,13 @@ impl DustCollector {
     }
 
     fn on_new_intervel(context: Context, elapsed: u64) {
-        if elapsed % 10 != 0 || context.otx_set.len() <= 1 {
+        if elapsed % EVERY_INTERVALS as u64 != 0 || context.otx_set.len() <= 1 {
             return;
         }
 
         log::info!(
-            "on new 10 intervals otx set len: {:?}",
+            "on new {} intervals otx set len: {:?}",
+            EVERY_INTERVALS,
             context.otx_set.len()
         );
 

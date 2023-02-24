@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 ckb-jsonrpc-types = "0.105"
+ckb-sdk = "=2.3.0"
 ckb-types = "0.105"
 derive_more = "0.99"
 molecule = "=0.7.3"

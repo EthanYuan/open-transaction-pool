@@ -1425,6 +1425,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "ckb-jsonrpc-types",
+ "ckb-sdk 2.3.0",
  "ckb-types",
  "derive_more",
  "molecule",
