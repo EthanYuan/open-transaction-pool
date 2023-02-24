@@ -157,8 +157,12 @@ impl IntoIterator for OtxMap {
 }
 
 impl OtxMap {
-    fn iter(&self) -> Iter<OtxKeyPair> {
+    pub fn iter(&self) -> Iter<OtxKeyPair> {
         self.0.iter()
+    }
+
+    pub fn push(&mut self, key_pair: OtxKeyPair) {
+        self.0.push(key_pair)
     }
 }
 
@@ -481,7 +485,7 @@ impl TryFrom<OtxMap> for (CellOutput, OutputData) {
         // output data
         let output_data = kv_map
             .remove(&OTX_OUTPUT_DATA)
-            .ok_or_else(|| OtxFormatError::OtxMapParseMissingField(OTX_OUTPUT_DATA.to_string()))?
+            .unwrap_or((None, Bytes::new().pack().into()))
             .1;
 
         let cell_output = CellOutput {
