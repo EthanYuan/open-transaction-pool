@@ -19,7 +19,7 @@ use ckb_types::{
 };
 use faster_hex::hex_decode;
 use json_types::OutPoint;
-use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_otx};
+use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_basic_otx};
 use otx_format::jsonrpc_types::OpenTransaction;
 
 use std::fs::File;
@@ -80,7 +80,7 @@ impl OtxAggregator {
             let tx = assemble_new_tx(txs, &tx_dep_provider, cell.type_hash.pack())?;
             let tx = json_types::TransactionView::from(tx);
 
-            return tx_view_to_otx(tx).map_err(|err| anyhow!(err.to_string()));
+            return tx_view_to_basic_otx(tx).map_err(|err| anyhow!(err.to_string()));
         }
         Err(anyhow!("merge otxs failed!"))
     }

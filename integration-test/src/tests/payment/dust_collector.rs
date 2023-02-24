@@ -4,7 +4,7 @@ use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
 use crate::IntegrationTest;
 
-use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
+use otx_format::jsonrpc_types::tx_view::tx_view_to_basic_otx;
 use otx_format::types::{packed, OpenTxStatus};
 use utils::client::service_client::OtxPoolRpcClient;
 
@@ -98,13 +98,13 @@ fn build_pay_ckb_otx(
     let tx_info =
         build_pay_ckb_signed_otx(payer, prepare_capacity, remain_capacity, open_capacity).unwrap();
     let tx_view = tx_info.tx;
-    let otx = tx_view_to_otx(tx_view).unwrap();
+    let otx = tx_view_to_basic_otx(tx_view).unwrap();
     Ok(otx.into())
 }
 
 fn _bob_build_otx() -> Result<packed::OpenTransaction> {
     let tx_info = _bob_build_signed_otx().unwrap();
     let tx_view = tx_info.tx;
-    let otx = tx_view_to_otx(tx_view).unwrap();
+    let otx = tx_view_to_basic_otx(tx_view).unwrap();
     Ok(otx.into())
 }
