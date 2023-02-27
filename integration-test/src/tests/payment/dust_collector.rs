@@ -1,7 +1,10 @@
-use crate::const_definition::{CKB_URI, MERCURY_URI, OTX_POOL_AGENT_ADDRESS, OTX_POOL_URI};
+use crate::const_definition::{CKB_URI, MERCURY_URI, OTX_POOL_URI};
+use crate::help::{start_otx_pool, teardown};
 use crate::tests::helper::{_bob_build_signed_otx, build_pay_ckb_signed_otx};
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
+use crate::utils::instruction::mercury::{prepare_ckb_capacity, prepare_udt};
+use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
 use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
@@ -22,8 +25,13 @@ inventory::submit!(IntegrationTest {
     test_fn: test_payment_dust_collect_ckb
 });
 fn test_payment_dust_collect_ckb() {
+    // run otx pool
+    let (dust_collector_address, pk) = generate_rand_secp_address_pk_pair();
+    prepare_ckb_capacity(&dust_collector_address, 200_0000_0000u64).unwrap();
+    prepare_udt(200u128, &dust_collector_address).unwrap();
+    let child = start_otx_pool(dust_collector_address.clone(), pk);
+
     // check dust collector assets
-    let dust_collector_address = OTX_POOL_AGENT_ADDRESS.get().unwrap();
     let payload = GetBalancePayload {
         item: JsonItem::Address(dust_collector_address.to_string()),
         asset_infos: HashSet::new(),
@@ -84,9 +92,14 @@ fn test_payment_dust_collect_ckb() {
     // check dust collector assets
     let response = mercury_client.get_balance(payload).unwrap();
     assert_eq!(response.balances.len(), 2);
-    assert_eq!(200_0000_0000u128 + 53_0000_0000u128 - 1_0000_0000u128, response.balances[0].free.into());
+    assert_eq!(
+        200_0000_0000u128 + 53_0000_0000u128 - 1_0000_0000u128,
+        response.balances[0].free.into()
+    );
     assert_eq!(142_0000_0000u128, response.balances[0].occupied.into());
     assert_eq!(200u128, response.balances[1].free.into());
+
+    teardown(vec![child]);
 }
 
 fn build_pay_ckb_otx(

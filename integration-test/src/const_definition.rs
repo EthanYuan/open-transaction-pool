@@ -23,9 +23,6 @@ pub const DAO_DEVNET_TYPE_HASH: H256 =
 pub const PW_LOCK_DEVNET_TYPE_HASH: H256 =
     h256!("0xe09352af0066f3162287763ce4ddba9af6bfaeab198dc7ab37f8c71c9e68bb5b");
 
-pub static OTX_POOL_AGENT_ADDRESS: OnceCell<Address> = OnceCell::new();
-pub static OTX_POOL_AGENT_PK: OnceCell<H256> = OnceCell::new();
-
 pub static UDT_1_HASH: OnceCell<H256> = OnceCell::new();
 pub static UDT_1_HOLDER_SECP_ADDRESS: OnceCell<Address> = OnceCell::new();
 pub static UDT_1_HOLDER_ACP_ADDRESS: OnceCell<Address> = OnceCell::new();
