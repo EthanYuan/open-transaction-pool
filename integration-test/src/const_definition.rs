@@ -1,6 +1,10 @@
 use ckb_sdk::Address;
 use ckb_types::{h256, H256};
+use lazy_static::lazy_static;
 use once_cell::sync::OnceCell;
+
+use std::process::Child;
+use std::sync::Mutex;
 
 pub const RPC_TRY_COUNT: usize = 10;
 pub const RPC_TRY_INTERVAL_SECS: u64 = 5;
@@ -27,3 +31,12 @@ pub static UDT_1_HASH: OnceCell<H256> = OnceCell::new();
 pub static UDT_1_HOLDER_SECP_ADDRESS: OnceCell<Address> = OnceCell::new();
 pub static UDT_1_HOLDER_ACP_ADDRESS: OnceCell<Address> = OnceCell::new();
 pub static UDT_1_HOLDER_PK: OnceCell<H256> = OnceCell::new();
+
+pub static UDT_2_HASH: OnceCell<H256> = OnceCell::new();
+pub static UDT_2_HOLDER_SECP_ADDRESS: OnceCell<Address> = OnceCell::new();
+pub static UDT_2_HOLDER_ACP_ADDRESS: OnceCell<Address> = OnceCell::new();
+pub static UDT_2_HOLDER_PK: OnceCell<H256> = OnceCell::new();
+
+lazy_static! {
+    pub static ref CURRENT_OTX_POOL_SERVICE_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
+}

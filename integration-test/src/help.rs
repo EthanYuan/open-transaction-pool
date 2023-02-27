@@ -2,6 +2,7 @@ use super::const_definition::{
     CHEQUE_DEVNET_TYPE_HASH, CKB_URI, DAO_DEVNET_TYPE_HASH, MERCURY_URI, OTX_POOL_URI,
     PW_LOCK_DEVNET_TYPE_HASH, RPC_TRY_COUNT, RPC_TRY_INTERVAL_SECS,
 };
+use crate::const_definition::CURRENT_OTX_POOL_SERVICE_PROCESS;
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::{ckb::generate_blocks, ckb::unlock_frozen_capacity_in_genesis};
 
@@ -33,6 +34,10 @@ pub fn setup() -> Vec<Child> {
 }
 
 pub fn teardown(childs: Vec<Child>) {
+    if let Some(child) = CURRENT_OTX_POOL_SERVICE_PROCESS.lock().unwrap().as_mut() {
+        child.kill().expect("teardown otx pool failed");
+    }
+
     for mut child in childs {
         child.kill().expect("teardown failed");
     }
@@ -107,7 +112,12 @@ pub(crate) fn start_mercury(ckb: Child) -> (Child, Child) {
     panic!("Setup test environment failed");
 }
 
-pub(crate) fn start_otx_pool(address: Address, pk: H256) -> Child {
+pub(crate) fn start_otx_pool(address: Address, pk: H256) {
+    let mut lock = CURRENT_OTX_POOL_SERVICE_PROCESS.lock().unwrap();
+    if let Some(child) = lock.as_mut() {
+        child.kill().unwrap();
+    }
+
     let service = run_command_spawn(
         "cargo",
         vec![
@@ -132,7 +142,12 @@ pub(crate) fn start_otx_pool(address: Address, pk: H256) -> Child {
     for _try in 0..=RPC_TRY_COUNT {
         let resp = client.query_otx_by_id(H256::default());
         if resp.is_ok() {
-            return service;
+            if let Some(child) = lock.as_mut() {
+                *child = service
+            } else {
+                *lock = Some(service);
+            }
+            return;
         } else {
             sleep(Duration::from_secs(RPC_TRY_INTERVAL_SECS))
         }

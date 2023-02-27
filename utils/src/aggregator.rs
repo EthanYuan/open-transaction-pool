@@ -85,7 +85,7 @@ impl OtxAggregator {
         Err(anyhow!("merge otxs failed!"))
     }
 
-    pub fn merge_open_txs(otx_list: Vec<TxInfo>) -> Result<TxInfo> {
+    pub fn merge_open_txs(otx_list: Vec<TxInfo>, ckb_uri: &str) -> Result<TxInfo> {
         let mut txes = vec![];
         let mut omnilock_config = None;
         for tx_info in otx_list {
@@ -95,7 +95,6 @@ impl OtxAggregator {
             omnilock_config = Some(tx_info.omnilock_config.clone());
         }
         if !txes.is_empty() {
-            let ckb_uri = CKB_URI.get().ok_or_else(|| anyhow!("CKB_URI is none"))?;
             let mut ckb_client = CkbRpcClient::new(ckb_uri);
             let cell = build_cell_dep(&mut ckb_client, &OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX)?;
             let tx_dep_provider = DefaultTransactionDependencyProvider::new(ckb_uri, 10);

@@ -2,7 +2,7 @@ use crate::const_definition::{CKB_URI, MERCURY_URI, UDT_1_HOLDER_SECP_ADDRESS};
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
 use crate::utils::instruction::ckb::dump_data;
-use crate::utils::instruction::mercury::prepare_udt;
+use crate::utils::instruction::mercury::prepare_udt_1;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 
 use utils::client::ckb_cli_client::{ckb_cli_get_capacity, ckb_cli_transfer_ckb};
@@ -60,14 +60,14 @@ pub fn build_pay_ckb_signed_otx(
         fee_rate: 0,
     };
     let open_tx = wallet.gen_open_tx(&gen_open_tx_args).unwrap();
-    let file = format!("./free-space/usercase_{}_otx_unsigned.json", payer);
+    let file = format!("./free-space/dust_collector_{}_otx_unsigned.json", payer);
     dump_data(&open_tx, &file).unwrap();
 
     // 4. sign the otx
     let open_tx = wallet.sign_open_tx(open_tx).unwrap();
     dump_data(
         &open_tx,
-        &format!("./free-space/usercase_{}_otx_signed.json", payer),
+        &format!("./free-space/dust_collector_{}_otx_signed.json", payer),
     )
     .unwrap();
 
@@ -84,7 +84,7 @@ pub fn _bob_build_signed_otx() -> Result<TxInfo> {
     // 2. transfer udt to bob omni address
     let udt_amount = 51u128;
     log::info!("prepare bob wallet: {:?} UDT", udt_amount);
-    let tx_hash = prepare_udt(udt_amount, bob_otx_address).unwrap();
+    let tx_hash = prepare_udt_1(udt_amount, bob_otx_address).unwrap();
     let out_point = OutPoint::new(Byte32::from_slice(tx_hash.as_bytes())?, 0u32);
     let balance_payload = GetBalancePayload {
         item: JsonItem::OutPoint(out_point.clone().into()),

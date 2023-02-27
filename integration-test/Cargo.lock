@@ -1136,6 +1136,7 @@ dependencies = [
  "env_logger",
  "hex",
  "inventory",
+ "lazy_static",
  "log",
  "once_cell",
  "otx-format",

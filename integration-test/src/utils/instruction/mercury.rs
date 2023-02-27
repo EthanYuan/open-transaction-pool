@@ -1,6 +1,7 @@
 use crate::const_definition::{
     GENESIS_BUILT_IN_ADDRESS_1, GENESIS_BUILT_IN_ADDRESS_1_PRIVATE_KEY, MERCURY_URI, UDT_1_HASH,
-    UDT_1_HOLDER_ACP_ADDRESS, UDT_1_HOLDER_PK, UDT_1_HOLDER_SECP_ADDRESS,
+    UDT_1_HOLDER_ACP_ADDRESS, UDT_1_HOLDER_PK, UDT_1_HOLDER_SECP_ADDRESS, UDT_2_HASH,
+    UDT_2_HOLDER_ACP_ADDRESS, UDT_2_HOLDER_PK, UDT_2_HOLDER_SECP_ADDRESS,
 };
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::ckb::send_transaction_to_ckb;
@@ -21,7 +22,7 @@ use core_rpc_types::{
 };
 
 pub fn issue_udt_1() -> Result<()> {
-    log::info!("issue udt for test");
+    log::info!("issue udt 1 for test");
 
     if UDT_1_HASH.get().is_some() {
         return Ok(());
@@ -44,6 +45,33 @@ pub fn issue_udt_1() -> Result<()> {
     UDT_1_HOLDER_PK
         .set(owner_address_pk)
         .expect("init UDT_1_HOLDER_ACP_ADDRESS_PK");
+    Ok(())
+}
+
+pub fn issue_udt_2() -> Result<()> {
+    log::info!("issue udt 2 for test");
+
+    if UDT_2_HASH.get().is_some() {
+        return Ok(());
+    }
+
+    // issue udt
+    let (owner_address, owner_address_pk, _) =
+        prepare_secp_address_with_ckb_capacity(5000_0000_0000_0000)?;
+    let udt_hash = get_udt_hash_by_owner(&owner_address)?;
+    let _tx_hash = issue_udt_with_acp(&owner_address, &owner_address_pk, 20_000_000_000u128)?;
+    let acp_address = build_acp_address(&owner_address)?;
+
+    UDT_2_HASH.set(udt_hash).expect("init UDT_HASH_2");
+    UDT_2_HOLDER_SECP_ADDRESS
+        .set(owner_address)
+        .expect("init UDT_2_HOLDER_ACP_ADDRESS");
+    UDT_2_HOLDER_ACP_ADDRESS
+        .set(acp_address)
+        .expect("init UDT_2_HOLDER_ACP_ADDRESS");
+    UDT_2_HOLDER_PK
+        .set(owner_address_pk)
+        .expect("init UDT_2_HOLDER_ACP_ADDRESS_PK");
     Ok(())
 }
 
@@ -111,16 +139,45 @@ pub(crate) fn issue_udt_with_acp(
     send_transaction_to_ckb(tx)
 }
 
-pub fn prepare_udt(amount: u128, to_address: &Address) -> Result<H256> {
+pub fn prepare_udt_1(amount: u128, to_address: &Address) -> Result<H256> {
     issue_udt_1().unwrap();
     let udt_hash = UDT_1_HASH.get().unwrap();
-    let acp_address_with_udt = UDT_1_HOLDER_ACP_ADDRESS.get().unwrap();
-    let acp_address_pk = UDT_1_HOLDER_PK.get().unwrap();
+    let payer_acp_address = UDT_1_HOLDER_ACP_ADDRESS.get().unwrap();
+    let payer_acp_address_pk = UDT_1_HOLDER_PK.get().unwrap();
+    prepare_udt(
+        udt_hash,
+        payer_acp_address,
+        payer_acp_address_pk,
+        amount,
+        to_address,
+    )
+}
 
+pub fn prepare_udt_2(amount: u128, to_address: &Address) -> Result<H256> {
+    issue_udt_2().unwrap();
+    let udt_hash = UDT_2_HASH.get().unwrap();
+    let payer_acp_address = UDT_2_HOLDER_ACP_ADDRESS.get().unwrap();
+    let payer_acp_address_pk = UDT_2_HOLDER_PK.get().unwrap();
+    prepare_udt(
+        udt_hash,
+        payer_acp_address,
+        payer_acp_address_pk,
+        amount,
+        to_address,
+    )
+}
+
+fn prepare_udt(
+    udt_hash: &H256,
+    payer_acp_address: &Address,
+    payer_acp_address_pk: &H256,
+    amount: u128,
+    to_address: &Address,
+) -> Result<H256> {
     let payload = TransferPayload {
         asset_info: AssetInfo::new_udt(udt_hash.to_owned()),
         from: vec![
-            JsonItem::Address(acp_address_with_udt.to_string()),
+            JsonItem::Address(payer_acp_address.to_string()),
             JsonItem::Address(GENESIS_BUILT_IN_ADDRESS_1.to_string()),
         ],
         to: vec![ToInfo {
@@ -137,7 +194,7 @@ pub fn prepare_udt(amount: u128, to_address: &Address) -> Result<H256> {
     let tx = sign_transaction(
         tx,
         &[
-            acp_address_pk.to_owned(),
+            payer_acp_address_pk.to_owned(),
             GENESIS_BUILT_IN_ADDRESS_1_PRIVATE_KEY.to_owned(),
         ],
     )

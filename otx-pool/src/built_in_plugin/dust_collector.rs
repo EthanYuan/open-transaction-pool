@@ -22,9 +22,9 @@ use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
 
-const EVERY_INTERVALS: usize = 10;
-const MIN_PAYMENT: usize = 1_0000_0000;
-const DEFAULT_FEE: usize = 1_0000_0000;
+pub const EVERY_INTERVALS: usize = 10;
+pub const MIN_PAYMENT: usize = 1_0000_0000;
+pub const DEFAULT_FEE: usize = 1000_0000;
 
 #[derive(Clone)]
 struct Context {
