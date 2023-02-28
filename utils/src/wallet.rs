@@ -1,6 +1,6 @@
 use super::const_definition::devnet::{
     OMNI_LOCK_DEVNET_TYPE_HASH, OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX, SECP_DATA_TX_HASH,
-    SECP_DATA_TX_IDX,
+    SECP_DATA_TX_IDX, XUDT_TX_HASH, XUDT_TX_IDX,
 };
 use super::lock::omni::{build_cell_dep, build_otx_omnilock_addr_from_secp, MultiSigArgs, TxInfo};
 
@@ -248,7 +248,13 @@ impl Wallet {
                 OMNI_OPENTX_TX_IDX as u32,
             ))
             .build();
-        let cell_deps = vec![secp_data_cell_dep, omin_cell_dep];
+        let xudt_cell_dep = CellDep::new_builder()
+            .out_point(OutPoint::new(
+                Byte32::from_slice(XUDT_TX_HASH.as_bytes())?,
+                XUDT_TX_IDX as u32,
+            ))
+            .build();
+        let cell_deps = vec![secp_data_cell_dep, omin_cell_dep, xudt_cell_dep];
 
         let (tx, omnilock_config) =
             self.build_open_tx_pay_udt(inputs, outputs, outputs_data, cell_deps)?;
@@ -285,10 +291,11 @@ impl Wallet {
             .collect();
 
         let tx = tx_builder
-            .inputs(inputs)
+            .inputs(inputs.clone())
             .outputs(outputs)
             .outputs_data(outputs_data)
             .cell_deps(cell_deps)
+            .witnesses(vec![packed::Bytes::default(); inputs.len()])
             .build();
         let tx_dep_provider = DefaultTransactionDependencyProvider::new(&self.ckb_uri, 10);
 
