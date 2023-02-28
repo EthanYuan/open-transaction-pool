@@ -17,6 +17,7 @@ use otx_format::types::{packed, OpenTxStatus};
 use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
 use utils::client::service_client::OtxPoolRpcClient;
 use utils::const_definition::devnet::XUDT_DEVNET_TYPE_HASH;
+use utils::const_definition::XUDT_CODE_HASH;
 use utils::lock::omni::build_otx_omnilock_addr_from_secp;
 use utils::wallet::Wallet;
 
@@ -290,6 +291,20 @@ fn build_signed_otx(
     .unwrap();
 
     let tx_view = open_tx.tx;
-    let otx = tx_view_to_otx(tx_view, None, None, CKB_URI).unwrap();
+    let otx = tx_view_to_otx(
+        tx_view,
+        None,
+        None,
+        XUDT_CODE_HASH.get().unwrap().to_owned(),
+        CKB_URI,
+    )
+    .unwrap();
+
+    dump_data(
+        &otx,
+        &format!("./free-space/swap_{}_otx_format_unsigned.json", payer),
+    )
+    .unwrap();
+
     Ok(otx.into())
 }

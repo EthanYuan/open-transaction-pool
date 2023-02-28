@@ -191,8 +191,7 @@ impl DustCollector {
         if let Ok(payment_amount) = get_payment_amount(&otx) {
             log::info!("payment: {:?}", payment_amount);
             if payment_amount.capacity < MIN_PAYMENT as i128
-                || payment_amount.s_udt_amount.is_some()
-                || payment_amount.x_udt_amount.is_some()
+                || !payment_amount.x_udt_amount.is_empty()
             {
                 return;
             }

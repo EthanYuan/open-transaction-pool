@@ -11,6 +11,7 @@ use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::types::{packed, OpenTxStatus};
 use otx_pool::built_in_plugin::dust_collector::DEFAULT_FEE;
 use utils::client::service_client::OtxPoolRpcClient;
+use utils::const_definition::XUDT_CODE_HASH;
 
 use anyhow::Result;
 use ckb_jsonrpc_types::JsonBytes;
@@ -110,13 +111,27 @@ fn build_pay_ckb_otx(
     let tx_info =
         build_pay_ckb_signed_otx(payer, prepare_capacity, remain_capacity, open_capacity).unwrap();
     let tx_view = tx_info.tx;
-    let otx = tx_view_to_otx(tx_view, None, None, CKB_URI).unwrap();
+    let otx = tx_view_to_otx(
+        tx_view,
+        None,
+        None,
+        XUDT_CODE_HASH.get().unwrap().to_owned(),
+        CKB_URI,
+    )
+    .unwrap();
     Ok(otx.into())
 }
 
 fn _bob_build_otx() -> Result<packed::OpenTransaction> {
     let tx_info = _bob_build_signed_otx().unwrap();
     let tx_view = tx_info.tx;
-    let otx = tx_view_to_otx(tx_view, None, None, CKB_URI).unwrap();
+    let otx = tx_view_to_otx(
+        tx_view,
+        None,
+        None,
+        XUDT_CODE_HASH.get().unwrap().to_owned(),
+        CKB_URI,
+    )
+    .unwrap();
     Ok(otx.into())
 }

@@ -1,3 +1,5 @@
+#![allow(clippy::mutable_key_type)]
+
 use super::constant::basic_keys::{
     OTX_CELL_DEP_OUTPOINT_INDEX, OTX_CELL_DEP_OUTPOINT_TX_HASH, OTX_CELL_DEP_TYPE,
     OTX_HEADER_DEP_HASH, OTX_INPUT_OUTPOINT_INDEX, OTX_INPUT_OUTPOINT_TX_HASH, OTX_INPUT_SINCE,
@@ -5,14 +7,17 @@ use super::constant::basic_keys::{
     OTX_OUTPUT_LOCK_HASH_TYPE, OTX_OUTPUT_TYPE_ARGS, OTX_OUTPUT_TYPE_CODE_HASH,
     OTX_OUTPUT_TYPE_HASH_TYPE, OTX_WITNESS_RAW,
 };
-use super::constant::extra_keys::{OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_CKB};
+use super::constant::extra_keys::{
+    OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_INPUT_XUDT, OTX_ACCOUNTING_META_OUTPUT_CKB,
+    OTX_ACCOUNTING_META_OUTPUT_XUDT,
+};
 use crate::error::OtxFormatError;
 use crate::types::packed::{self, OpenTransactionBuilder, OtxMapBuilder, OtxMapVecBuilder};
 
 use ckb_jsonrpc_types::{CellDep, CellInput, CellOutput, DepType, JsonBytes, Script, Uint32};
 use ckb_types::bytes::Bytes;
 use ckb_types::core::{self, ScriptHashType};
-use ckb_types::packed::{Byte32, OutPointBuilder, Uint64, WitnessArgs};
+use ckb_types::packed::{Byte32, OutPointBuilder, Uint128, Uint64, WitnessArgs};
 use ckb_types::{self, prelude::*, H256};
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +26,7 @@ pub type Witness = JsonBytes;
 pub type OutputData = JsonBytes;
 
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::slice::Iter;
 
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
@@ -523,20 +529,57 @@ fn to_kv_map(
     Ok(map)
 }
 
+fn to_tuple_kv_map(
+    iter: &OtxMap,
+) -> Result<HashMap<(u32, Option<JsonBytes>), JsonBytes>, OtxFormatError> {
+    let mut map = HashMap::new();
+    for pair in iter.iter() {
+        if map
+            .insert(
+                (pair.key_type.value(), pair.key_data.to_owned()),
+                pair.value_data.to_owned(),
+            )
+            .is_some()
+        {
+            return Err(OtxFormatError::OtxMapHasDuplicateKeypair(
+                pair.key_type.to_string(),
+            ));
+        }
+    }
+    Ok(map)
+}
+
 #[derive(Debug)]
 pub struct PaymentAmount {
     pub capacity: i128,
-    pub s_udt_amount: Option<i128>,
-    pub x_udt_amount: Option<i128>,
+    pub x_udt_amount: HashMap<Script, i128>,
 }
 
 pub fn get_payment_amount(otx: &OpenTransaction) -> Result<PaymentAmount, OtxFormatError> {
-    let mut kv_map = to_kv_map(&otx.meta)?;
+    fn get_value_by_first_element(
+        map: &HashMap<(u32, Option<JsonBytes>), JsonBytes>,
+        first_element: u32,
+    ) -> Option<&JsonBytes> {
+        let found_key = map.keys().find(|(element, _)| *element == first_element);
+        found_key.and_then(|key| map.get(key))
+    }
+    fn pop_entry_by_first_element(
+        map: &mut HashMap<(u32, Option<JsonBytes>), JsonBytes>,
+        first_element: u32,
+    ) -> Option<((u32, Option<JsonBytes>), JsonBytes)> {
+        let found_key = map
+            .keys()
+            .find(|(element, _)| *element == first_element)?
+            .to_owned();
+        let value = map.remove(&found_key)?;
+        Some((found_key, value))
+    }
+
+    let mut kv_map = to_tuple_kv_map(&otx.meta)?;
 
     // capacity
-    let input_capacity = kv_map
-        .remove(&OTX_ACCOUNTING_META_INPUT_CKB)
-        .map(|(_, input_ckb)| {
+    let input_capacity = get_value_by_first_element(&kv_map, OTX_ACCOUNTING_META_INPUT_CKB)
+        .map(|input_ckb| {
             let capacity: u64 = Uint64::from_slice(input_ckb.as_bytes())
                 .expect("get input ckb")
                 .unpack();
@@ -546,11 +589,10 @@ pub fn get_payment_amount(otx: &OpenTransaction) -> Result<PaymentAmount, OtxFor
             OtxFormatError::OtxMapParseMissingField(OTX_ACCOUNTING_META_INPUT_CKB.to_string())
         })?;
 
-    let output_capacity = kv_map
-        .remove(&OTX_ACCOUNTING_META_OUTPUT_CKB)
-        .map(|(_, output_ckb)| {
+    let output_capacity = get_value_by_first_element(&kv_map, OTX_ACCOUNTING_META_OUTPUT_CKB)
+        .map(|output_ckb| {
             let capacity: u64 = Uint64::from_slice(output_ckb.as_bytes())
-                .expect("get input ckb")
+                .expect("get output ckb")
                 .unpack();
             capacity
         })
@@ -558,9 +600,44 @@ pub fn get_payment_amount(otx: &OpenTransaction) -> Result<PaymentAmount, OtxFor
             OtxFormatError::OtxMapParseMissingField(OTX_ACCOUNTING_META_OUTPUT_CKB.to_string())
         })?;
 
+    let mut x_udt_amount = HashMap::new();
+    loop {
+        let input_xudt_amount =
+            pop_entry_by_first_element(&mut kv_map, OTX_ACCOUNTING_META_INPUT_XUDT);
+        if input_xudt_amount.is_none() {
+            break;
+        }
+        let ((_, script), input_xudt_amount) = input_xudt_amount.unwrap();
+        let script = ckb_types::packed::Script::from_slice(
+            script.to_owned().expect("get script").as_bytes(),
+        )
+        .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+        .into();
+        let input_xudt_amount: u128 = Uint128::from_slice(input_xudt_amount.as_bytes())
+            .expect("get input xudt amount")
+            .unpack();
+        *x_udt_amount.entry(script).or_insert(0) += input_xudt_amount as i128;
+    }
+    loop {
+        let output_xudt_amount =
+            pop_entry_by_first_element(&mut kv_map, OTX_ACCOUNTING_META_OUTPUT_XUDT);
+        if output_xudt_amount.is_none() {
+            break;
+        }
+        let ((_, script), output_xudt_amount) = output_xudt_amount.unwrap();
+        let script = ckb_types::packed::Script::from_slice(
+            script.to_owned().expect("get script").as_bytes(),
+        )
+        .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+        .into();
+        let output_xudt_amount: u128 = Uint128::from_slice(output_xudt_amount.as_bytes())
+            .expect("get input xudt amount")
+            .unpack();
+        *x_udt_amount.entry(script).or_insert(0) -= output_xudt_amount as i128;
+    }
+
     Ok(PaymentAmount {
         capacity: input_capacity as i128 - output_capacity as i128,
-        s_udt_amount: None,
-        x_udt_amount: None,
+        x_udt_amount,
     })
 }

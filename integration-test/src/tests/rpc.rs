@@ -7,6 +7,7 @@ use crate::IntegrationTest;
 use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_otx};
 use otx_format::types::packed;
 use utils::client::service_client::OtxPoolRpcClient;
+use utils::const_definition::XUDT_CODE_HASH;
 
 use ckb_jsonrpc_types::JsonBytes;
 use ckb_types::{prelude::Entity, H256};
@@ -36,7 +37,14 @@ fn test_service_rpc_submit_otx() {
 
     let tx_info = build_pay_ckb_signed_otx("alice", 151, 100, 51).unwrap();
     let tx_view = tx_info.tx;
-    let otx = tx_view_to_otx(tx_view.clone(), None, None, CKB_URI).unwrap();
+    let otx = tx_view_to_otx(
+        tx_view.clone(),
+        None,
+        None,
+        XUDT_CODE_HASH.get().unwrap().to_owned(),
+        CKB_URI,
+    )
+    .unwrap();
     let otx: packed::OpenTransaction = otx.into();
 
     let service_client = OtxPoolRpcClient::new(OTX_POOL_URI.to_string());

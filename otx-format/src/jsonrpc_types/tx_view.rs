@@ -1,23 +1,29 @@
+#![allow(clippy::mutable_key_type)]
+
 use super::{HeaderDep, OutputData, Witness};
 use crate::constant::basic_keys::OTX_META_VERSION;
 use crate::constant::extra_keys::{
-    OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_CKB, OTX_IDENTIFYING_META_TX_HASH,
+    OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_INPUT_XUDT, OTX_ACCOUNTING_META_OUTPUT_CKB,
+    OTX_ACCOUNTING_META_OUTPUT_XUDT, OTX_IDENTIFYING_META_TX_HASH,
     OTX_IDENTIFYING_META_TX_WITNESS_HASH, OTX_LOCATING_INPUT_CAPACITY,
     OTX_VERSIONING_META_OPEN_TX_VERSION,
 };
 use crate::error::OtxFormatError;
 use crate::jsonrpc_types::{OpenTransaction, OtxKeyPair, OtxMap};
-use crate::types::packed;
 
 use anyhow::Result;
-use ckb_jsonrpc_types::Uint64;
-use ckb_jsonrpc_types::{CellDep, CellInput, CellOutput, JsonBytes, TransactionView, Uint32};
+use ckb_jsonrpc_types::{
+    CellDep, CellInput, CellOutput, JsonBytes, Script, TransactionView, Uint32,
+};
+use ckb_jsonrpc_types::{Uint128, Uint64};
 use ckb_sdk::{CkbRpcClient, IndexerRpcClient};
 use ckb_types::constants::TX_VERSION;
 use ckb_types::core::TransactionBuilder;
-use ckb_types::packed::Transaction;
-use ckb_types::prelude::{Entity, Pack};
+use ckb_types::packed::{self, Transaction};
+use ckb_types::prelude::*;
+use ckb_types::H256;
 
+use std::collections::HashMap;
 use std::convert::Into;
 
 pub fn tx_view_to_basic_otx(tx_view: TransactionView) -> Result<OpenTransaction, OtxFormatError> {
@@ -72,6 +78,7 @@ pub fn tx_view_to_otx(
     tx_view: TransactionView,
     _min_ckb_fee: Option<u64>,
     _max_ckb_fee: Option<u64>,
+    xudt_code_hash: H256,
     ckb_uri: &str,
 ) -> Result<OpenTransaction, OtxFormatError> {
     let mut ckb_rpc_client = CkbRpcClient::new(ckb_uri);
@@ -79,10 +86,8 @@ pub fn tx_view_to_otx(
 
     let mut input_ckb_capacity: u64 = 0;
     let mut output_ckb_capacity: u64 = 0;
-    let mut _input_xudt_amount = 0;
-    let mut _output_xudt_amount = 0;
-    let mut _input_sudt_amount = 0;
-    let mut _output_sudt_amount = 0;
+    let mut xudt_input_map: HashMap<Script, u128> = HashMap::new();
+    let mut xudt_output_map: HashMap<Script, u128> = HashMap::new();
     let core_tx_view = Transaction::from(tx_view.inner.clone()).into_view();
 
     let mut meta = vec![
@@ -146,6 +151,16 @@ pub fn tx_view_to_otx(
         otx_map.push(input_capacity);
         input_ckb_capacity += <Uint64 as Into<u64>>::into(cell.output.capacity);
         inputs.push(otx_map);
+
+        if let Some(type_) = cell.output.type_.clone() {
+            if type_.code_hash == xudt_code_hash {
+                if let Some(data) = cell.data {
+                    if let Some(amount) = decode_udt_amount(data.content.as_bytes()) {
+                        *xudt_input_map.entry(type_).or_insert(0) += amount;
+                    }
+                }
+            }
+        }
     }
 
     let witnesses: Vec<OtxMap> = tx_view
@@ -163,6 +178,13 @@ pub fn tx_view_to_otx(
     let outputs: Vec<OtxMap> = outputs_iter
         .map(|output| {
             output_ckb_capacity += <Uint64 as Into<u64>>::into(output.0.capacity);
+            if let Some(type_) = output.0.type_.clone() {
+                if type_.code_hash == xudt_code_hash {
+                    if let Some(amount) = decode_udt_amount(output.1.as_bytes()) {
+                        *xudt_output_map.entry(type_).or_insert(0) += amount;
+                    }
+                }
+            }
             output.into()
         })
         .collect();
@@ -177,6 +199,30 @@ pub fn tx_view_to_otx(
         None,
         JsonBytes::from_bytes(Uint64::from(output_ckb_capacity).pack().as_bytes()),
     ));
+    xudt_input_map
+        .into_iter()
+        .for_each(|(type_, input_xudt_amount)| {
+            meta.push(OtxKeyPair::new(
+                OTX_ACCOUNTING_META_INPUT_XUDT.into(),
+                {
+                    let script: packed::Script = type_.into();
+                    Some(JsonBytes::from_bytes(script.as_bytes()))
+                },
+                JsonBytes::from_bytes(Uint128::from(input_xudt_amount).pack().as_bytes()),
+            ));
+        });
+    xudt_output_map
+        .into_iter()
+        .for_each(|(type_, output_xudt_amount)| {
+            meta.push(OtxKeyPair::new(
+                OTX_ACCOUNTING_META_OUTPUT_XUDT.into(),
+                {
+                    let script: packed::Script = type_.into();
+                    Some(JsonBytes::from_bytes(script.as_bytes()))
+                },
+                JsonBytes::from_bytes(Uint128::from(output_xudt_amount).pack().as_bytes()),
+            ));
+        });
 
     Ok(OpenTransaction::new(
         meta.into(),
@@ -235,4 +281,18 @@ pub fn otx_to_tx_view(otx: OpenTransaction) -> Result<TransactionView, OtxFormat
         .header_deps(header_deps.into_iter().map(|h| h.pack()))
         .build();
     Ok(tx_view.into())
+}
+
+fn decode_udt_amount(data: &[u8]) -> Option<u128> {
+    if data.len() < 16 {
+        return None;
+    }
+    Some(u128::from_le_bytes(to_fixed_array(&data[0..16])))
+}
+
+fn to_fixed_array<const LEN: usize>(input: &[u8]) -> [u8; LEN] {
+    assert_eq!(input.len(), LEN);
+    let mut list = [0; LEN];
+    list.copy_from_slice(input);
+    list
 }
