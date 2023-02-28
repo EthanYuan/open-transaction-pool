@@ -31,8 +31,6 @@ impl Context {
     }
 }
 
-impl Context {}
-
 pub struct Agent {
     state: PluginState,
     info: PluginInfo,
@@ -123,16 +121,16 @@ impl Agent {
                             Ok(msg) => {
                                 match msg {
                                     (_, MessageFromHost::NewInterval(elapsed)) => {
-                                        Self::on_new_intervel(context.clone(), elapsed);
+                                        on_new_intervel(context.clone(), elapsed);
                                     }
                                     (_, MessageFromHost::NewOtx(otx)) => {
                                         log::info!("{} receivers msg NewOtx hash: {:?}",
                                             context.plugin_name,
                                             otx_to_tx_view(otx.clone()).unwrap().hash.to_string());
-                                        Self::on_new_open_tx(context.clone(), otx);
+                                        on_new_open_tx(context.clone(), otx);
                                     }
                                     (_, MessageFromHost::CommitOtx(otx_hashes)) => {
-                                        Self::on_commit_open_tx(context.clone(), otx_hashes);
+                                        on_commit_open_tx(context.clone(), otx_hashes);
                                     }
                                     _ => unreachable!(),
                                 }
@@ -159,19 +157,19 @@ impl Agent {
 
         Ok((host_msg_sender, host_request_sender, thread))
     }
-
-    fn on_new_open_tx(_context: Context, _otx: OpenTransaction) {}
-
-    fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
-        log::info!(
-            "{} on commit open tx remove committed otx: {:?}",
-            context.plugin_name,
-            otx_hashes
-                .iter()
-                .map(|hash| hash.to_string())
-                .collect::<Vec<String>>()
-        );
-    }
-
-    fn on_new_intervel(_context: Context, _elapsed: u64) {}
 }
+
+fn on_new_open_tx(_context: Context, _otx: OpenTransaction) {}
+
+fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
+    log::info!(
+        "{} on commit open tx remove committed otx: {:?}",
+        context.plugin_name,
+        otx_hashes
+            .iter()
+            .map(|hash| hash.to_string())
+            .collect::<Vec<String>>()
+    );
+}
+
+fn on_new_intervel(_context: Context, _elapsed: u64) {}

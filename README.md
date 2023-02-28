@@ -20,6 +20,6 @@ An agent is both a **Consumer** and a **Producer**. It receives open transaction
 
 typical test cases: 
 
-- [dust collector mode](./integration-test/src/tests/payment/dust_collector.rs)
-- atomic swap
+- [dust collector mode](./integration-test/src/tests/payment/dust_collector.rs#L29)
+- [atomic swap](./integration-test/src/tests/swap/atomic_swap.rs#L41)
 - ... more will be added later

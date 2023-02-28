@@ -2,36 +2,42 @@ use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
 
+use otx_format::jsonrpc_types::get_payment_amount;
 use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
+use utils::aggregator::{Committer, OtxAggregator};
 
 use ckb_types::core::service::Request;
 use ckb_types::H256;
 use crossbeam_channel::{bounded, select, unbounded};
+use dashmap::DashMap;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
+
+pub const EVERY_INTERVALS: usize = 10;
 
 #[derive(Clone)]
 struct Context {
     pub plugin_name: String,
-    pub _ckb_uri: String,
-    pub _service_handler: ServiceHandler,
+    pub otx_set: Arc<DashMap<H256, OpenTransaction>>,
+    pub ckb_uri: String,
+    pub service_handler: ServiceHandler,
 }
 
 impl Context {
     fn new(plugin_name: &str, ckb_uri: &str, service_handler: ServiceHandler) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
-            _ckb_uri: ckb_uri.to_owned(),
-            _service_handler: service_handler,
+            otx_set: Arc::new(DashMap::new()),
+            ckb_uri: ckb_uri.to_owned(),
+            service_handler,
         }
     }
 }
-
-impl Context {}
 
 pub struct AtomicSwap {
     state: PluginState,
@@ -70,11 +76,11 @@ impl Plugin for AtomicSwap {
 
 impl AtomicSwap {
     pub fn new(service_handler: ServiceHandler, ckb_uri: &str) -> Result<AtomicSwap, String> {
-        let name = "agent template";
+        let name = "atomic swap";
         let state = PluginState::new(PathBuf::default(), true, true);
         let info = PluginInfo::new(
             name,
-            "Collect micropayment otx and aggregate them into ckb tx.",
+            "One kind of xUDT can be used to swap another kind of xUDT.",
             "1.0",
         );
         let (msg_handler, request_handler, thread) =
@@ -123,16 +129,16 @@ impl AtomicSwap {
                             Ok(msg) => {
                                 match msg {
                                     (_, MessageFromHost::NewInterval(elapsed)) => {
-                                        Self::on_new_intervel(context.clone(), elapsed);
+                                        on_new_intervel(context.clone(), elapsed);
                                     }
                                     (_, MessageFromHost::NewOtx(otx)) => {
                                         log::info!("{} receivers msg NewOtx hash: {:?}",
                                             context.plugin_name,
                                             otx_to_tx_view(otx.clone()).unwrap().hash.to_string());
-                                        Self::on_new_open_tx(context.clone(), otx);
+                                        on_new_open_tx(context.clone(), otx);
                                     }
                                     (_, MessageFromHost::CommitOtx(otx_hashes)) => {
-                                        Self::on_commit_open_tx(context.clone(), otx_hashes);
+                                        on_commit_open_tx(context.clone(), otx_hashes);
                                     }
                                     _ => unreachable!(),
                                 }
@@ -159,19 +165,98 @@ impl AtomicSwap {
 
         Ok((host_msg_sender, host_request_sender, thread))
     }
+}
 
-    fn on_new_open_tx(_context: Context, _otx: OpenTransaction) {}
+fn on_new_open_tx(context: Context, otx: OpenTransaction) {
+    if let Ok(payment_amount) = get_payment_amount(&otx) {
+        log::info!("payment: {:?}", payment_amount);
+        if payment_amount.x_udt_amount.is_empty() {
+            return;
+        }
+    } else {
+        return;
+    };
+    let otx_hash = otx_to_tx_view(otx.clone()).unwrap().hash;
+    context.otx_set.insert(otx_hash, otx);
+}
 
-    fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
-        log::info!(
-            "{} on commit open tx remove committed otx: {:?}",
-            context.plugin_name,
-            otx_hashes
-                .iter()
-                .map(|hash| hash.to_string())
-                .collect::<Vec<String>>()
-        );
+fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
+    log::info!(
+        "{} on commit open tx remove committed otx: {:?}",
+        context.plugin_name,
+        otx_hashes
+            .iter()
+            .map(|hash| hash.to_string())
+            .collect::<Vec<String>>()
+    );
+    otx_hashes.iter().for_each(|otx_hash| {
+        context.otx_set.remove(otx_hash);
+    })
+}
+
+fn on_new_intervel(context: Context, elapsed: u64) {
+    if elapsed % EVERY_INTERVALS as u64 != 0 || context.otx_set.len() <= 1 {
+        return;
     }
 
-    fn on_new_intervel(_context: Context, _elapsed: u64) {}
+    log::info!(
+        "on new {} intervals otx set len: {:?}",
+        EVERY_INTERVALS,
+        context.otx_set.len()
+    );
+
+    // merge_otx
+    let mut receive_ckb_capacity = 0;
+    let otx_list: Vec<OpenTransaction> = context
+        .otx_set
+        .iter()
+        .map(|otx| {
+            receive_ckb_capacity += get_payment_amount(&otx).unwrap().capacity;
+            otx.clone()
+        })
+        .collect();
+    let merged_otx = if let Ok(merged_otx) = OtxAggregator::merge_otxs(otx_list) {
+        log::debug!("otxs merge successfully.");
+        merged_otx
+    } else {
+        log::info!(
+            "Failed to merge otxs, all otxs staged by {} itself will be cleared.",
+            context.plugin_name
+        );
+        context.otx_set.clear();
+        return;
+    };
+
+    // to final tx
+    let tx = if let Ok(tx) = otx_to_tx_view(merged_otx) {
+        tx
+    } else {
+        log::info!("Failed to generate final tx.");
+        context.otx_set.clear();
+        return;
+    };
+
+    // send_ckb
+    let committer = Committer::new(&context.ckb_uri);
+    let tx_hash = if let Ok(tx_hash) = committer.send_tx(tx) {
+        tx_hash
+    } else {
+        log::error!("failed to send final tx.");
+        return;
+    };
+    log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
+
+    // call host service
+    let hashes: Vec<H256> = context
+        .otx_set
+        .iter()
+        .map(|otx| {
+            let tx_view = otx_to_tx_view(otx.clone()).unwrap();
+            tx_view.hash
+        })
+        .collect();
+    let message = MessageFromPlugin::SendCkbTx((tx_hash, hashes));
+    if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
+        context.otx_set.clear();
+    }
 }

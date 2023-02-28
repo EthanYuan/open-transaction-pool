@@ -52,8 +52,6 @@ impl Context {
     }
 }
 
-impl Context {}
-
 pub struct DustCollector {
     state: PluginState,
     info: PluginInfo,
@@ -136,7 +134,7 @@ impl DustCollector {
                     recv(host_request_receiver) -> msg => {
                         match msg {
                             Ok(Request { responder, arguments }) => {
-                                log::debug!("dust collector receives request arguments: {:?}", arguments);
+                                log::debug!("{} receives request arguments: {:?}", context.plugin_name, arguments);
                                 // handle
                                 let response = (0, MessageFromPlugin::Ok);
                                 responder.send(response).map_err(|err| err.to_string())?;
@@ -151,15 +149,16 @@ impl DustCollector {
                             Ok(msg) => {
                                 match msg {
                                     (_, MessageFromHost::NewInterval(elapsed)) => {
-                                        Self::on_new_intervel(context.clone(), elapsed);
+                                        on_new_intervel(context.clone(), elapsed);
                                     }
                                     (_, MessageFromHost::NewOtx(otx)) => {
-                                        log::info!("dust collector receivers msg NewOtx hash: {:?}",
+                                        log::info!("{} receivers msg NewOtx hash: {:?}",
+                                            context.plugin_name,
                                             otx_to_tx_view(otx.clone()).unwrap().hash.to_string());
-                                        Self::on_new_open_tx(context.clone(), otx);
+                                        on_new_open_tx(context.clone(), otx);
                                     }
                                     (_, MessageFromHost::CommitOtx(otx_hashes)) => {
-                                        Self::on_commit_open_tx(context.clone(), otx_hashes);
+                                        on_commit_open_tx(context.clone(), otx_hashes);
                                     }
                                     _ => unreachable!(),
                                 }
@@ -186,140 +185,141 @@ impl DustCollector {
 
         Ok((host_msg_sender, host_request_sender, thread))
     }
+}
 
-    fn on_new_open_tx(context: Context, otx: OpenTransaction) {
-        if let Ok(payment_amount) = get_payment_amount(&otx) {
-            log::info!("payment: {:?}", payment_amount);
-            if payment_amount.capacity < MIN_PAYMENT as i128
-                || !payment_amount.x_udt_amount.is_empty()
-            {
-                return;
-            }
-        } else {
-            return;
-        };
-        let otx_hash = otx_to_tx_view(otx.clone()).unwrap().hash;
-        context.otx_set.insert(otx_hash, otx);
-    }
-
-    fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
-        log::info!(
-            "dust collector on commit open tx remove committed otx: {:?}",
-            otx_hashes
-                .iter()
-                .map(|hash| hash.to_string())
-                .collect::<Vec<String>>()
-        );
-        otx_hashes.iter().for_each(|otx_hash| {
-            context.otx_set.remove(otx_hash);
-        })
-    }
-
-    fn on_new_intervel(context: Context, elapsed: u64) {
-        if elapsed % EVERY_INTERVALS as u64 != 0 || context.otx_set.len() <= 1 {
-            return;
-        }
-
-        log::info!(
-            "on new {} intervals otx set len: {:?}",
-            EVERY_INTERVALS,
-            context.otx_set.len()
-        );
-
-        // merge_otx
-        let mut receive_ckb_capacity = 0;
-        let otx_list: Vec<OpenTransaction> = context
-            .otx_set
-            .iter()
-            .map(|otx| {
-                receive_ckb_capacity += get_payment_amount(&otx).unwrap().capacity;
-                otx.clone()
-            })
-            .collect();
-        let merged_otx = if let Ok(merged_otx) = OtxAggregator::merge_otxs(otx_list) {
-            log::debug!("otxs merge successfully.");
-            merged_otx
-        } else {
-            log::info!(
-                "Failed to merge otxs, all otxs staged by the duster itself will be cleared."
-            );
-            context.otx_set.clear();
-            return;
-        };
-
-        // find a cell to receive assets
-        let mut indexer = IndexerRpcClient::new(&context.ckb_uri);
-        let lock_script: packed::Script = context.secp_sign_info.secp_address().into();
-        let search_key = SearchKey {
-            script: lock_script.into(),
-            script_type: ScriptType::Lock,
-            filter: None,
-            with_data: None,
-            group_by_transaction: None,
-        };
-        let cell = if let Ok(cell) = indexer.get_cells(search_key, Order::Asc, 1.into(), None) {
-            let cell = &cell.objects[0];
-            log::info!(
-                "the broker identified an available cell: {:?}",
-                cell.out_point
-            );
-            cell.clone()
-        } else {
-            log::error!("broker has no cells available for input");
-            return;
-        };
-
-        // add input and output
-        let tx = if let Ok(tx) = otx_to_tx_view(merged_otx) {
-            tx
-        } else {
-            log::error!("open tx converts to Ckb tx failed.");
-            return;
-        };
-        let aggregator = OtxAggregator::new(
-            context.secp_sign_info.secp_address(),
-            context.secp_sign_info.privkey(),
-            &context.ckb_uri,
-        );
-        let output_capacity =
-            receive_ckb_capacity as u64 + cell.output.capacity.value() - DEFAULT_FEE as u64;
-        let output = AddOutputArgs {
-            capacity: HumanCapacity::from(output_capacity),
-            udt_amount: None,
-        };
-        let ckb_tx = if let Ok(ckb_tx) =
-            aggregator.add_input_and_output(tx, cell.out_point, output, Script::default())
+fn on_new_open_tx(context: Context, otx: OpenTransaction) {
+    if let Ok(payment_amount) = get_payment_amount(&otx) {
+        log::info!("payment: {:?}", payment_amount);
+        if payment_amount.capacity < MIN_PAYMENT as i128 || !payment_amount.x_udt_amount.is_empty()
         {
-            ckb_tx
-        } else {
-            log::error!("failed to assemble final tx.");
             return;
-        };
-
-        // sign
-        let signed_ckb_tx = aggregator.signer.sign_ckb_tx(ckb_tx).unwrap();
-        let tx_hash = if let Ok(tx_hash) = aggregator.committer.send_tx(signed_ckb_tx) {
-            tx_hash
-        } else {
-            log::error!("failed to send final tx.");
-            return;
-        };
-
-        // send_ckb
-        log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
-
-        // call host service
-        let hashes: Vec<H256> = context
-            .otx_set
-            .iter()
-            .map(|otx| {
-                let tx_view = otx_to_tx_view(otx.clone()).unwrap();
-                tx_view.hash
-            })
-            .collect();
-        let message = MessageFromPlugin::SendCkbTx((tx_hash, hashes));
-        if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
-            context.otx_set.clear();
         }
+    } else {
+        return;
+    };
+    let otx_hash = otx_to_tx_view(otx.clone()).unwrap().hash;
+    context.otx_set.insert(otx_hash, otx);
+}
+
+fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
+    log::info!(
+        "{} on commit open tx remove committed otx: {:?}",
+        context.plugin_name,
+        otx_hashes
+            .iter()
+            .map(|hash| hash.to_string())
+            .collect::<Vec<String>>()
+    );
+    otx_hashes.iter().for_each(|otx_hash| {
+        context.otx_set.remove(otx_hash);
+    })
+}
+
+fn on_new_intervel(context: Context, elapsed: u64) {
+    if elapsed % EVERY_INTERVALS as u64 != 0 || context.otx_set.len() <= 1 {
+        return;
+    }
+
+    log::info!(
+        "on new {} intervals otx set len: {:?}",
+        EVERY_INTERVALS,
+        context.otx_set.len()
+    );
+
+    // merge_otx
+    let mut receive_ckb_capacity = 0;
+    let otx_list: Vec<OpenTransaction> = context
+        .otx_set
+        .iter()
+        .map(|otx| {
+            receive_ckb_capacity += get_payment_amount(&otx).unwrap().capacity;
+            otx.clone()
+        })
+        .collect();
+    let merged_otx = if let Ok(merged_otx) = OtxAggregator::merge_otxs(otx_list) {
+        log::debug!("otxs merge successfully.");
+        merged_otx
+    } else {
+        log::info!(
+            "Failed to merge otxs, all otxs staged by {} itself will be cleared.",
+            context.plugin_name
+        );
+        context.otx_set.clear();
+        return;
+    };
+
+    // find a cell to receive assets
+    let mut indexer = IndexerRpcClient::new(&context.ckb_uri);
+    let lock_script: packed::Script = context.secp_sign_info.secp_address().into();
+    let search_key = SearchKey {
+        script: lock_script.into(),
+        script_type: ScriptType::Lock,
+        filter: None,
+        with_data: None,
+        group_by_transaction: None,
+    };
+    let cell = if let Ok(cell) = indexer.get_cells(search_key, Order::Asc, 1.into(), None) {
+        let cell = &cell.objects[0];
+        log::info!(
+            "the broker identified an available cell: {:?}",
+            cell.out_point
+        );
+        cell.clone()
+    } else {
+        log::error!("broker has no cells available for input");
+        return;
+    };
+
+    // add input and output
+    let tx = if let Ok(tx) = otx_to_tx_view(merged_otx) {
+        tx
+    } else {
+        log::error!("open tx converts to Ckb tx failed.");
+        return;
+    };
+    let aggregator = OtxAggregator::new(
+        context.secp_sign_info.secp_address(),
+        context.secp_sign_info.privkey(),
+        &context.ckb_uri,
+    );
+    let output_capacity =
+        receive_ckb_capacity as u64 + cell.output.capacity.value() - DEFAULT_FEE as u64;
+    let output = AddOutputArgs {
+        capacity: HumanCapacity::from(output_capacity),
+        udt_amount: None,
+    };
+    let ckb_tx = if let Ok(ckb_tx) =
+        aggregator.add_input_and_output(tx, cell.out_point, output, Script::default())
+    {
+        ckb_tx
+    } else {
+        log::error!("failed to assemble final tx.");
+        return;
+    };
+
+    // sign
+    let signed_ckb_tx = aggregator.signer.sign_ckb_tx(ckb_tx).unwrap();
+
+    // send_ckb
+    let tx_hash = if let Ok(tx_hash) = aggregator.committer.send_tx(signed_ckb_tx) {
+        tx_hash
+    } else {
+        log::error!("failed to send final tx.");
+        return;
+    };
+    log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
+
+    // call host service
+    let hashes: Vec<H256> = context
+        .otx_set
+        .iter()
+        .map(|otx| {
+            let tx_view = otx_to_tx_view(otx.clone()).unwrap();
+            tx_view.hash
+        })
+        .collect();
+    let message = MessageFromPlugin::SendCkbTx((tx_hash, hashes));
+    if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
+        context.otx_set.clear();
     }
 }

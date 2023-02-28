@@ -1,7 +1,7 @@
 use ckb_sdk::Address;
 use ckb_types::H256;
 use otx_pool::{
-    built_in_plugin::DustCollector,
+    built_in_plugin::{atomic_swap::AtomicSwap, DustCollector},
     notify::NotifyService,
     plugin::host_service::HostServiceProvider,
     plugin::manager::PluginManager,
@@ -99,6 +99,8 @@ pub fn start() -> Result<()> {
         CKB_URI.get().unwrap(),
     )
     .map_err(|err| anyhow!(err))?;
+    let atomic_swap = AtomicSwap::new(service_provider.handler(), CKB_URI.get().unwrap())
+        .map_err(|err| anyhow!(err))?;
 
     // init plugins
     let plugin_manager = PluginManager::init(
@@ -106,7 +108,7 @@ pub fn start() -> Result<()> {
         notify_ctrl.clone(),
         service_provider,
         Path::new("./free-space"),
-        vec![Box::new(dust_collector)],
+        vec![Box::new(dust_collector), Box::new(atomic_swap)],
     )
     .unwrap();
 
