@@ -1,4 +1,4 @@
-use crate::const_definition::devnet::{OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX};
+use crate::const_definition::{OMNI_OPENTX_CELL_DEP_TX_HASH, OMNI_OPENTX_CELL_DEP_TX_IDX};
 
 use anyhow::Result;
 use ckb_jsonrpc_types as json_types;
@@ -39,7 +39,16 @@ pub struct TxInfo {
 
 pub fn build_otx_omnilock_addr_from_secp(address: &Address, ckb_uri: &str) -> Result<Address> {
     let mut ckb_client = CkbRpcClient::new(ckb_uri);
-    let cell = build_cell_dep(&mut ckb_client, &OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX)?;
+    let cell = build_cell_dep(
+        &mut ckb_client,
+        OMNI_OPENTX_CELL_DEP_TX_HASH
+            .get()
+            .expect("get omni cell dep tx hash"),
+        OMNI_OPENTX_CELL_DEP_TX_IDX
+            .get()
+            .expect("get omni cell dep tx id")
+            .to_owned(),
+    )?;
     let mut config = {
         let arg = H160::from_slice(&address.payload().args()).unwrap();
         OmniLockConfig::new_pubkey_hash(arg)

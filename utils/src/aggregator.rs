@@ -1,8 +1,5 @@
 use super::build_tx::{add_input, add_output, sighash_sign};
-use super::const_definition::{
-    devnet::{OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX},
-    CKB_URI,
-};
+use super::const_definition::{CKB_URI, OMNI_OPENTX_CELL_DEP_TX_HASH, OMNI_OPENTX_CELL_DEP_TX_IDX};
 use super::lock::omni::{build_cell_dep, TxInfo};
 
 use anyhow::{anyhow, Result};
@@ -75,7 +72,16 @@ impl OtxAggregator {
         if !txs.is_empty() {
             let ckb_uri = CKB_URI.get().ok_or_else(|| anyhow!("CKB_URI is none"))?;
             let mut ckb_client = CkbRpcClient::new(ckb_uri);
-            let cell = build_cell_dep(&mut ckb_client, &OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX)?;
+            let cell = build_cell_dep(
+                &mut ckb_client,
+                OMNI_OPENTX_CELL_DEP_TX_HASH
+                    .get()
+                    .expect("get omni cell dep tx hash"),
+                OMNI_OPENTX_CELL_DEP_TX_IDX
+                    .get()
+                    .expect("get omni cell dep tx id")
+                    .to_owned(),
+            )?;
             let tx_dep_provider = DefaultTransactionDependencyProvider::new(ckb_uri, 10);
             let tx = assemble_new_tx(txs, &tx_dep_provider, cell.type_hash.pack())?;
             let tx = json_types::TransactionView::from(tx);
@@ -96,7 +102,16 @@ impl OtxAggregator {
         }
         if !txes.is_empty() {
             let mut ckb_client = CkbRpcClient::new(ckb_uri);
-            let cell = build_cell_dep(&mut ckb_client, &OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX)?;
+            let cell = build_cell_dep(
+                &mut ckb_client,
+                OMNI_OPENTX_CELL_DEP_TX_HASH
+                    .get()
+                    .expect("get omni cell dep tx hash"),
+                OMNI_OPENTX_CELL_DEP_TX_IDX
+                    .get()
+                    .expect("get omni cell dep tx id")
+                    .to_owned(),
+            )?;
             let tx_dep_provider = DefaultTransactionDependencyProvider::new(ckb_uri, 10);
             let tx = assemble_new_tx(txes, &tx_dep_provider, cell.type_hash.pack())?;
             let tx_info = TxInfo {

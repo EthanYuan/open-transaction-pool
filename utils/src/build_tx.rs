@@ -1,6 +1,5 @@
 use crate::const_definition::{
-    devnet::{XUDT_DEVNET_TYPE_HASH, XUDT_TX_HASH, XUDT_TX_IDX},
-    CKB_URI,
+    CKB_URI, XUDT_CELL_DEP_TX_HASH, XUDT_CELL_DEP_TX_IDX, XUDT_CODE_HASH,
 };
 
 use anyhow::{anyhow, Result};
@@ -84,7 +83,10 @@ pub fn add_output(
 
     if let Some(udt_amount) = udt_amount {
         let xudt_type_script = Script::new_builder()
-            .code_hash(Byte32::from_slice(XUDT_DEVNET_TYPE_HASH.as_bytes()).unwrap())
+            .code_hash(
+                Byte32::from_slice(XUDT_CODE_HASH.get().expect("get xudt code hash").as_bytes())
+                    .unwrap(),
+            )
             .hash_type(ScriptHashType::Type.into())
             .args(udt_issuer_script.calc_script_hash().raw_data().pack())
             .build();
@@ -98,8 +100,16 @@ pub fn add_output(
 
     let xudt_cell_dep = CellDep::new_builder()
         .out_point(OutPoint::new(
-            Byte32::from_slice(XUDT_TX_HASH.as_bytes())?,
-            XUDT_TX_IDX as u32,
+            Byte32::from_slice(
+                XUDT_CELL_DEP_TX_HASH
+                    .get()
+                    .expect("get xudt cell dep tx hash")
+                    .as_bytes(),
+            )?,
+            XUDT_CELL_DEP_TX_IDX
+                .get()
+                .expect("get xudt cell dep tx id")
+                .to_owned() as u32,
         ))
         .build();
 

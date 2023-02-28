@@ -1,6 +1,10 @@
-use super::const_definition::devnet::{
-    OMNI_LOCK_DEVNET_TYPE_HASH, OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX, SECP_DATA_TX_HASH,
-    SECP_DATA_TX_IDX, XUDT_TX_HASH, XUDT_TX_IDX,
+use crate::const_definition::{
+    OMNI_CODE_HASH, SECP_DATA_CELL_DEP_TX_HASH, SECP_DATA_CELL_DEP_TX_IDX,
+};
+
+use super::const_definition::{
+    OMNI_OPENTX_CELL_DEP_TX_HASH, OMNI_OPENTX_CELL_DEP_TX_IDX, XUDT_CELL_DEP_TX_HASH,
+    XUDT_CELL_DEP_TX_IDX,
 };
 use super::lock::omni::{build_cell_dep, build_otx_omnilock_addr_from_secp, MultiSigArgs, TxInfo};
 
@@ -90,8 +94,16 @@ impl Wallet {
 
     fn build_open_tx(&self, args: &GenOpenTxArgs) -> Result<(TransactionView, OmniLockConfig)> {
         let mut ckb_client = CkbRpcClient::new(&self.ckb_uri);
-        let omni_lock_info =
-            build_cell_dep(&mut ckb_client, &OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX)?;
+        let omni_lock_info = build_cell_dep(
+            &mut ckb_client,
+            OMNI_OPENTX_CELL_DEP_TX_HASH
+                .get()
+                .expect("get omni cell dep tx hash"),
+            OMNI_OPENTX_CELL_DEP_TX_IDX
+                .get()
+                .expect("get omni cell dep tx id")
+                .to_owned(),
+        )?;
 
         let mut omnilock_config =
             self.generate_omni_config(args.omni_identity_flag, &args.multis_args)?;
@@ -238,20 +250,44 @@ impl Wallet {
     ) -> Result<TxInfo> {
         let secp_data_cell_dep = CellDep::new_builder()
             .out_point(OutPoint::new(
-                Byte32::from_slice(SECP_DATA_TX_HASH.as_bytes())?,
-                SECP_DATA_TX_IDX as u32,
+                Byte32::from_slice(
+                    SECP_DATA_CELL_DEP_TX_HASH
+                        .get()
+                        .expect("get secp data cell dep tx hash")
+                        .as_bytes(),
+                )?,
+                SECP_DATA_CELL_DEP_TX_IDX
+                    .get()
+                    .expect("get secp data cell dep tx id")
+                    .to_owned() as u32,
             ))
             .build();
         let omin_cell_dep = CellDep::new_builder()
             .out_point(OutPoint::new(
-                Byte32::from_slice(OMNI_OPENTX_TX_HASH.as_bytes())?,
-                OMNI_OPENTX_TX_IDX as u32,
+                Byte32::from_slice(
+                    OMNI_OPENTX_CELL_DEP_TX_HASH
+                        .get()
+                        .expect("get omni cell dep tx hash")
+                        .as_bytes(),
+                )?,
+                OMNI_OPENTX_CELL_DEP_TX_IDX
+                    .get()
+                    .expect("get cell dep tx id")
+                    .to_owned() as u32,
             ))
             .build();
         let xudt_cell_dep = CellDep::new_builder()
             .out_point(OutPoint::new(
-                Byte32::from_slice(XUDT_TX_HASH.as_bytes())?,
-                XUDT_TX_IDX as u32,
+                Byte32::from_slice(
+                    XUDT_CELL_DEP_TX_HASH
+                        .get()
+                        .expect("get xudt cell dep tx hash")
+                        .as_bytes(),
+                )?,
+                XUDT_CELL_DEP_TX_IDX
+                    .get()
+                    .expect("get xudt cell dep tx id")
+                    .to_owned() as u32,
             ))
             .build();
         let cell_deps = vec![secp_data_cell_dep, omin_cell_dep, xudt_cell_dep];
@@ -324,8 +360,11 @@ impl Wallet {
             .collect();
 
         // config updated, so unlockers must rebuilt.
-        let unlockers =
-            build_omnilock_unlockers(keys, omnilock_config.clone(), OMNI_LOCK_DEVNET_TYPE_HASH);
+        let unlockers = build_omnilock_unlockers(
+            keys,
+            omnilock_config.clone(),
+            OMNI_CODE_HASH.get().expect("get omni code hash").to_owned(),
+        );
         let (tx, _new_locked_groups) = unlock_tx(tx, &tx_dep_provider, &unlockers).unwrap();
 
         Ok((tx, omnilock_config))
@@ -384,7 +423,16 @@ impl Wallet {
         let tx_dep_provider = DefaultTransactionDependencyProvider::new(&self.ckb_uri, 10);
 
         let mut ckb_client = CkbRpcClient::new(&self.ckb_uri);
-        let cell = build_cell_dep(&mut ckb_client, &OMNI_OPENTX_TX_HASH, OMNI_OPENTX_TX_IDX)?;
+        let cell = build_cell_dep(
+            &mut ckb_client,
+            OMNI_OPENTX_CELL_DEP_TX_HASH
+                .get()
+                .expect("get omni cell dep tx hash"),
+            OMNI_OPENTX_CELL_DEP_TX_IDX
+                .get()
+                .expect("get omni cell dep tx id")
+                .to_owned(),
+        )?;
 
         let mut _still_locked_groups = None;
         let unlockers = build_omnilock_unlockers(keys, omnilock_config.clone(), cell.type_hash);

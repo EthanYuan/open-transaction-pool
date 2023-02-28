@@ -8,7 +8,7 @@ use otx_pool::{
     rpc::{OtxPoolRpc, OtxPoolRpcImpl},
 };
 use utils::aggregator::SecpSignInfo;
-use utils::const_definition::CKB_URI;
+use utils::const_definition::{load_code_hash, CKB_URI};
 
 use anyhow::{anyhow, Result};
 use ckb_async_runtime::new_global_runtime;
@@ -57,6 +57,8 @@ fn main() -> Result<()> {
 pub fn start() -> Result<()> {
     let args = Args::parse();
     CKB_URI.set(args.ckb_uri).map_err(|err| anyhow!(err))?;
+
+    load_code_hash();
 
     // runtime handle
     let (runtime_handle, runtime) = new_global_runtime();

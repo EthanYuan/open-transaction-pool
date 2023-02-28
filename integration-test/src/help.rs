@@ -11,6 +11,7 @@ use utils::client::service_client::OtxPoolRpcClient;
 use utils::const_definition::devnet::{
     ANYONE_CAN_PAY_DEVNET_TYPE_HASH, SIGHASH_TYPE_HASH, XUDT_DEVNET_TYPE_HASH,
 };
+use utils::const_definition::load_code_hash;
 use utils::instruction::command::run_command_spawn;
 
 use common::lazy::{
@@ -30,6 +31,7 @@ pub fn setup() -> Vec<Child> {
     println!("Setup test environment...");
     let ckb = start_ckb_node();
     let (ckb, mercury) = start_mercury(ckb);
+    load_code_hash();
     vec![ckb, mercury]
 }
 
