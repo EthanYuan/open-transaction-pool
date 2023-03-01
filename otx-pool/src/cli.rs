@@ -1,4 +1,4 @@
-use utils::aggregator::SignInfo;
+use utils::const_definition::ScriptInfo;
 
 use anyhow::Result;
 use ckb_jsonrpc_types::{CellDep, Script};
@@ -10,6 +10,27 @@ use std::{collections::HashMap, fs::File, io::Read, path::Path};
 pub struct Config {
     pub network_config: NetworkConfig,
     pub scripts: Vec<ScriptConfig>,
+}
+
+impl Config {
+    pub fn to_script_map(&self) -> HashMap<String, ScriptInfo> {
+        self.scripts
+            .iter()
+            .map(|s| {
+                (
+                    s.script_name.clone(),
+                    ScriptInfo {
+                        script: serde_json::from_str::<Script>(&s.script)
+                            .expect("config string to script")
+                            .into(),
+                        cell_dep: serde_json::from_str::<CellDep>(&s.cell_dep)
+                            .expect("config string to cell dep")
+                            .into(),
+                    },
+                )
+            })
+            .collect()
+    }
 }
 
 #[derive(Deserialize, Default, Clone, Debug)]

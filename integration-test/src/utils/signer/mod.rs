@@ -3,7 +3,7 @@ mod secp;
 use crate::const_definition::CHEQUE_DEVNET_TYPE_HASH;
 use secp::{get_secp_lock_arg, sign_secp};
 
-use utils::const_definition::devnet::{ANYONE_CAN_PAY_DEVNET_TYPE_HASH, SIGHASH_TYPE_HASH};
+use utils::const_definition::{ANYONE_CAN_PAY_CODE_HASH, SECP256K1_CODE_HASH};
 
 use anyhow::Result;
 use ckb_jsonrpc_types::{Script, Transaction};
@@ -35,8 +35,11 @@ pub fn sign_transaction(
         {
             continue;
         }
-        if script_group.script.code_hash == SIGHASH_TYPE_HASH
-            || script_group.script.code_hash == ANYONE_CAN_PAY_DEVNET_TYPE_HASH
+        if &script_group.script.code_hash == SECP256K1_CODE_HASH.get().expect("get secp code hash")
+            || &script_group.script.code_hash
+                == ANYONE_CAN_PAY_CODE_HASH
+                    .get()
+                    .expect("get anyone can pay code hash")
             || script_group.script.code_hash == CHEQUE_DEVNET_TYPE_HASH
         {
             let zero_lock = Bytes::from(vec![0u8; 65]);

@@ -2,7 +2,7 @@
 [network_config]
 network_type = "ckb_dev"
 ckb_uri = "http://127.0.0.1:8114"
-listen_uri = "127.0.0.1:8116"
+listen_uri = "http://127.0.0.1:8118"
 
 [[scripts]]
 script_name = "secp256k1_blake160"

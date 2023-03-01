@@ -1,11 +1,8 @@
-mod cli;
-
-use cli::{parse, Config};
-
 use ckb_sdk::Address;
 use ckb_types::H256;
 use otx_pool::{
     built_in_plugin::{atomic_swap::AtomicSwap, DustCollector},
+    cli::{parse, Config},
     notify::NotifyService,
     plugin::host_service::HostServiceProvider,
     plugin::manager::PluginManager,
@@ -30,7 +27,6 @@ use std::{net::SocketAddr, path::Path};
 const RUNTIME_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 const INTERVAL: Duration = Duration::from_secs(2);
 pub const PLUGINS_DIRNAME: &str = "plugins";
-pub const SERVICE_URI: &str = "http://127.0.0.1:8118";
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -73,17 +69,16 @@ fn read_cli_args() -> Result<(Config, SignInfo)> {
     CKB_URI
         .set(config.network_config.ckb_uri.clone())
         .map_err(|err| anyhow!(err))?;
+    load_code_hash(config.to_script_map());
     Ok((config, sign_info))
 }
 
 pub fn start(config: Config, sign_info: SignInfo) -> Result<()> {
-    load_code_hash();
-
     // runtime handle
     let (runtime_handle, runtime) = new_global_runtime();
 
     // bind address
-    let bind: Vec<&str> = SERVICE_URI.split("//").collect();
+    let bind: Vec<&str> = config.network_config.listen_uri.split("//").collect();
     let bind_addr: SocketAddr = bind[1].parse()?;
 
     // start notify service
@@ -152,7 +147,10 @@ pub fn start(config: Config, sign_info: SignInfo) -> Result<()> {
         .health_api(("/ping", "ping"))
         .start_http(&bind_addr)
         .expect("Start Jsonrpc HTTP service");
-    log::info!("jsonrpc server started: {}", SERVICE_URI);
+    log::info!(
+        "jsonrpc server started: {}",
+        config.network_config.listen_uri
+    );
 
     // stop
     let (tx, rx) = std::sync::mpsc::channel();
