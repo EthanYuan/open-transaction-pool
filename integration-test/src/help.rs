@@ -74,7 +74,7 @@ pub(crate) fn start_mercury(ckb: Child) -> (Child, Child) {
             "mercury/Cargo.toml",
             "--",
             "-c",
-            "dev_chain/devnet_config.toml",
+            "dev_chain/mercury_devnet_config.toml",
             "run",
         ],
     );
@@ -127,12 +127,12 @@ pub(crate) fn start_otx_pool(address: Address, pk: H256) {
             "--manifest-path",
             "../Cargo.toml",
             "--",
+            "--config-path",
+            "dev_chain/devnet_config.toml",
             "--address",
             &address.to_string(),
             "--key",
             &pk.to_string(),
-            "--ckb-uri",
-            CKB_URI,
         ],
     );
     let service = if let Ok(service) = service {

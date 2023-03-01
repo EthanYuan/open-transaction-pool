@@ -24,19 +24,19 @@ use std::io::Read;
 use std::path::PathBuf;
 
 pub struct OtxAggregator {
-    pub signer: SecpSignInfo,
+    pub signer: SignInfo,
     pub committer: Committer,
 }
 
 impl OtxAggregator {
     pub fn new(address: &Address, key: &H256, ckb_uri: &str) -> Self {
-        let signer = SecpSignInfo::new(address, key);
+        let signer = SignInfo::new(address, key);
         let committer = Committer::new(ckb_uri);
         OtxAggregator { signer, committer }
     }
 
     pub fn try_new(address: Address, key_path: PathBuf, ckb_uri: &str) -> Result<Self> {
-        let signer = SecpSignInfo::try_new(address, key_path)?;
+        let signer = SignInfo::try_new(address, key_path)?;
         let committer = Committer::new(ckb_uri);
         Ok(OtxAggregator { signer, committer })
     }
@@ -144,14 +144,14 @@ impl Committer {
 }
 
 #[derive(Clone)]
-pub struct SecpSignInfo {
+pub struct SignInfo {
     secp_address: Address,
     pk: H256,
 }
 
-impl SecpSignInfo {
+impl SignInfo {
     pub fn new(secp_address: &Address, pk: &H256) -> Self {
-        SecpSignInfo {
+        SignInfo {
             secp_address: secp_address.clone(),
             pk: pk.clone(),
         }
@@ -159,7 +159,7 @@ impl SecpSignInfo {
 
     pub fn try_new(secp_address: Address, pk_file: PathBuf) -> Result<Self> {
         let pk = parse_key(pk_file)?;
-        Ok(SecpSignInfo { secp_address, pk })
+        Ok(SignInfo { secp_address, pk })
     }
 
     pub fn secp_address(&self) -> &Address {

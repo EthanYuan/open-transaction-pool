@@ -6,7 +6,7 @@ use otx_format::jsonrpc_types::get_payment_amount;
 use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
-use utils::aggregator::{AddOutputArgs, OtxAggregator, SecpSignInfo};
+use utils::aggregator::{AddOutputArgs, OtxAggregator, SignInfo};
 
 use ckb_sdk::rpc::ckb_indexer::{Order, ScriptType, SearchKey};
 use ckb_sdk::rpc::IndexerRpcClient;
@@ -30,7 +30,7 @@ pub const DEFAULT_FEE: usize = 1000_0000;
 struct Context {
     pub plugin_name: String,
     pub otx_set: Arc<DashMap<H256, OpenTransaction>>,
-    pub secp_sign_info: SecpSignInfo,
+    pub secp_sign_info: SignInfo,
     pub ckb_uri: String,
     pub service_handler: ServiceHandler,
 }
@@ -38,7 +38,7 @@ struct Context {
 impl Context {
     fn new(
         plugin_name: &str,
-        secp_sign_info: SecpSignInfo,
+        secp_sign_info: SignInfo,
         ckb_uri: &str,
         service_handler: ServiceHandler,
     ) -> Self {
@@ -90,7 +90,7 @@ impl Plugin for DustCollector {
 impl DustCollector {
     pub fn new(
         service_handler: ServiceHandler,
-        secp_sign_info: SecpSignInfo,
+        secp_sign_info: SignInfo,
         ckb_uri: &str,
     ) -> Result<DustCollector, String> {
         let name = "dust collector";

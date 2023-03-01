@@ -1,3 +1,7 @@
+mod cli;
+
+use cli::{parse, Config};
+
 use ckb_sdk::Address;
 use ckb_types::H256;
 use otx_pool::{
@@ -7,7 +11,7 @@ use otx_pool::{
     plugin::manager::PluginManager,
     rpc::{OtxPoolRpc, OtxPoolRpcImpl},
 };
-use utils::aggregator::SecpSignInfo;
+use utils::aggregator::SignInfo;
 use utils::const_definition::{load_code_hash, CKB_URI};
 
 use anyhow::{anyhow, Result};
@@ -32,16 +36,22 @@ pub const SERVICE_URI: &str = "http://127.0.0.1:8118";
 #[clap(author, version, about, long_about = None)]
 struct Args {
     #[clap(short, long)]
+    config_path: String,
+
+    #[clap(short, long)]
     address: Address,
 
     #[clap(short, long)]
     key: H256,
-
-    #[clap(short, long)]
-    ckb_uri: String,
 }
 
 fn main() -> Result<()> {
+    std::panic::set_hook(Box::new(move |info| {
+        println!("panic occurred {:?}", info);
+        log::error!("panic occurred {:?}", info);
+        std::process::exit(-1);
+    }));
+
     if std::env::var("RUST_LOG").is_err() {
         // should recognize RUST_LOG_STYLE environment variable
         env_logger::Builder::from_default_env()
@@ -51,13 +61,22 @@ fn main() -> Result<()> {
         env_logger::init();
     }
 
-    start()
+    let (config, sign_info) = read_cli_args()?;
+
+    start(config, sign_info)
 }
 
-pub fn start() -> Result<()> {
+fn read_cli_args() -> Result<(Config, SignInfo)> {
     let args = Args::parse();
-    CKB_URI.set(args.ckb_uri).map_err(|err| anyhow!(err))?;
+    let sign_info = SignInfo::new(&args.address, &args.key);
+    let config: Config = parse(args.config_path)?;
+    CKB_URI
+        .set(config.network_config.ckb_uri.clone())
+        .map_err(|err| anyhow!(err))?;
+    Ok((config, sign_info))
+}
 
+pub fn start(config: Config, sign_info: SignInfo) -> Result<()> {
     load_code_hash();
 
     // runtime handle
@@ -95,7 +114,7 @@ pub fn start() -> Result<()> {
     // init built-in plugins
     let dust_collector = DustCollector::new(
         service_provider.handler(),
-        SecpSignInfo::new(&args.address, &args.key),
+        sign_info,
         CKB_URI.get().unwrap(),
     )
     .map_err(|err| anyhow!(err))?;
