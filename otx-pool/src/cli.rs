@@ -1,5 +1,6 @@
 use utils::const_definition::ScriptInfo;
 
+use ansi_term::Colour::Green;
 use anyhow::Result;
 use ckb_jsonrpc_types::{CellDep, Script};
 use serde::{de::DeserializeOwned, Deserialize};
@@ -55,4 +56,26 @@ fn parse_reader<R: Read, T: DeserializeOwned>(r: &mut R) -> Result<T> {
     let mut buf = Vec::new();
     r.read_to_end(&mut buf)?;
     Ok(toml::from_slice(&buf)?)
+}
+
+pub fn print_logo() {
+    println!(
+        "{}",
+        format_args!(
+            r#"
+            {}                   _____                               _   _             
+            {}_ __   ___ _ __   |_   _| __ __ _ _ __  ___  __ _  ___| |_(_) ___  _ __  
+            {} '_ \ / _ \ '_ \    | || '__/ _` | '_ \/ __|/ _` |/ __| __| |/ _ \| '_ \ 
+            {} |_) |  __/ | | |   | || | | (_| | | | \__ \ (_| | (__| |_| | (_) | | | |
+            {}| .__/ \___|_| |_|   |_||_|  \__,_|_| |_|___/\__,_|\___|\__|_|\___/|_| |_|
+            {}|_|                                                                       
+            "#,
+            Green.bold().paint(r#"  ____  "#),
+            Green.bold().paint(r#" / __ \ "#),
+            Green.bold().paint(r#"| |  | |"#),
+            Green.bold().paint(r#"| |__| |"#),
+            Green.bold().paint(r#" \____/"#),
+            Green.bold().paint(r#"       "#),
+        )
+    );
 }

@@ -2,7 +2,7 @@ use ckb_sdk::Address;
 use ckb_types::H256;
 use otx_pool::{
     built_in_plugin::{atomic_swap::AtomicSwap, DustCollector},
-    cli::{parse, Config},
+    cli::{parse, print_logo, Config},
     notify::NotifyService,
     plugin::host_service::HostServiceProvider,
     plugin::manager::PluginManager,
@@ -151,6 +151,8 @@ pub fn start(config: Config, sign_info: SignInfo) -> Result<()> {
         "jsonrpc server started: {}",
         config.network_config.listen_uri
     );
+
+    print_logo();
 
     // stop
     let (tx, rx) = std::sync::mpsc::channel();
