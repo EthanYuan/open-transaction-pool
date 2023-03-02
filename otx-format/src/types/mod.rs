@@ -6,17 +6,17 @@ use ckb_types::H256;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OpenTxStatus {
-    /// Status "pending". The transaction is in the pool, and not proposed yet.
+    /// Status "pending". The open transaction is in the pool, and not proposed yet.
     Pending,
-    /// Status "proposed". The transaction is in the pool and has been proposed by some agent.
+    /// Status "proposed". The open transaction is in the pool and has been proposed by some agent.
     Proposed(String),
-    /// Status "committed". The transaction has been committed to the canonical chain.
+    /// Status "committed". The open transaction has been committed to the canonical chain.
     Committed(H256),
-    /// Status "unknown". The node has not seen the transaction,
+    /// Status "unknown". The pool has not seen the transaction,
     /// or it should be rejected but was cleared due to storage limitations.
     Unknown,
-    // Status "rejected". The transaction has been recently removed from the pool.
-    /// Due to storage limitations, the node can only hold the most recently removed transactions.
+    // Status "rejected". The open transaction has been recently removed from the pool.
+    /// Due to storage limitations, the pool can only hold the most recently removed transactions.
     Rejected(String),
 }
 

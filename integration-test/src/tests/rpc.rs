@@ -48,9 +48,10 @@ fn test_service_rpc_submit_otx() {
     let otx: packed::OpenTransaction = otx.into();
 
     let service_client = OtxPoolRpcClient::new(OTX_POOL_URI.to_string());
-    let id = service_client
-        .submit_otx(JsonBytes::from_bytes(otx.as_bytes()))
-        .unwrap();
+    let otx = JsonBytes::from_bytes(otx.as_bytes());
+    log::debug!("otx: {:?}", serde_json::to_string_pretty(&otx).unwrap());
+    let id = service_client.submit_otx(otx).unwrap();
+    log::debug!("id: {:?}", id);
     let otx = service_client.query_otx_by_id(id).unwrap().unwrap();
     let tx_view_rebuilt = otx_to_tx_view(otx.otx).unwrap();
     assert_eq!(tx_view, tx_view_rebuilt);
