@@ -5,7 +5,7 @@
 
 - [install Ckb](https://docs.nervos.org/docs/basics/guides/get-ckb/#build-from-source) (compile and install with the latest release version)
 
-### Init Database
+### Init Mercury
 
 
 - install and start PostgreSQL
@@ -42,7 +42,7 @@ If there is no new contract to be deployed to the genesis block, the previous pr
 
 ## Deploy a new contract to the genesis block
 
-Currently Mercury's integration tests are based on dev chain
+Currently integration tests are based on dev chain
 , the contracts deployed on it are all implemented through the genesis block config declaration.
 
 If you need to deploy contract scripts on the dev chain, you need to do the following:
