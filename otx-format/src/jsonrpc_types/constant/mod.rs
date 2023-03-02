@@ -1,2 +1,2 @@
-pub mod basic_keys;
-pub mod extra_keys;
+pub mod custom_keys;
+pub mod essential_keys;
