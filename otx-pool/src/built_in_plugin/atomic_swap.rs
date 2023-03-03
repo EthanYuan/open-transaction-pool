@@ -1,3 +1,4 @@
+use crate::built_in_plugin::dust_collector::MIN_PAYMENT;
 use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
@@ -7,12 +8,15 @@ use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
 use utils::aggregator::{Committer, OtxAggregator};
+use utils::const_definition::XUDT_CODE_HASH;
 
+use ckb_jsonrpc_types::Script;
 use ckb_types::core::service::Request;
 use ckb_types::H256;
 use crossbeam_channel::{bounded, select, unbounded};
 use dashmap::DashMap;
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
@@ -22,21 +26,32 @@ pub const EVERY_INTERVALS: usize = 10;
 
 #[derive(Clone)]
 struct Context {
-    pub plugin_name: String,
-    pub otx_set: Arc<DashMap<H256, OpenTransaction>>,
-    pub ckb_uri: String,
-    pub service_handler: ServiceHandler,
+    plugin_name: String,
+    ckb_uri: String,
+    service_handler: ServiceHandler,
+
+    otxs: Arc<DashMap<H256, OpenTransaction>>,
+    _orders: Arc<DashMap<OrderKey, HashSet<H256>>>,
 }
 
 impl Context {
     fn new(plugin_name: &str, ckb_uri: &str, service_handler: ServiceHandler) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
-            otx_set: Arc::new(DashMap::new()),
             ckb_uri: ckb_uri.to_owned(),
             service_handler,
+            otxs: Arc::new(DashMap::new()),
+            _orders: Arc::new(DashMap::new()),
         }
     }
+}
+
+#[derive(Debug, Eq, PartialEq, Hash, Default, Clone)]
+struct OrderKey {
+    sell_udt: Script,
+    sell_amount: u128,
+    buy_udt: Script,
+    buy_amount: u128,
 }
 
 pub struct AtomicSwap {
@@ -170,14 +185,22 @@ impl AtomicSwap {
 fn on_new_open_tx(context: Context, otx: OpenTransaction) {
     if let Ok(payment_amount) = get_payment_amount(&otx) {
         log::info!("payment: {:?}", payment_amount);
-        if payment_amount.x_udt_amount.is_empty() {
+        if payment_amount.capacity <= 0
+            || payment_amount.capacity > MIN_PAYMENT as i128
+            || payment_amount.x_udt_amount.len() != 2
+        {
             return;
+        }
+        for (script, _) in payment_amount.x_udt_amount.iter() {
+            if &script.code_hash != XUDT_CODE_HASH.get().expect("get xudt code hash") {
+                return;
+            }
         }
     } else {
         return;
     };
     let otx_hash = otx_to_tx_view(otx.clone()).unwrap().hash;
-    context.otx_set.insert(otx_hash, otx);
+    context.otxs.insert(otx_hash, otx);
 }
 
 fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
@@ -190,25 +213,25 @@ fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
             .collect::<Vec<String>>()
     );
     otx_hashes.iter().for_each(|otx_hash| {
-        context.otx_set.remove(otx_hash);
+        context.otxs.remove(otx_hash);
     })
 }
 
 fn on_new_intervel(context: Context, elapsed: u64) {
-    if elapsed % EVERY_INTERVALS as u64 != 0 || context.otx_set.len() <= 1 {
+    if elapsed % EVERY_INTERVALS as u64 != 0 || context.otxs.len() <= 1 {
         return;
     }
 
     log::info!(
         "on new {} intervals otx set len: {:?}",
         EVERY_INTERVALS,
-        context.otx_set.len()
+        context.otxs.len()
     );
 
     // merge_otx
     let mut receive_ckb_capacity = 0;
     let otx_list: Vec<OpenTransaction> = context
-        .otx_set
+        .otxs
         .iter()
         .map(|otx| {
             receive_ckb_capacity += get_payment_amount(&otx).unwrap().capacity;
@@ -223,7 +246,7 @@ fn on_new_intervel(context: Context, elapsed: u64) {
             "Failed to merge otxs, all otxs staged by {} itself will be cleared.",
             context.plugin_name
         );
-        context.otx_set.clear();
+        context.otxs.clear();
         return;
     };
 
@@ -232,7 +255,7 @@ fn on_new_intervel(context: Context, elapsed: u64) {
         tx
     } else {
         log::info!("Failed to generate final tx.");
-        context.otx_set.clear();
+        context.otxs.clear();
         return;
     };
 
@@ -248,7 +271,7 @@ fn on_new_intervel(context: Context, elapsed: u64) {
 
     // call host service
     let hashes: Vec<H256> = context
-        .otx_set
+        .otxs
         .iter()
         .map(|otx| {
             let tx_view = otx_to_tx_view(otx.clone()).unwrap();
@@ -257,6 +280,6 @@ fn on_new_intervel(context: Context, elapsed: u64) {
         .collect();
     let message = MessageFromPlugin::SendCkbTx((tx_hash, hashes));
     if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
-        context.otx_set.clear();
+        context.otxs.clear();
     }
 }

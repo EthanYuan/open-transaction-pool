@@ -28,11 +28,11 @@ pub const DEFAULT_FEE: usize = 1000_0000;
 
 #[derive(Clone)]
 struct Context {
-    pub plugin_name: String,
-    pub otx_set: Arc<DashMap<H256, OpenTransaction>>,
-    pub secp_sign_info: SignInfo,
-    pub ckb_uri: String,
-    pub service_handler: ServiceHandler,
+    plugin_name: String,
+    otx_set: Arc<DashMap<H256, OpenTransaction>>,
+    secp_sign_info: SignInfo,
+    ckb_uri: String,
+    service_handler: ServiceHandler,
 }
 
 impl Context {
@@ -90,7 +90,7 @@ impl Plugin for DustCollector {
 impl DustCollector {
     pub fn new(
         service_handler: ServiceHandler,
-        secp_sign_info: SignInfo,
+        sign_info: SignInfo,
         ckb_uri: &str,
     ) -> Result<DustCollector, String> {
         let name = "dust collector";
@@ -100,12 +100,8 @@ impl DustCollector {
             "Collect micropayment otx and aggregate them into ckb tx.",
             "1.0",
         );
-        let (msg_handler, request_handler, thread) = DustCollector::start_process(Context::new(
-            name,
-            secp_sign_info,
-            ckb_uri,
-            service_handler,
-        ))?;
+        let (msg_handler, request_handler, thread) =
+            DustCollector::start_process(Context::new(name, sign_info, ckb_uri, service_handler))?;
         Ok(DustCollector {
             state,
             info,

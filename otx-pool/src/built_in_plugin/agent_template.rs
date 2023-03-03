@@ -16,9 +16,9 @@ use std::thread::JoinHandle;
 
 #[derive(Clone)]
 struct Context {
-    pub plugin_name: String,
-    pub _ckb_uri: String,
-    pub _service_handler: ServiceHandler,
+    plugin_name: String,
+    _ckb_uri: String,
+    _service_handler: ServiceHandler,
 }
 
 impl Context {
