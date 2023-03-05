@@ -1,7 +1,8 @@
 #![allow(clippy::mutable_key_type)]
 
 use crate::constant::custom_keys::{
-    OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_INPUT_XUDT, OTX_ACCOUNTING_META_OUTPUT_CKB,
+    OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_INPUT_SUDT, OTX_ACCOUNTING_META_INPUT_XUDT,
+    OTX_ACCOUNTING_META_OUTPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_SUDT,
     OTX_ACCOUNTING_META_OUTPUT_XUDT,
 };
 use crate::constant::essential_keys::{
@@ -553,6 +554,7 @@ fn to_tuple_kv_map(
 pub struct PaymentAmount {
     pub capacity: i128,
     pub x_udt_amount: HashMap<Script, i128>,
+    pub s_udt_amount: HashMap<Script, i128>,
 }
 
 pub fn get_payment_amount(otx: &OpenTransaction) -> Result<PaymentAmount, OtxFormatError> {
@@ -636,8 +638,45 @@ pub fn get_payment_amount(otx: &OpenTransaction) -> Result<PaymentAmount, OtxFor
         *x_udt_amount.entry(script).or_insert(0) -= output_xudt_amount as i128;
     }
 
+    let mut s_udt_amount = HashMap::new();
+    loop {
+        let input_sudt_amount =
+            pop_entry_by_first_element(&mut kv_map, OTX_ACCOUNTING_META_INPUT_SUDT);
+        if input_sudt_amount.is_none() {
+            break;
+        }
+        let ((_, script), input_sudt_amount) = input_sudt_amount.unwrap();
+        let script = ckb_types::packed::Script::from_slice(
+            script.to_owned().expect("get script").as_bytes(),
+        )
+        .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+        .into();
+        let input_sudt_amount: u128 = Uint128::from_slice(input_sudt_amount.as_bytes())
+            .expect("get input xudt amount")
+            .unpack();
+        *s_udt_amount.entry(script).or_insert(0) += input_sudt_amount as i128;
+    }
+    loop {
+        let output_sudt_amount =
+            pop_entry_by_first_element(&mut kv_map, OTX_ACCOUNTING_META_OUTPUT_SUDT);
+        if output_sudt_amount.is_none() {
+            break;
+        }
+        let ((_, script), output_sudt_amount) = output_sudt_amount.unwrap();
+        let script = ckb_types::packed::Script::from_slice(
+            script.to_owned().expect("get script").as_bytes(),
+        )
+        .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+        .into();
+        let output_sudt_amount: u128 = Uint128::from_slice(output_sudt_amount.as_bytes())
+            .expect("get input xudt amount")
+            .unpack();
+        *s_udt_amount.entry(script).or_insert(0) -= output_sudt_amount as i128;
+    }
+
     Ok(PaymentAmount {
         capacity: input_capacity as i128 - output_capacity as i128,
         x_udt_amount,
+        s_udt_amount,
     })
 }

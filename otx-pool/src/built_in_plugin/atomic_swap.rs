@@ -8,7 +8,6 @@ use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
 use utils::aggregator::{Committer, OtxAggregator};
-use utils::const_definition::XUDT_CODE_HASH;
 
 use ckb_jsonrpc_types::Script;
 use ckb_types::core::service::Request;
@@ -31,7 +30,7 @@ struct Context {
     service_handler: ServiceHandler,
 
     otxs: Arc<DashMap<H256, OpenTransaction>>,
-    _orders: Arc<DashMap<OrderKey, HashSet<H256>>>,
+    orders: Arc<DashMap<OrderKey, HashSet<H256>>>,
 }
 
 impl Context {
@@ -41,7 +40,7 @@ impl Context {
             ckb_uri: ckb_uri.to_owned(),
             service_handler,
             otxs: Arc::new(DashMap::new()),
-            _orders: Arc::new(DashMap::new()),
+            orders: Arc::new(DashMap::new()),
         }
     }
 }
@@ -52,6 +51,17 @@ struct OrderKey {
     sell_amount: u128,
     buy_udt: Script,
     buy_amount: u128,
+}
+
+impl OrderKey {
+    fn pair_order(&self) -> OrderKey {
+        OrderKey {
+            sell_udt: self.buy_udt.clone(),
+            sell_amount: self.buy_amount,
+            buy_udt: self.sell_udt.clone(),
+            buy_amount: self.sell_amount,
+        }
+    }
 }
 
 pub struct AtomicSwap {
@@ -183,24 +193,87 @@ impl AtomicSwap {
 }
 
 fn on_new_open_tx(context: Context, otx: OpenTransaction) {
-    if let Ok(payment_amount) = get_payment_amount(&otx) {
+    let payment_amount = if let Ok(payment_amount) = get_payment_amount(&otx) {
         log::info!("payment: {:?}", payment_amount);
         if payment_amount.capacity <= 0
             || payment_amount.capacity > MIN_PAYMENT as i128
             || payment_amount.x_udt_amount.len() != 2
+            || !payment_amount.s_udt_amount.is_empty()
         {
             return;
         }
-        for (script, _) in payment_amount.x_udt_amount.iter() {
-            if &script.code_hash != XUDT_CODE_HASH.get().expect("get xudt code hash") {
-                return;
-            }
-        }
+        payment_amount
     } else {
         return;
     };
+
+    let mut order_key = OrderKey::default();
+    for (type_script, udt_amount) in payment_amount.x_udt_amount {
+        if udt_amount > 0 {
+            order_key.sell_udt = type_script;
+            order_key.sell_amount = udt_amount as u128;
+        } else {
+            order_key.buy_udt = type_script;
+            order_key.buy_amount = (-udt_amount) as u128;
+        }
+    }
+    if order_key.sell_amount == 0 || order_key.buy_amount == 0 {
+        return;
+    }
+
     let otx_hash = otx_to_tx_view(otx.clone()).unwrap().hash;
-    context.otxs.insert(otx_hash, otx);
+    if let Some(item) = context.orders.get(&order_key.pair_order()) {
+        if let Some(pair_tx_hash) = item.value().iter().next() {
+            log::info!("matched tx: {:#x}", pair_tx_hash);
+            let pair_otx = context.otxs.get(pair_tx_hash).unwrap().value().clone();
+
+            // merge_otx
+            let otx_list = vec![otx, pair_otx];
+            let merged_otx = if let Ok(merged_otx) = OtxAggregator::merge_otxs(otx_list) {
+                log::debug!("otxs merge successfully.");
+                merged_otx
+            } else {
+                log::info!("{} failed to merge otxs.", context.plugin_name);
+                return;
+            };
+
+            // to final tx
+            let tx = if let Ok(tx) = otx_to_tx_view(merged_otx) {
+                tx
+            } else {
+                log::info!("Failed to generate final tx.");
+                return;
+            };
+
+            // send_ckb
+            let committer = Committer::new(&context.ckb_uri);
+            let tx_hash = if let Ok(tx_hash) = committer.send_tx(tx) {
+                tx_hash
+            } else {
+                log::error!("failed to send final tx.");
+                return;
+            };
+            log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
+
+            // call host service
+            let message =
+                MessageFromPlugin::SendCkbTx((tx_hash, vec![pair_tx_hash.to_owned(), otx_hash]));
+            if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
+                context.otxs.remove(pair_tx_hash);
+                context.orders.retain(|_, hashes| {
+                    hashes.remove(pair_tx_hash);
+                    !hashes.is_empty()
+                });
+            }
+        }
+    } else {
+        context.otxs.insert(otx_hash.clone(), otx);
+        context
+            .orders
+            .entry(order_key)
+            .or_insert_with(HashSet::new)
+            .insert(otx_hash);
+    }
 }
 
 fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
@@ -227,59 +300,4 @@ fn on_new_intervel(context: Context, elapsed: u64) {
         EVERY_INTERVALS,
         context.otxs.len()
     );
-
-    // merge_otx
-    let mut receive_ckb_capacity = 0;
-    let otx_list: Vec<OpenTransaction> = context
-        .otxs
-        .iter()
-        .map(|otx| {
-            receive_ckb_capacity += get_payment_amount(&otx).unwrap().capacity;
-            otx.clone()
-        })
-        .collect();
-    let merged_otx = if let Ok(merged_otx) = OtxAggregator::merge_otxs(otx_list) {
-        log::debug!("otxs merge successfully.");
-        merged_otx
-    } else {
-        log::info!(
-            "Failed to merge otxs, all otxs staged by {} itself will be cleared.",
-            context.plugin_name
-        );
-        context.otxs.clear();
-        return;
-    };
-
-    // to final tx
-    let tx = if let Ok(tx) = otx_to_tx_view(merged_otx) {
-        tx
-    } else {
-        log::info!("Failed to generate final tx.");
-        context.otxs.clear();
-        return;
-    };
-
-    // send_ckb
-    let committer = Committer::new(&context.ckb_uri);
-    let tx_hash = if let Ok(tx_hash) = committer.send_tx(tx) {
-        tx_hash
-    } else {
-        log::error!("failed to send final tx.");
-        return;
-    };
-    log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
-
-    // call host service
-    let hashes: Vec<H256> = context
-        .otxs
-        .iter()
-        .map(|otx| {
-            let tx_view = otx_to_tx_view(otx.clone()).unwrap();
-            tx_view.hash
-        })
-        .collect();
-    let message = MessageFromPlugin::SendCkbTx((tx_hash, hashes));
-    if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
-        context.otxs.clear();
-    }
 }

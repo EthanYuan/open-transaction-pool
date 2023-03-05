@@ -11,7 +11,7 @@ use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::types::{packed, OpenTxStatus};
 use otx_pool::built_in_plugin::dust_collector::DEFAULT_FEE;
 use utils::client::service_client::OtxPoolRpcClient;
-use utils::const_definition::XUDT_CODE_HASH;
+use utils::const_definition::{SUDT_CODE_HASH, XUDT_CODE_HASH};
 
 use anyhow::Result;
 use ckb_jsonrpc_types::JsonBytes;
@@ -116,6 +116,7 @@ fn build_pay_ckb_otx(
         None,
         None,
         XUDT_CODE_HASH.get().unwrap().to_owned(),
+        SUDT_CODE_HASH.get().unwrap().to_owned(),
         CKB_URI,
     )
     .unwrap();
@@ -130,6 +131,7 @@ fn _bob_build_otx() -> Result<packed::OpenTransaction> {
         None,
         None,
         XUDT_CODE_HASH.get().unwrap().to_owned(),
+        SUDT_CODE_HASH.get().unwrap().to_owned(),
         CKB_URI,
     )
     .unwrap();

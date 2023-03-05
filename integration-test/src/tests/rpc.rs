@@ -7,7 +7,7 @@ use crate::IntegrationTest;
 use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_otx};
 use otx_format::types::packed;
 use utils::client::service_client::OtxPoolRpcClient;
-use utils::const_definition::XUDT_CODE_HASH;
+use utils::const_definition::{SUDT_CODE_HASH, XUDT_CODE_HASH};
 
 use ckb_jsonrpc_types::JsonBytes;
 use ckb_types::{prelude::Entity, H256};
@@ -42,6 +42,7 @@ fn test_service_rpc_submit_otx() {
         None,
         None,
         XUDT_CODE_HASH.get().unwrap().to_owned(),
+        SUDT_CODE_HASH.get().unwrap().to_owned(),
         CKB_URI,
     )
     .unwrap();

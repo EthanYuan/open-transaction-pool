@@ -8,6 +8,7 @@ pub static CKB_URI: OnceCell<String> = OnceCell::new();
 // script code hash
 pub static SECP256K1_CODE_HASH: OnceCell<H256> = OnceCell::new();
 pub static XUDT_CODE_HASH: OnceCell<H256> = OnceCell::new();
+pub static SUDT_CODE_HASH: OnceCell<H256> = OnceCell::new();
 pub static OMNI_CODE_HASH: OnceCell<H256> = OnceCell::new();
 pub static ANYONE_CAN_PAY_CODE_HASH: OnceCell<H256> = OnceCell::new();
 
@@ -58,6 +59,15 @@ pub fn load_code_hash(script_info: HashMap<String, ScriptInfo>) {
             .get("anyone_can_pay")
             .cloned()
             .expect("get anyone can pay script info")
+            .script
+            .code_hash()
+            .unpack(),
+    );
+    let _ = SUDT_CODE_HASH.set(
+        script_info
+            .get("sudt")
+            .cloned()
+            .expect("get sudt script info")
             .script
             .code_hash()
             .unpack(),

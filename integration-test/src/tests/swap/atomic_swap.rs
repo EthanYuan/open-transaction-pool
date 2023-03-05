@@ -79,31 +79,28 @@ fn test_swap_udt_to_udt() {
     )
     .unwrap();
 
-    // submit otxs
+    // submit alice otxs
     let service_client = OtxPoolRpcClient::new(OTX_POOL_URI.to_string());
     let alice_otx_id = service_client
         .submit_otx(JsonBytes::from_bytes(alice_otx.as_bytes()))
         .unwrap();
-    let bob_otx_id = service_client
-        .submit_otx(JsonBytes::from_bytes(bob_otx.as_bytes()))
-        .unwrap();
 
-    // query otxs immediately
+    // query alice otxs
     let alice_otx_with_status = service_client
         .query_otx_by_id(alice_otx_id.clone())
         .unwrap()
         .unwrap();
     assert_eq!(alice_otx_with_status.status, OpenTxStatus::Pending);
-    let bob_otx_with_status = service_client
-        .query_otx_by_id(bob_otx_id.clone())
-        .unwrap()
-        .unwrap();
-    assert_eq!(bob_otx_with_status.status, OpenTxStatus::Pending);
 
-    sleep(Duration::from_secs(12));
+    // submit bob otxs
+    let bob_otx_id = service_client
+        .submit_otx(JsonBytes::from_bytes(bob_otx.as_bytes()))
+        .unwrap();
+
+    sleep(Duration::from_secs(5));
     aggregate_transactions_into_blocks().unwrap();
 
-    // query otxs after a few secs
+    // query otxs
     let alice_otx_with_status = service_client
         .query_otx_by_id(alice_otx_id)
         .unwrap()
@@ -295,6 +292,7 @@ fn build_signed_otx(
         None,
         None,
         XUDT_CODE_HASH.get().unwrap().to_owned(),
+        H256::default(),
         CKB_URI,
     )
     .unwrap();

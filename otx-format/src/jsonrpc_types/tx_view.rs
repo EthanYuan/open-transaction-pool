@@ -2,7 +2,8 @@
 
 use super::{HeaderDep, OutputData, Witness};
 use crate::constant::custom_keys::{
-    OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_INPUT_XUDT, OTX_ACCOUNTING_META_OUTPUT_CKB,
+    OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_INPUT_SUDT, OTX_ACCOUNTING_META_INPUT_XUDT,
+    OTX_ACCOUNTING_META_OUTPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_SUDT,
     OTX_ACCOUNTING_META_OUTPUT_XUDT, OTX_IDENTIFYING_META_TX_HASH,
     OTX_IDENTIFYING_META_TX_WITNESS_HASH, OTX_LOCATING_INPUT_CAPACITY,
     OTX_VERSIONING_META_OPEN_TX_VERSION,
@@ -79,6 +80,7 @@ pub fn tx_view_to_otx(
     _min_ckb_fee: Option<u64>,
     _max_ckb_fee: Option<u64>,
     xudt_code_hash: H256,
+    sudt_code_hash: H256,
     ckb_uri: &str,
 ) -> Result<OpenTransaction, OtxFormatError> {
     let mut ckb_rpc_client = CkbRpcClient::new(ckb_uri);
@@ -88,6 +90,8 @@ pub fn tx_view_to_otx(
     let mut output_ckb_capacity: u64 = 0;
     let mut xudt_input_map: HashMap<Script, u128> = HashMap::new();
     let mut xudt_output_map: HashMap<Script, u128> = HashMap::new();
+    let mut sudt_input_map: HashMap<Script, u128> = HashMap::new();
+    let mut sudt_output_map: HashMap<Script, u128> = HashMap::new();
     let core_tx_view = Transaction::from(tx_view.inner.clone()).into_view();
 
     let mut meta = vec![
@@ -159,6 +163,12 @@ pub fn tx_view_to_otx(
                         *xudt_input_map.entry(type_).or_insert(0) += amount;
                     }
                 }
+            } else if type_.code_hash == sudt_code_hash {
+                if let Some(data) = cell.data {
+                    if let Some(amount) = decode_udt_amount(data.content.as_bytes()) {
+                        *sudt_input_map.entry(type_).or_insert(0) += amount;
+                    }
+                }
             }
         }
     }
@@ -182,6 +192,10 @@ pub fn tx_view_to_otx(
                 if type_.code_hash == xudt_code_hash {
                     if let Some(amount) = decode_udt_amount(output.1.as_bytes()) {
                         *xudt_output_map.entry(type_).or_insert(0) += amount;
+                    }
+                } else if type_.code_hash == sudt_code_hash {
+                    if let Some(amount) = decode_udt_amount(output.1.as_bytes()) {
+                        *sudt_output_map.entry(type_).or_insert(0) += amount;
                     }
                 }
             }
@@ -223,7 +237,30 @@ pub fn tx_view_to_otx(
                 JsonBytes::from_bytes(Uint128::from(output_xudt_amount).pack().as_bytes()),
             ));
         });
-
+    sudt_input_map
+        .into_iter()
+        .for_each(|(type_, input_xudt_amount)| {
+            meta.push(OtxKeyPair::new(
+                OTX_ACCOUNTING_META_INPUT_SUDT.into(),
+                {
+                    let script: packed::Script = type_.into();
+                    Some(JsonBytes::from_bytes(script.as_bytes()))
+                },
+                JsonBytes::from_bytes(Uint128::from(input_xudt_amount).pack().as_bytes()),
+            ));
+        });
+    sudt_output_map
+        .into_iter()
+        .for_each(|(type_, output_xudt_amount)| {
+            meta.push(OtxKeyPair::new(
+                OTX_ACCOUNTING_META_OUTPUT_SUDT.into(),
+                {
+                    let script: packed::Script = type_.into();
+                    Some(JsonBytes::from_bytes(script.as_bytes()))
+                },
+                JsonBytes::from_bytes(Uint128::from(output_xudt_amount).pack().as_bytes()),
+            ));
+        });
     Ok(OpenTransaction::new(
         meta.into(),
         cell_deps.into(),
