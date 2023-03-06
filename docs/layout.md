@@ -7,9 +7,9 @@ open-transaction-pool
 ├── otx-pool 
 ├── utils 
 ├── src
-|   └── main.rs
+│   └── main.rs
 ├── docs
-|   └── layout.md
+│   └── layout.md
 └── integration-test
 ```
 
