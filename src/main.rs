@@ -37,6 +37,10 @@ struct Args {
     #[clap(short, long)]
     address: Address,
 
+    // Although this is a demo, the pool is a reusable component. It should not have any wallet feature for the sake of security.
+    // I would suggest adding a plugin for signing. The plugin can read address and private key from environment variables.
+    //
+    // We may have to define extra keys to make the signing plugin work. Please go ahead and give a proposal.
     #[clap(short, long)]
     key: H256,
 }
@@ -66,6 +70,7 @@ fn read_cli_args() -> Result<(Config, SignInfo)> {
     let args = Args::parse();
     let sign_info = SignInfo::new(&args.address, &args.key);
     let config: Config = parse(args.config_path)?;
+    // Global variable is a bad smell. We can avoid it by delegate all the CKB interactions in a dedicated service.
     CKB_URI
         .set(config.network_config.ckb_uri.clone())
         .map_err(|err| anyhow!(err))?;
@@ -107,6 +112,7 @@ pub fn start(config: Config, sign_info: SignInfo) -> Result<()> {
             .map_err(|err| anyhow!(err))?;
 
     // init built-in plugins
+    // Pool should load built-in plugins on demand from the config file.
     let dust_collector = DustCollector::new(
         service_provider.handler(),
         sign_info,
@@ -116,6 +122,7 @@ pub fn start(config: Config, sign_info: SignInfo) -> Result<()> {
     let atomic_swap = AtomicSwap::new(service_provider.handler(), CKB_URI.get().unwrap())
         .map_err(|err| anyhow!(err))?;
 
+    // Please design a mechanism so user is able to configure plugin options in the config file.
     // init plugins
     let plugin_manager = PluginManager::init(
         runtime_handle,
