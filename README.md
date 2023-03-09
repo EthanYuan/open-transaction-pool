@@ -27,7 +27,7 @@ The lock script used in this project is provided by the [Omni lock script](https
 - [Quick Start](./docs/quick-start.md)
 - [RPC Documentation](./otx-pool/src/rpc/README.md)
 - [Projects Layout](./docs/layout.md)
-- [Plug-in Protocol](./docs/plug-in-protocol.md)
+- [Pool and Plugin](./docs/pool-and-plugin.md)
 - Scenario Application Pattern
     - [Payment](./docs/scenario-application-pattern/payment.md)
     - [Swap](./docs/scenario-application-pattern/swap.md)
