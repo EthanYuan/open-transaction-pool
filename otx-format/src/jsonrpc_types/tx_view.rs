@@ -1,14 +1,14 @@
 #![allow(clippy::mutable_key_type)]
 
 use super::{HeaderDep, OutputData, Witness};
-use crate::constant::custom_keys::{
+use crate::constant::essential_keys::OTX_META_VERSION;
+use crate::constant::extra_keys::{
     OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_INPUT_SUDT, OTX_ACCOUNTING_META_INPUT_XUDT,
     OTX_ACCOUNTING_META_OUTPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_SUDT,
     OTX_ACCOUNTING_META_OUTPUT_XUDT, OTX_IDENTIFYING_META_TX_HASH,
     OTX_IDENTIFYING_META_TX_WITNESS_HASH, OTX_LOCATING_INPUT_CAPACITY,
     OTX_VERSIONING_META_OPEN_TX_VERSION,
 };
-use crate::constant::essential_keys::OTX_META_VERSION;
 use crate::error::OtxFormatError;
 use crate::jsonrpc_types::{OpenTransaction, OtxKeyPair, OtxMap};
 
