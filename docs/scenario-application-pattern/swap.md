@@ -17,32 +17,32 @@ Alice is willing to exchange 10 UDT-A for 10 UDT-B and pay 1 CKB as a transactio
 
 ```
 {
-	inputs: [
-		{capacity: 144, data: 12, type: xudt A, lock: Alice},
-		{capacity: 144, data: 5, type: xudt B, lock: Alice},
-		{capacity: 201, data: "", type: "", lock: Alice} 
-	],
-	outputs: [
-		{capacity: 144, data: 12-10, type: xudt A, lock: Alice},
-		{capacity: 144, data: 5+10, type: xudt B, lock: Alice},
-		{capacity: 201-1, data: "", type: "", lock: Alice} 
-	]
+    inputs: [
+        {capacity: 144, data: 12, type: xudt A, lock: Alice},
+        {capacity: 144, data: 5, type: xudt B, lock: Alice},
+        {capacity: 201, data: "", type: "", lock: Alice} 
+    ],
+    outputs: [
+        {capacity: 144, data: 12-10, type: xudt A, lock: Alice},
+        {capacity: 144, data: 5+10, type: xudt B, lock: Alice}, 
+        {capacity: 201-1, data: "", type: "", lock: Alice} 
+    ]
 }
 ```
 
 Bob is willing to exchange 10 UDT-B for 10 UDT-A and pay 1 CKB as a transaction fee.
 
-```j
+```
 {
-	inputs: [
-		{capacity: 144, data: 100, type: xudt B, lock: Bob},
-		{capacity: 144, data: 10, type: xudt A, lock: Bob},
-		{capacity: 201, data: "", type: "", lock: Bob} 
-	],
-	outputs: [
-		{capacity: 144, data: 100-10, type: xudt B, lock: Bob},
-		{capacity: 144, data: 10+10, type: xudt A, lock: Bob},
-		{capacity: 201-1, data: "", type: "", lock: Bob} 
+    inputs: [
+        {capacity: 144, data: 100, type: xudt B, lock: Bob},
+        {capacity: 144, data: 10, type: xudt A, lock: Bob},
+        {capacity: 201, data: "", type: "", lock: Bob} 
+    ],
+    outputs: [
+        {capacity: 144, data: 100-10, type: xudt B, lock: Bob},
+        {capacity: 144, data: 10+10, type: xudt A, lock: Bob},
+        {capacity: 201-1, data: "", type: "", lock: Bob} 
     ]
 }
 ```
@@ -52,22 +52,22 @@ Final Transaction:
 ```
 {
     inputs: [
-		{capacity: 144, data: 12, type: xudt A, lock: Alice},
-		{capacity: 144, data: 5, type: xudt B, lock: Alice},
-		{capacity: 201, data: "", type: "", lock: Alice},
-		{capacity: 144, data: 100, type: xudt B, lock: Bob},
-		{capacity: 144, data: 10, type: xudt A, lock: Bob},
-		{capacity: 201, data: "", type: "", lock: Bob},
-		{capacity: 200, data: "", type: "", lock: Z}
-	],
-	outputs: [
-		{capacity: 145-1, data: 12-10, type: xudt A, lock: Alice},
-		{capacity: 145, data: 5+10, type: xudt B, lock: Alice},
-		{capacity: 201-1, data: "", type: "", lock: Alice},
-		{capacity: 145-1, data: 100-10, type: xudt B, lock: Bob},
-		{capacity: 145, data: 10+10, type: xudt A, lock: Bob},
-		{capacity: 201-1, data: "", type: "", lock: Bob},
-		{capacity: 200+1, data: "", type: "", lock: Z} 
+        {capacity: 144, data: 12, type: xudt A, lock: Alice},
+        {capacity: 144, data: 5, type: xudt B, lock: Alice},
+        {capacity: 201, data: "", type: "", lock: Alice},
+        {capacity: 144, data: 100, type: xudt B, lock: Bob},
+        {capacity: 144, data: 10, type: xudt A, lock: Bob},
+        {capacity: 201, data: "", type: "", lock: Bob},
+        {capacity: 200, data: "", type: "", lock: Z}
+    ],
+    outputs: [   
+        {capacity: 145-1, data: 12-10, type: xudt A, lock: Alice},
+        {capacity: 145, data: 5+10, type: xudt B, lock: Alice},
+        {capacity: 201-1, data: "", type: "", lock: Alice},
+        {capacity: 145-1, data: 100-10, type: xudt B, lock: Bob},
+        {capacity: 145, data: 10+10, type: xudt A, lock: Bob},
+        {capacity: 201-1, data: "", type: "", lock: Bob},
+        {capacity: 200+1, data: "", type: "", lock: Z} 
     ]
 }
 ```
