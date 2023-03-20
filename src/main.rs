@@ -1,9 +1,7 @@
-use ckb_sdk::Address;
-use ckb_types::H256;
 use otx_pool::{
     built_in_plugin::{atomic_swap::AtomicSwap, DustCollector},
     cli::{parse, print_logo, Config},
-    notify::NotifyService,
+    notify::{NotifyController, NotifyService},
     plugin::host_service::HostServiceProvider,
     plugin::manager::PluginManager,
     rpc::{OtxPoolRpc, OtxPoolRpcImpl},
@@ -12,7 +10,9 @@ use utils::aggregator::SignInfo;
 use utils::const_definition::{load_code_hash, CKB_URI};
 
 use anyhow::{anyhow, Result};
-use ckb_async_runtime::new_global_runtime;
+use ckb_async_runtime::{new_global_runtime, Handle};
+use ckb_sdk::Address;
+use ckb_types::H256;
 use clap::Parser;
 use dashmap::DashMap;
 use jsonrpc_core::IoHandler;
@@ -81,7 +81,7 @@ pub fn start(config: Config, sign_info: SignInfo) -> Result<()> {
     let bind: Vec<&str> = config.network_config.listen_uri.split("//").collect();
     let bind_addr: SocketAddr = bind[1].parse()?;
 
-    // start notify service
+    // init notify service
     let notify_service = NotifyService::new();
     let notify_ctrl = notify_service.start(runtime_handle.clone());
 
@@ -101,30 +101,18 @@ pub fn start(config: Config, sign_info: SignInfo) -> Result<()> {
     let raw_otxs = Arc::new(DashMap::new());
     let sent_txs = Arc::new(DashMap::new());
 
-    // Make sure ServiceProvider start before all daemon processes
+    // make sure ServiceProvider start before all daemon processes
     let service_provider =
         HostServiceProvider::start(notify_ctrl.clone(), raw_otxs.clone(), sent_txs.clone())
             .map_err(|err| anyhow!(err))?;
 
-    // init built-in plugins
-    let dust_collector = DustCollector::new(
-        service_provider.handler(),
-        sign_info,
-        CKB_URI.get().unwrap(),
-    )
-    .map_err(|err| anyhow!(err))?;
-    let atomic_swap = AtomicSwap::new(service_provider.handler(), CKB_URI.get().unwrap())
-        .map_err(|err| anyhow!(err))?;
-
     // init plugins
-    let plugin_manager = PluginManager::init(
+    let plugin_manager = init_plugins(
+        service_provider,
+        sign_info,
         runtime_handle,
         notify_ctrl.clone(),
-        service_provider,
-        Path::new("./free-space"),
-        vec![Box::new(dust_collector), Box::new(atomic_swap)],
-    )
-    .unwrap();
+    )?;
 
     // display all names of plugins
     let plugins = plugin_manager.plugin_configs();
@@ -167,4 +155,37 @@ pub fn start(config: Config, sign_info: SignInfo) -> Result<()> {
     log::info!("Closing!");
 
     Ok(())
+}
+
+fn init_plugins(
+    service_provider: HostServiceProvider,
+    sign_info: SignInfo,
+    runtime_handle: Handle,
+    notify_ctrl: NotifyController,
+) -> Result<PluginManager> {
+    // create plugin manager
+    let mut plugin_manager =
+        PluginManager::new(Path::new("./free-space"), service_provider.handler());
+
+    // init built-in plugins
+    let dust_collector = DustCollector::new(
+        service_provider.handler(),
+        sign_info,
+        CKB_URI.get().unwrap(),
+    )
+    .map_err(|err| anyhow!(err))?;
+    plugin_manager.register_built_in_plugins(Box::new(dust_collector));
+    let atomic_swap = AtomicSwap::new(service_provider.handler(), CKB_URI.get().unwrap())
+        .map_err(|err| anyhow!(err))?;
+    plugin_manager.register_built_in_plugins(Box::new(atomic_swap));
+
+    // init third-party plugins
+    plugin_manager
+        .load_third_party_plugins(runtime_handle.clone(), service_provider)
+        .map_err(|e| anyhow!(e))?;
+
+    // subscribe events
+    plugin_manager.subscribe_events(notify_ctrl, runtime_handle);
+
+    Ok(plugin_manager)
 }
