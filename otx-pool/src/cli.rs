@@ -1,3 +1,5 @@
+use crate::config::{NetworkConfig, ScriptConfig};
+
 use utils::const_definition::ScriptInfo;
 
 use ansi_term::Colour::Green;
@@ -32,20 +34,6 @@ impl Config {
             })
             .collect()
     }
-}
-
-#[derive(Deserialize, Default, Clone, Debug)]
-pub struct NetworkConfig {
-    pub network_type: String,
-    pub ckb_uri: String,
-    pub listen_uri: String,
-}
-
-#[derive(Deserialize, Default, Clone, Debug)]
-pub struct ScriptConfig {
-    pub script_name: String,
-    pub script: String,
-    pub cell_dep: String,
 }
 
 pub fn parse<T: DeserializeOwned>(name: impl AsRef<Path>) -> Result<T> {

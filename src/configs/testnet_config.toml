@@ -4,6 +4,21 @@ network_type = "ckb_testnet"
 ckb_uri = "http://127.0.0.1:8114"
 listen_uri = "http://127.0.0.1:8118"
 
+
+[built_in_plugin_dust_collector]
+enabled = true
+
+
+[built_in_plugin_atomic_swap]
+enabled = true
+
+
+[built_in_plugin_signer]
+enabled = true
+key = "PRIVKEY"
+default_address = "DEFAUT_ADDRESS"
+
+
 [[scripts]]
 script_name = "secp256k1_blake160"
 script = '''
