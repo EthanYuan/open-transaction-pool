@@ -6,9 +6,10 @@ use crate::const_definition::CURRENT_OTX_POOL_SERVICE_PROCESS;
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::{ckb::generate_blocks, ckb::unlock_frozen_capacity_in_genesis};
 
-use otx_pool::cli::{parse, Config};
+use otx_pool::config::Config;
 use utils::client::ckb_client::CkbRpcClient;
 use utils::client::service_client::OtxPoolRpcClient;
+use utils::config::parse;
 use utils::const_definition::load_code_hash;
 use utils::const_definition::{
     ANYONE_CAN_PAY_CODE_HASH, SECP256K1_CODE_HASH as SIGHASH_TYPE_HASH, XUDT_CODE_HASH,
@@ -24,6 +25,7 @@ use anyhow::Result;
 use ckb_sdk::Address;
 use ckb_types::H256;
 
+use std::env;
 use std::panic;
 use std::process::Child;
 use std::thread::sleep;
@@ -141,6 +143,9 @@ pub(crate) fn start_otx_pool(address: Address, pk: H256) {
         child.kill().unwrap();
     }
 
+    env::set_var("PRIVKEY", pk.to_string());
+    env::set_var("DEFAUT_ADDRESS", address.to_string());
+
     let service = run_command_spawn(
         "cargo",
         vec![
@@ -150,10 +155,6 @@ pub(crate) fn start_otx_pool(address: Address, pk: H256) {
             "--",
             "--config-path",
             "dev_chain/devnet_config.toml",
-            "--address",
-            &address.to_string(),
-            "--key",
-            &pk.to_string(),
         ],
     );
     let service = if let Ok(service) = service {

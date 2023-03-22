@@ -1558,7 +1558,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "toml",
  "utils",
 ]
 
@@ -2357,6 +2356,7 @@ dependencies = [
  "secp256k1 0.24.3",
  "serde",
  "serde_json",
+ "toml",
 ]
 
 [[package]]

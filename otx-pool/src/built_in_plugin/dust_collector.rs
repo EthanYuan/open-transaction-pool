@@ -1,3 +1,4 @@
+use crate::config::built_in_plugins::DustCollectorConfig;
 use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
@@ -8,15 +9,17 @@ use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
 use utils::aggregator::{AddOutputArgs, OtxAggregator, SignInfo};
 
+use anyhow::{anyhow, Result};
 use ckb_sdk::rpc::ckb_indexer::{Order, ScriptType, SearchKey};
 use ckb_sdk::rpc::IndexerRpcClient;
-use ckb_sdk_open_tx::types::HumanCapacity;
+use ckb_sdk_open_tx::types::{Address, HumanCapacity};
 use ckb_types::core::service::Request;
 use ckb_types::packed::Script;
 use ckb_types::{packed, H256};
 use crossbeam_channel::{bounded, select, unbounded};
 use dashmap::DashMap;
 
+use std::env;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
@@ -30,7 +33,7 @@ pub const DEFAULT_FEE: usize = 1000_0000;
 struct Context {
     plugin_name: String,
     otx_set: Arc<DashMap<H256, OpenTransaction>>,
-    secp_sign_info: SignInfo,
+    sign_info: SignInfo,
     ckb_uri: String,
     service_handler: ServiceHandler,
 }
@@ -38,14 +41,14 @@ struct Context {
 impl Context {
     fn new(
         plugin_name: &str,
-        secp_sign_info: SignInfo,
+        sign_info: SignInfo,
         ckb_uri: &str,
         service_handler: ServiceHandler,
     ) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
             otx_set: Arc::new(DashMap::new()),
-            secp_sign_info,
+            sign_info,
             ckb_uri: ckb_uri.to_owned(),
             service_handler,
         }
@@ -90,9 +93,9 @@ impl Plugin for DustCollector {
 impl DustCollector {
     pub fn new(
         service_handler: ServiceHandler,
-        sign_info: SignInfo,
+        config: DustCollectorConfig,
         ckb_uri: &str,
-    ) -> Result<DustCollector, String> {
+    ) -> Result<DustCollector> {
         let name = "dust collector";
         let state = PluginState::new(PathBuf::default(), true, true);
         let info = PluginInfo::new(
@@ -100,8 +103,17 @@ impl DustCollector {
             "Collect micropayment otx and aggregate them into ckb tx.",
             "1.0",
         );
-        let (msg_handler, request_handler, thread) =
-            DustCollector::start_process(Context::new(name, sign_info, ckb_uri, service_handler))?;
+        let key = env::var(&config.key)?.parse::<H256>()?;
+        let address = env::var(&config.default_address)?
+            .parse::<Address>()
+            .map_err(|e| anyhow!(e))?;
+
+        let (msg_handler, request_handler, thread) = DustCollector::start_process(Context::new(
+            name,
+            SignInfo::new(&address, &key),
+            ckb_uri,
+            service_handler,
+        ))?;
         Ok(DustCollector {
             state,
             info,
@@ -113,9 +125,7 @@ impl DustCollector {
 }
 
 impl DustCollector {
-    fn start_process(
-        context: Context,
-    ) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>), String> {
+    fn start_process(context: Context) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>)> {
         // the host request channel receives request from host to plugin
         let (host_request_sender, host_request_receiver) = bounded(1);
         // the channel sends notifications or responses from the host to plugin
@@ -124,7 +134,7 @@ impl DustCollector {
         let plugin_name = context.plugin_name.to_owned();
         // this thread processes information from host to plugin
         let thread = thread::spawn(move || {
-            let do_select = || -> Result<bool, String> {
+            let do_select = || -> Result<bool> {
                 select! {
                     // request from host to plugin
                     recv(host_request_receiver) -> msg => {
@@ -133,10 +143,10 @@ impl DustCollector {
                                 log::debug!("{} receives request arguments: {:?}", context.plugin_name, arguments);
                                 // handle
                                 let response = (0, MessageFromPlugin::Ok);
-                                responder.send(response).map_err(|err| err.to_string())?;
+                                responder.send(response)?;
                                 Ok(false)
                             }
-                            Err(err) => Err(err.to_string())
+                            Err(err) => Err(anyhow!(err.to_string()))
                         }
                     }
                     // repsonse/notification from host to plugin
@@ -160,7 +170,7 @@ impl DustCollector {
                                 }
                                 Ok(false)
                             }
-                            Err(err) => Err(err.to_string())
+                            Err(err) => Err(anyhow!(err.to_string()))
                         }
                     }
                 }
@@ -248,7 +258,7 @@ fn on_new_intervel(context: Context, elapsed: u64) {
 
     // find a cell to receive assets
     let mut indexer = IndexerRpcClient::new(&context.ckb_uri);
-    let lock_script: packed::Script = context.secp_sign_info.secp_address().into();
+    let lock_script: packed::Script = context.sign_info.secp_address().into();
     let search_key = SearchKey {
         script: lock_script.into(),
         script_type: ScriptType::Lock,
@@ -276,8 +286,8 @@ fn on_new_intervel(context: Context, elapsed: u64) {
         return;
     };
     let aggregator = OtxAggregator::new(
-        context.secp_sign_info.secp_address(),
-        context.secp_sign_info.privkey(),
+        context.sign_info.secp_address(),
+        context.sign_info.privkey(),
         &context.ckb_uri,
     );
     let output_capacity =

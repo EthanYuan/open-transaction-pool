@@ -55,8 +55,8 @@ impl PluginManager {
 
     pub fn load_third_party_plugins(
         &mut self,
-        runtime_handle: RuntimeHandle,
-        service_provider: HostServiceProvider,
+        runtime_handle: &RuntimeHandle,
+        service_provider: &HostServiceProvider,
     ) -> Result<(), String> {
         // load plugins
         log::info!("load third-party plugins");
@@ -82,7 +82,7 @@ impl PluginManager {
         Ok(())
     }
 
-    pub fn subscribe_events(&mut self, notify_ctrl: NotifyController, runtime_handle: Handle) {
+    pub fn subscribe_events(&mut self, notify_ctrl: &NotifyController, runtime_handle: &Handle) {
         let plugin_msg_handlers: Vec<(String, MsgHandler)> = self
             ._plugins
             .iter()

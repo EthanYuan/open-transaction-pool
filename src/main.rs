@@ -1,18 +1,17 @@
 use otx_pool::{
     built_in_plugin::{atomic_swap::AtomicSwap, DustCollector},
-    cli::{parse, print_logo, Config},
+    cli::print_logo,
+    config::Config,
     notify::{NotifyController, NotifyService},
     plugin::host_service::HostServiceProvider,
     plugin::manager::PluginManager,
     rpc::{OtxPoolRpc, OtxPoolRpcImpl},
 };
-use utils::aggregator::SignInfo;
+use utils::config::parse;
 use utils::const_definition::{load_code_hash, CKB_URI};
 
 use anyhow::{anyhow, Result};
 use ckb_async_runtime::{new_global_runtime, Handle};
-use ckb_sdk::Address;
-use ckb_types::H256;
 use clap::Parser;
 use dashmap::DashMap;
 use jsonrpc_core::IoHandler;
@@ -33,12 +32,6 @@ pub const PLUGINS_DIRNAME: &str = "plugins";
 struct Args {
     #[clap(short, long)]
     config_path: String,
-
-    #[clap(short, long)]
-    address: Address,
-
-    #[clap(short, long)]
-    key: H256,
 }
 
 fn main() -> Result<()> {
@@ -57,23 +50,23 @@ fn main() -> Result<()> {
         env_logger::init();
     }
 
-    let (config, sign_info) = read_cli_args()?;
+    let config = read_cli_args()?;
 
-    start(config, sign_info)
+    start(config)
 }
 
-fn read_cli_args() -> Result<(Config, SignInfo)> {
+fn read_cli_args() -> Result<Config> {
     let args = Args::parse();
-    let sign_info = SignInfo::new(&args.address, &args.key);
     let config: Config = parse(args.config_path)?;
+
     CKB_URI
         .set(config.network_config.ckb_uri.clone())
         .map_err(|err| anyhow!(err))?;
     load_code_hash(config.to_script_map());
-    Ok((config, sign_info))
+    Ok(config)
 }
 
-pub fn start(config: Config, sign_info: SignInfo) -> Result<()> {
+pub fn start(config: Config) -> Result<()> {
     // runtime handle
     let (runtime_handle, runtime) = new_global_runtime();
 
@@ -107,12 +100,7 @@ pub fn start(config: Config, sign_info: SignInfo) -> Result<()> {
             .map_err(|err| anyhow!(err))?;
 
     // init plugins
-    let plugin_manager = init_plugins(
-        service_provider,
-        sign_info,
-        runtime_handle,
-        notify_ctrl.clone(),
-    )?;
+    let plugin_manager = init_plugins(&service_provider, &config, &runtime_handle, &notify_ctrl)?;
 
     // display all names of plugins
     let plugins = plugin_manager.plugin_configs();
@@ -158,10 +146,10 @@ pub fn start(config: Config, sign_info: SignInfo) -> Result<()> {
 }
 
 fn init_plugins(
-    service_provider: HostServiceProvider,
-    sign_info: SignInfo,
-    runtime_handle: Handle,
-    notify_ctrl: NotifyController,
+    service_provider: &HostServiceProvider,
+    config: &Config,
+    runtime_handle: &Handle,
+    notify_ctrl: &NotifyController,
 ) -> Result<PluginManager> {
     // create plugin manager
     let mut plugin_manager =
@@ -170,18 +158,20 @@ fn init_plugins(
     // init built-in plugins
     let dust_collector = DustCollector::new(
         service_provider.handler(),
-        sign_info,
+        config.built_in_plugin_dust_collector.clone(),
         CKB_URI.get().unwrap(),
     )
     .map_err(|err| anyhow!(err))?;
     plugin_manager.register_built_in_plugins(Box::new(dust_collector));
+
+    // init built-in plugins
     let atomic_swap = AtomicSwap::new(service_provider.handler(), CKB_URI.get().unwrap())
         .map_err(|err| anyhow!(err))?;
     plugin_manager.register_built_in_plugins(Box::new(atomic_swap));
 
     // init third-party plugins
     plugin_manager
-        .load_third_party_plugins(runtime_handle.clone(), service_provider)
+        .load_third_party_plugins(runtime_handle, service_provider)
         .map_err(|e| anyhow!(e))?;
 
     // subscribe events
