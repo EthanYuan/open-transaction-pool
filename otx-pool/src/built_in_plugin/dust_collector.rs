@@ -1,4 +1,3 @@
-use crate::config::built_in_plugins::DustCollectorConfig;
 use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
@@ -8,6 +7,7 @@ use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
 use utils::aggregator::{AddOutputArgs, OtxAggregator, SignInfo};
+use utils::config::built_in_plugins::DustCollectorConfig;
 
 use anyhow::{anyhow, Result};
 use ckb_sdk::rpc::ckb_indexer::{Order, ScriptType, SearchKey};

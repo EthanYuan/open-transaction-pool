@@ -72,7 +72,6 @@ pub fn load_code_hash(script_info: HashMap<String, ScriptInfo>) {
             .code_hash()
             .unpack(),
     );
-
     let _ = SECP_DATA_CELL_DEP_TX_HASH.set(
         script_info
             .get("dao")

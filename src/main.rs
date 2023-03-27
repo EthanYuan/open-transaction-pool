@@ -1,13 +1,13 @@
 use otx_pool::{
     built_in_plugin::{atomic_swap::AtomicSwap, DustCollector},
     cli::print_logo,
-    config::Config,
     notify::{NotifyController, NotifyService},
     plugin::host_service::HostServiceProvider,
     plugin::manager::PluginManager,
     rpc::{OtxPoolRpc, OtxPoolRpcImpl},
 };
 use utils::config::parse;
+use utils::config::ConfigFile;
 use utils::const_definition::{load_code_hash, CKB_URI};
 
 use anyhow::{anyhow, Result};
@@ -55,18 +55,18 @@ fn main() -> Result<()> {
     start(config)
 }
 
-fn read_cli_args() -> Result<Config> {
+fn read_cli_args() -> Result<ConfigFile> {
     let args = Args::parse();
-    let config: Config = parse(args.config_path)?;
+    let config: ConfigFile = parse(args.config_path)?;
 
     CKB_URI
-        .set(config.network_config.ckb_uri.clone())
+        .set(config.ckb_config.ckb_uri.clone())
         .map_err(|err| anyhow!(err))?;
     load_code_hash(config.to_script_map());
     Ok(config)
 }
 
-pub fn start(config: Config) -> Result<()> {
+pub fn start(config: ConfigFile) -> Result<()> {
     // runtime handle
     let (runtime_handle, runtime) = new_global_runtime();
 
@@ -147,7 +147,7 @@ pub fn start(config: Config) -> Result<()> {
 
 fn init_plugins(
     service_provider: &HostServiceProvider,
-    config: &Config,
+    config: &ConfigFile,
     runtime_handle: &Handle,
     notify_ctrl: &NotifyController,
 ) -> Result<PluginManager> {

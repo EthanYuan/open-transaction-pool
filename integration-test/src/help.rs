@@ -6,10 +6,10 @@ use crate::const_definition::CURRENT_OTX_POOL_SERVICE_PROCESS;
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::{ckb::generate_blocks, ckb::unlock_frozen_capacity_in_genesis};
 
-use otx_pool::config::Config;
 use utils::client::ckb_client::CkbRpcClient;
 use utils::client::service_client::OtxPoolRpcClient;
 use utils::config::parse;
+use utils::config::ConfigFile;
 use utils::const_definition::load_code_hash;
 use utils::const_definition::{
     ANYONE_CAN_PAY_CODE_HASH, SECP256K1_CODE_HASH as SIGHASH_TYPE_HASH, XUDT_CODE_HASH,
@@ -34,7 +34,7 @@ use std::time::Duration;
 pub fn setup() -> Vec<Child> {
     println!("Setup test environment...");
 
-    let config: Result<Config> = parse("dev_chain/devnet_config.toml");
+    let config: Result<ConfigFile> = parse("dev_chain/devnet_config.toml");
     if let Ok(config) = config {
         load_code_hash(config.to_script_map());
     } else {
