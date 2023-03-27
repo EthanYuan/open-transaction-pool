@@ -1,6 +1,6 @@
 use super::const_definition::{
     CHEQUE_DEVNET_TYPE_HASH, CKB_URI, DAO_DEVNET_TYPE_HASH, MERCURY_URI, OTX_POOL_URI,
-    PW_LOCK_DEVNET_TYPE_HASH, RPC_TRY_COUNT, RPC_TRY_INTERVAL_SECS,
+    PW_LOCK_DEVNET_TYPE_HASH, RPC_TRY_COUNT, RPC_TRY_INTERVAL_SECS, SCRIPT_CONFIG,
 };
 use crate::const_definition::CURRENT_OTX_POOL_SERVICE_PROCESS;
 use crate::utils::client::mercury_client::MercuryRpcClient;
@@ -8,12 +8,8 @@ use crate::utils::instruction::{ckb::generate_blocks, ckb::unlock_frozen_capacit
 
 use utils::client::ckb_client::CkbRpcClient;
 use utils::client::service_client::OtxPoolRpcClient;
-use utils::config::parse;
-use utils::config::ConfigFile;
+use utils::config::{parse, AppConfig, ConfigFile};
 use utils::const_definition::load_code_hash;
-use utils::const_definition::{
-    ANYONE_CAN_PAY_CODE_HASH, SECP256K1_CODE_HASH as SIGHASH_TYPE_HASH, XUDT_CODE_HASH,
-};
 use utils::instruction::command::run_command_spawn;
 
 use common::lazy::{
@@ -34,12 +30,14 @@ use std::time::Duration;
 pub fn setup() -> Vec<Child> {
     println!("Setup test environment...");
 
-    let config: Result<ConfigFile> = parse("dev_chain/devnet_config.toml");
-    if let Ok(config) = config {
-        load_code_hash(config.to_script_map());
+    let app_config: Result<ConfigFile> = parse("dev_chain/devnet_config.toml");
+    let app_config: AppConfig = if let Ok(app_config) = app_config {
+        load_code_hash(app_config.to_script_map());
+        app_config.into()
     } else {
         panic!("load code hash failed");
-    }
+    };
+    SCRIPT_CONFIG.set(app_config.get_script_config()).unwrap();
 
     let ckb = start_ckb_node();
     let (ckb, mercury) = start_mercury(ckb);
@@ -111,19 +109,13 @@ pub(crate) fn start_mercury(ckb: Child) -> (Child, Child) {
 
             // init built-in script code hash
             let _ = SECP256K1_CODE_HASH.set(
-                SIGHASH_TYPE_HASH
+                SCRIPT_CONFIG
                     .get()
-                    .expect("get secp code hash")
-                    .to_owned(),
+                    .unwrap()
+                    .get_secp256k1_blake160_sighash_all_code_hash(),
             );
-            let _ =
-                SUDT_CODE_HASH.set(XUDT_CODE_HASH.get().expect("get xudt code hash").to_owned());
-            let _ = ACP_CODE_HASH.set(
-                ANYONE_CAN_PAY_CODE_HASH
-                    .get()
-                    .expect("get anyone can pay code hash")
-                    .to_owned(),
-            );
+            let _ = SUDT_CODE_HASH.set(SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash());
+            let _ = ACP_CODE_HASH.set(SCRIPT_CONFIG.get().unwrap().get_anyone_can_pay_code_hash());
             let _ = CHEQUE_CODE_HASH.set(CHEQUE_DEVNET_TYPE_HASH);
             let _ = DAO_CODE_HASH.set(DAO_DEVNET_TYPE_HASH);
             let _ = PW_LOCK_CODE_HASH.set(PW_LOCK_DEVNET_TYPE_HASH);

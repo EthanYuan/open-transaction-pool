@@ -1,3 +1,5 @@
+use utils::config::ScriptConfig;
+
 use ckb_sdk::Address;
 use ckb_types::{h256, H256};
 use lazy_static::lazy_static;
@@ -40,3 +42,5 @@ pub static UDT_2_HOLDER_PK: OnceCell<H256> = OnceCell::new();
 lazy_static! {
     pub static ref CURRENT_OTX_POOL_SERVICE_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
 }
+
+pub static SCRIPT_CONFIG: OnceCell<ScriptConfig> = OnceCell::new();

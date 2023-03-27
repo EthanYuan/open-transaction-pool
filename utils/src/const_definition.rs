@@ -4,7 +4,6 @@ use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 
 // script code hash
-pub static SECP256K1_CODE_HASH: OnceCell<H256> = OnceCell::new();
 pub static XUDT_CODE_HASH: OnceCell<H256> = OnceCell::new();
 pub static SUDT_CODE_HASH: OnceCell<H256> = OnceCell::new();
 pub static OMNI_CODE_HASH: OnceCell<H256> = OnceCell::new();
@@ -25,15 +24,6 @@ pub struct ScriptInfo {
 }
 
 pub fn load_code_hash(script_info: HashMap<String, ScriptInfo>) {
-    let _ = SECP256K1_CODE_HASH.set(
-        script_info
-            .get("secp256k1_blake160")
-            .cloned()
-            .expect("get secp256k1 code hash")
-            .script
-            .code_hash()
-            .unpack(),
-    );
     let _ = XUDT_CODE_HASH.set(
         script_info
             .get("xudt_rce")

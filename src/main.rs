@@ -58,6 +58,7 @@ fn read_cli_args() -> Result<AppConfig> {
     let args = Args::parse();
     let config: ConfigFile = parse(args.config_path)?;
 
+    // TODO: remove this after refactor
     load_code_hash(config.to_script_map());
 
     Ok(config.into())
