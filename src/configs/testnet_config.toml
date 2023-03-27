@@ -17,6 +17,8 @@ enabled = true
 
 [built_in_plugin_signer]
 enabled = true
+key = "PRIVKEY"
+default_address = "DEFAUT_ADDRESS"
 
 
 [[scripts]]

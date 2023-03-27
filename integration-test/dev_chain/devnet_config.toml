@@ -17,7 +17,8 @@ enabled = true
 
 [built_in_plugin_signer]
 enabled = true
-
+key = "PRIVKEY"
+default_address = "DEFAUT_ADDRESS"
 
 [[scripts]]
 script_name = "secp256k1_blake160"

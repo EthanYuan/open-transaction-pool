@@ -94,7 +94,7 @@ pub fn start(config: Config) -> Result<()> {
     let raw_otxs = Arc::new(DashMap::new());
     let sent_txs = Arc::new(DashMap::new());
 
-    // make sure ServiceProvider start before all daemon processes
+    // init host service
     let service_provider =
         HostServiceProvider::start(notify_ctrl.clone(), raw_otxs.clone(), sent_txs.clone())
             .map_err(|err| anyhow!(err))?;
@@ -156,18 +156,22 @@ fn init_plugins(
         PluginManager::new(Path::new("./free-space"), service_provider.handler());
 
     // init built-in plugins
-    let dust_collector = DustCollector::new(
-        service_provider.handler(),
-        config.built_in_plugin_dust_collector.clone(),
-        CKB_URI.get().unwrap(),
-    )
-    .map_err(|err| anyhow!(err))?;
-    plugin_manager.register_built_in_plugins(Box::new(dust_collector));
+    if config.built_in_plugin_dust_collector.enabled {
+        let dust_collector = DustCollector::new(
+            service_provider.handler(),
+            config.built_in_plugin_dust_collector.clone(),
+            CKB_URI.get().unwrap(),
+        )
+        .map_err(|err| anyhow!(err))?;
+        plugin_manager.register_built_in_plugins(Box::new(dust_collector));
+    }
 
     // init built-in plugins
-    let atomic_swap = AtomicSwap::new(service_provider.handler(), CKB_URI.get().unwrap())
-        .map_err(|err| anyhow!(err))?;
-    plugin_manager.register_built_in_plugins(Box::new(atomic_swap));
+    if config.built_in_plugin_atomic_swap.enabled {
+        let atomic_swap = AtomicSwap::new(service_provider.handler(), CKB_URI.get().unwrap())
+            .map_err(|err| anyhow!(err))?;
+        plugin_manager.register_built_in_plugins(Box::new(atomic_swap));
+    }
 
     // init third-party plugins
     plugin_manager

@@ -5,7 +5,7 @@ use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin};
 
 use ckb_types::core::service::Request;
 use ckb_types::H256;
-use crossbeam_channel::{bounded, Sender};
+use crossbeam_channel::{bounded, select, Sender};
 use dashmap::DashMap;
 
 use std::sync::Arc;
@@ -16,7 +16,8 @@ pub type ServiceHandler = Sender<Request<MessageFromPlugin, MessageFromHost>>;
 #[derive(Debug)]
 pub struct HostServiceProvider {
     handler: ServiceHandler,
-    _thread: JoinHandle<()>,
+    stop_handler: Sender<()>,
+    _thread: Option<JoinHandle<()>>,
 }
 
 impl HostServiceProvider {
@@ -26,40 +27,58 @@ impl HostServiceProvider {
         sent_txs: Arc<DashMap<H256, Vec<H256>>>,
     ) -> Result<HostServiceProvider, String> {
         let (sender, receiver) = bounded(5);
+        let (stop_sender, stop_receiver) = bounded(1);
 
         let handle = thread::spawn(move || loop {
-            match receiver.recv() {
-                Err(err) => {
-                    log::warn!("ServiceProvider receive request error: {:?}", err);
-                    break;
+            select! {
+                recv(receiver) -> request => {
+                    match request {
+                        Err(err) => {
+                            log::warn!("ServiceProvider receive request error: {:?}", err);
+                            break;
+                        }
+                        Ok(Request {
+                            responder,
+                            arguments,
+                        }) => {
+                            log::debug!("ServiceProvider received a request: {:?}", arguments);
+                            match arguments {
+                                MessageFromPlugin::DiscardOtx(_id) => {
+                                    let _ = responder.send(MessageFromHost::Ok);
+                                }
+                                MessageFromPlugin::SendCkbTx((tx_hash, otx_hashes)) => {
+                                    Self::on_send_ckb_tx(
+                                        tx_hash,
+                                        otx_hashes,
+                                        notify_ctrl.clone(),
+                                        raw_otxs.clone(),
+                                        sent_txs.clone(),
+                                    );
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
+                    }
                 }
-                Ok(Request {
-                    responder,
-                    arguments,
-                }) => {
-                    log::debug!("ServiceProvider received a request: {:?}", arguments);
-                    match arguments {
-                        MessageFromPlugin::DiscardOtx(_id) => {
-                            let _ = responder.send(MessageFromHost::Ok);
+                recv(stop_receiver) -> request => {
+                    match request {
+                        Err(err) => {
+                            log::warn!("ServiceProvider receive stop request error: {:?}", err);
+                            break;
                         }
-                        MessageFromPlugin::SendCkbTx((tx_hash, otx_hashes)) => {
-                            Self::on_send_ckb_tx(
-                                tx_hash,
-                                otx_hashes,
-                                notify_ctrl.clone(),
-                                raw_otxs.clone(),
-                                sent_txs.clone(),
-                            );
+                        Ok(_) => {
+                            log::info!("ServiceProvider received stop signal");
+                            break;
                         }
-                        _ => unreachable!(),
                     }
                 }
             }
         });
 
         Ok(HostServiceProvider {
-            _thread: handle,
             handler: sender,
+            stop_handler: stop_sender,
+            _thread: Some(handle),
         })
     }
 
@@ -88,5 +107,12 @@ impl HostServiceProvider {
         }
         notify_ctrl.notify_commit_open_tx(otx_hashes.clone());
         sent_txs.insert(tx_hash, otx_hashes);
+    }
+}
+
+impl Drop for HostServiceProvider {
+    fn drop(&mut self) {
+        log::info!("HostServiceProvider drop");
+        let _ = self.stop_handler.try_send(());
     }
 }
