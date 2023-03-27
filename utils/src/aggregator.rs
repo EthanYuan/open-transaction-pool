@@ -1,6 +1,7 @@
 use super::build_tx::{add_input, add_output, sighash_sign};
-use super::const_definition::{CKB_URI, OMNI_OPENTX_CELL_DEP_TX_HASH, OMNI_OPENTX_CELL_DEP_TX_IDX};
+use super::const_definition::{OMNI_OPENTX_CELL_DEP_TX_HASH, OMNI_OPENTX_CELL_DEP_TX_IDX};
 use super::lock::omni::{build_cell_dep, TxInfo};
+use crate::config::CkbConfig;
 
 use anyhow::{anyhow, Result};
 use ckb_jsonrpc_types as json_types;
@@ -26,19 +27,28 @@ use std::path::PathBuf;
 pub struct OtxAggregator {
     pub signer: SignInfo,
     pub committer: Committer,
+    ckb_config: CkbConfig,
 }
 
 impl OtxAggregator {
-    pub fn new(address: &Address, key: &H256, ckb_uri: &str) -> Self {
-        let signer = SignInfo::new(address, key);
-        let committer = Committer::new(ckb_uri);
-        OtxAggregator { signer, committer }
+    pub fn new(address: &Address, key: &H256, ckb_config: CkbConfig) -> Self {
+        let signer = SignInfo::new(address, key, ckb_config.clone());
+        let committer = Committer::new(ckb_config.get_ckb_uri());
+        OtxAggregator {
+            signer,
+            committer,
+            ckb_config,
+        }
     }
 
-    pub fn try_new(address: Address, key_path: PathBuf, ckb_uri: &str) -> Result<Self> {
-        let signer = SignInfo::try_new(address, key_path)?;
-        let committer = Committer::new(ckb_uri);
-        Ok(OtxAggregator { signer, committer })
+    pub fn try_new(address: Address, key_path: PathBuf, ckb_config: CkbConfig) -> Result<Self> {
+        let signer = SignInfo::try_new(address, key_path, ckb_config.clone())?;
+        let committer = Committer::new(ckb_config.get_ckb_uri());
+        Ok(OtxAggregator {
+            signer,
+            committer,
+            ckb_config,
+        })
     }
 
     pub fn add_input_and_output(
@@ -52,6 +62,7 @@ impl OtxAggregator {
             open_tx,
             input.tx_hash,
             std::convert::Into::<u32>::into(input.index) as usize,
+            &self.ckb_config,
         )?;
         add_output(
             tx_info,
@@ -62,7 +73,10 @@ impl OtxAggregator {
         )
     }
 
-    pub fn merge_otxs(otx_list: Vec<OpenTransaction>) -> Result<OpenTransaction> {
+    pub fn merge_otxs(
+        ckb_config: &CkbConfig,
+        otx_list: Vec<OpenTransaction>,
+    ) -> Result<OpenTransaction> {
         let mut txs = vec![];
         for otx in otx_list {
             let tx = otx_to_tx_view(otx).map_err(|err| anyhow!(err.to_string()))?;
@@ -70,8 +84,7 @@ impl OtxAggregator {
             txs.push(tx);
         }
         if !txs.is_empty() {
-            let ckb_uri = CKB_URI.get().ok_or_else(|| anyhow!("CKB_URI is none"))?;
-            let mut ckb_client = CkbRpcClient::new(ckb_uri);
+            let mut ckb_client = CkbRpcClient::new(ckb_config.get_ckb_uri());
             let cell = build_cell_dep(
                 &mut ckb_client,
                 OMNI_OPENTX_CELL_DEP_TX_HASH
@@ -82,7 +95,8 @@ impl OtxAggregator {
                     .expect("get omni cell dep tx id")
                     .to_owned(),
             )?;
-            let tx_dep_provider = DefaultTransactionDependencyProvider::new(ckb_uri, 10);
+            let tx_dep_provider =
+                DefaultTransactionDependencyProvider::new(ckb_config.get_ckb_uri(), 10);
             let tx = assemble_new_tx(txs, &tx_dep_provider, cell.type_hash.pack())?;
             let tx = json_types::TransactionView::from(tx);
 
@@ -147,19 +161,25 @@ impl Committer {
 pub struct SignInfo {
     secp_address: Address,
     pk: H256,
+    ckb_config: CkbConfig,
 }
 
 impl SignInfo {
-    pub fn new(secp_address: &Address, pk: &H256) -> Self {
+    pub fn new(secp_address: &Address, pk: &H256, ckb_config: CkbConfig) -> Self {
         SignInfo {
             secp_address: secp_address.clone(),
             pk: pk.clone(),
+            ckb_config,
         }
     }
 
-    pub fn try_new(secp_address: Address, pk_file: PathBuf) -> Result<Self> {
+    pub fn try_new(secp_address: Address, pk_file: PathBuf, ckb_config: CkbConfig) -> Result<Self> {
         let pk = parse_key(pk_file)?;
-        Ok(SignInfo { secp_address, pk })
+        Ok(SignInfo {
+            secp_address,
+            pk,
+            ckb_config,
+        })
     }
 
     pub fn secp_address(&self) -> &Address {
@@ -172,13 +192,13 @@ impl SignInfo {
 
     pub fn sign_ckb_tx(&self, tx_view: TransactionView) -> Result<json_types::TransactionView> {
         let tx = Transaction::from(tx_view.inner).into_view();
-        let (tx, _) = sighash_sign(&[self.pk.clone()], tx)?;
+        let (tx, _) = sighash_sign(&[self.pk.clone()], tx, &self.ckb_config)?;
         Ok(json_types::TransactionView::from(tx))
     }
 
     pub fn sign_tx(&self, tx_info: TxInfo) -> Result<json_types::TransactionView> {
         let tx = Transaction::from(tx_info.tx.inner).into_view();
-        let (tx, _) = sighash_sign(&[self.pk.clone()], tx)?;
+        let (tx, _) = sighash_sign(&[self.pk.clone()], tx, &self.ckb_config)?;
         let witness_args =
             WitnessArgs::from_slice(tx.witnesses().get(0).unwrap().raw_data().as_ref())?;
         let lock_field = witness_args.lock().to_opt().unwrap().raw_data();

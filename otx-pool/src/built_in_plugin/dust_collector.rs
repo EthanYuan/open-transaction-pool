@@ -8,6 +8,7 @@ use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
 use utils::aggregator::{AddOutputArgs, OtxAggregator, SignInfo};
 use utils::config::built_in_plugins::DustCollectorConfig;
+use utils::config::CkbConfig;
 
 use anyhow::{anyhow, Result};
 use ckb_sdk::rpc::ckb_indexer::{Order, ScriptType, SearchKey};
@@ -34,7 +35,7 @@ struct Context {
     plugin_name: String,
     otx_set: Arc<DashMap<H256, OpenTransaction>>,
     sign_info: SignInfo,
-    ckb_uri: String,
+    ckb_config: CkbConfig,
     service_handler: ServiceHandler,
 }
 
@@ -42,14 +43,14 @@ impl Context {
     fn new(
         plugin_name: &str,
         sign_info: SignInfo,
-        ckb_uri: &str,
+        ckb_config: CkbConfig,
         service_handler: ServiceHandler,
     ) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
             otx_set: Arc::new(DashMap::new()),
             sign_info,
-            ckb_uri: ckb_uri.to_owned(),
+            ckb_config,
             service_handler,
         }
     }
@@ -94,7 +95,7 @@ impl DustCollector {
     pub fn new(
         service_handler: ServiceHandler,
         config: DustCollectorConfig,
-        ckb_uri: &str,
+        ckb_config: CkbConfig,
     ) -> Result<DustCollector> {
         let name = "dust collector";
         let state = PluginState::new(PathBuf::default(), true, true);
@@ -103,15 +104,15 @@ impl DustCollector {
             "Collect micropayment otx and aggregate them into ckb tx.",
             "1.0",
         );
-        let key = env::var(&config.key)?.parse::<H256>()?;
-        let address = env::var(&config.default_address)?
+        let key = env::var(config.get_env_key_name())?.parse::<H256>()?;
+        let address = env::var(config.get_env_default_address())?
             .parse::<Address>()
             .map_err(|e| anyhow!(e))?;
 
         let (msg_handler, request_handler, thread) = DustCollector::start_process(Context::new(
             name,
-            SignInfo::new(&address, &key),
-            ckb_uri,
+            SignInfo::new(&address, &key, ckb_config.clone()),
+            ckb_config,
             service_handler,
         ))?;
         Ok(DustCollector {
@@ -244,20 +245,21 @@ fn on_new_intervel(context: Context, elapsed: u64) {
             otx.clone()
         })
         .collect();
-    let merged_otx = if let Ok(merged_otx) = OtxAggregator::merge_otxs(otx_list) {
-        log::debug!("otxs merge successfully.");
-        merged_otx
-    } else {
-        log::info!(
-            "Failed to merge otxs, all otxs staged by {} itself will be cleared.",
-            context.plugin_name
-        );
-        context.otx_set.clear();
-        return;
-    };
+    let merged_otx =
+        if let Ok(merged_otx) = OtxAggregator::merge_otxs(&context.ckb_config, otx_list) {
+            log::debug!("otxs merge successfully.");
+            merged_otx
+        } else {
+            log::info!(
+                "Failed to merge otxs, all otxs staged by {} itself will be cleared.",
+                context.plugin_name
+            );
+            context.otx_set.clear();
+            return;
+        };
 
     // find a cell to receive assets
-    let mut indexer = IndexerRpcClient::new(&context.ckb_uri);
+    let mut indexer = IndexerRpcClient::new(context.ckb_config.get_ckb_uri());
     let lock_script: packed::Script = context.sign_info.secp_address().into();
     let search_key = SearchKey {
         script: lock_script.into(),
@@ -288,7 +290,7 @@ fn on_new_intervel(context: Context, elapsed: u64) {
     let aggregator = OtxAggregator::new(
         context.sign_info.secp_address(),
         context.sign_info.privkey(),
-        &context.ckb_uri,
+        context.ckb_config,
     );
     let output_capacity =
         receive_ckb_capacity as u64 + cell.output.capacity.value() - DEFAULT_FEE as u64;

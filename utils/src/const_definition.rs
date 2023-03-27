@@ -3,8 +3,6 @@ use once_cell::sync::OnceCell;
 
 use std::collections::HashMap;
 
-pub static CKB_URI: OnceCell<String> = OnceCell::new();
-
 // script code hash
 pub static SECP256K1_CODE_HASH: OnceCell<H256> = OnceCell::new();
 pub static XUDT_CODE_HASH: OnceCell<H256> = OnceCell::new();

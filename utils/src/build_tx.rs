@@ -1,5 +1,6 @@
-use crate::const_definition::{
-    CKB_URI, XUDT_CELL_DEP_TX_HASH, XUDT_CELL_DEP_TX_IDX, XUDT_CODE_HASH,
+use crate::{
+    config::CkbConfig,
+    const_definition::{XUDT_CELL_DEP_TX_HASH, XUDT_CELL_DEP_TX_IDX, XUDT_CODE_HASH},
 };
 
 use anyhow::{anyhow, Result};
@@ -27,9 +28,10 @@ pub fn add_input(
     tx_view: json_types::TransactionView,
     tx_hash: H256,
     output_index: usize,
+    ckb_config: &CkbConfig,
 ) -> Result<json_types::TransactionView> {
     let tx = Transaction::from(tx_view.inner).into_view();
-    let tx = add_live_cell(tx, tx_hash, output_index)?;
+    let tx = add_live_cell(tx, tx_hash, output_index, ckb_config)?;
     Ok(json_types::TransactionView::from(tx))
 }
 
@@ -37,9 +39,9 @@ fn add_live_cell(
     tx: TransactionView,
     tx_hash: H256,
     output_index: usize,
+    ckb_config: &CkbConfig,
 ) -> Result<TransactionView> {
-    let ckb_uri = CKB_URI.get().ok_or_else(|| anyhow!("CKB_URI is none"))?;
-    let mut ckb_client = CkbRpcClient::new(ckb_uri);
+    let mut ckb_client = CkbRpcClient::new(ckb_config.get_ckb_uri());
     let out_point_json = ckb_jsonrpc_types::OutPoint {
         tx_hash: tx_hash.clone(),
         index: ckb_jsonrpc_types::Uint32::from(output_index as u32),
@@ -126,6 +128,7 @@ pub fn add_output(
 pub fn sighash_sign(
     keys: &[H256],
     tx: TransactionView,
+    ckb_config: &CkbConfig,
 ) -> Result<(TransactionView, Vec<ScriptGroup>)> {
     if keys.is_empty() {
         return Err(anyhow!("must provide sender-key to sign"));
@@ -157,8 +160,7 @@ pub fn sighash_sign(
     //     &unlockers,
     // )?;
 
-    let ckb_uri = CKB_URI.get().ok_or_else(|| anyhow!("CKB_URI is none"))?;
-    let tx_dep_provider = DefaultTransactionDependencyProvider::new(ckb_uri, 10);
+    let tx_dep_provider = DefaultTransactionDependencyProvider::new(ckb_config.get_ckb_uri(), 10);
     let (new_tx, new_still_locked_groups) = unlock_tx(tx, &tx_dep_provider, &unlockers)?;
     Ok((new_tx, new_still_locked_groups))
 }

@@ -8,6 +8,7 @@ use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
 use utils::aggregator::{Committer, OtxAggregator};
+use utils::config::CkbConfig;
 
 use ckb_jsonrpc_types::Script;
 use ckb_types::core::service::Request;
@@ -26,7 +27,7 @@ pub const EVERY_INTERVALS: usize = 10;
 #[derive(Clone)]
 struct Context {
     plugin_name: String,
-    ckb_uri: String,
+    ckb_config: CkbConfig,
     service_handler: ServiceHandler,
 
     otxs: Arc<DashMap<H256, OpenTransaction>>,
@@ -34,10 +35,10 @@ struct Context {
 }
 
 impl Context {
-    fn new(plugin_name: &str, ckb_uri: &str, service_handler: ServiceHandler) -> Self {
+    fn new(plugin_name: &str, ckb_config: CkbConfig, service_handler: ServiceHandler) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
-            ckb_uri: ckb_uri.to_owned(),
+            ckb_config,
             service_handler,
             otxs: Arc::new(DashMap::new()),
             orders: Arc::new(DashMap::new()),
@@ -100,7 +101,10 @@ impl Plugin for AtomicSwap {
 }
 
 impl AtomicSwap {
-    pub fn new(service_handler: ServiceHandler, ckb_uri: &str) -> Result<AtomicSwap, String> {
+    pub fn new(
+        service_handler: ServiceHandler,
+        ckb_config: CkbConfig,
+    ) -> Result<AtomicSwap, String> {
         let name = "atomic swap";
         let state = PluginState::new(PathBuf::default(), true, true);
         let info = PluginInfo::new(
@@ -109,7 +113,7 @@ impl AtomicSwap {
             "1.0",
         );
         let (msg_handler, request_handler, thread) =
-            AtomicSwap::start_process(Context::new(name, ckb_uri, service_handler))?;
+            AtomicSwap::start_process(Context::new(name, ckb_config, service_handler))?;
         Ok(AtomicSwap {
             state,
             info,
@@ -229,13 +233,14 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
 
             // merge_otx
             let otx_list = vec![otx, pair_otx];
-            let merged_otx = if let Ok(merged_otx) = OtxAggregator::merge_otxs(otx_list) {
-                log::debug!("otxs merge successfully.");
-                merged_otx
-            } else {
-                log::info!("{} failed to merge otxs.", context.plugin_name);
-                return;
-            };
+            let merged_otx =
+                if let Ok(merged_otx) = OtxAggregator::merge_otxs(&context.ckb_config, otx_list) {
+                    log::debug!("otxs merge successfully.");
+                    merged_otx
+                } else {
+                    log::info!("{} failed to merge otxs.", context.plugin_name);
+                    return;
+                };
 
             // to final tx
             let tx = if let Ok(tx) = otx_to_tx_view(merged_otx) {
@@ -246,7 +251,7 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
             };
 
             // send_ckb
-            let committer = Committer::new(&context.ckb_uri);
+            let committer = Committer::new(context.ckb_config.get_ckb_uri());
             let tx_hash = if let Ok(tx_hash) = committer.send_tx(tx) {
                 tx_hash
             } else {

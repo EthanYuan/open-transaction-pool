@@ -6,9 +6,8 @@ use otx_pool::{
     plugin::manager::PluginManager,
     rpc::{OtxPoolRpc, OtxPoolRpcImpl},
 };
-use utils::config::parse;
-use utils::config::ConfigFile;
-use utils::const_definition::{load_code_hash, CKB_URI};
+use utils::config::{parse, AppConfig, ConfigFile};
+use utils::const_definition::load_code_hash;
 
 use anyhow::{anyhow, Result};
 use ckb_async_runtime::{new_global_runtime, Handle};
@@ -55,23 +54,22 @@ fn main() -> Result<()> {
     start(config)
 }
 
-fn read_cli_args() -> Result<ConfigFile> {
+fn read_cli_args() -> Result<AppConfig> {
     let args = Args::parse();
     let config: ConfigFile = parse(args.config_path)?;
 
-    CKB_URI
-        .set(config.ckb_config.ckb_uri.clone())
-        .map_err(|err| anyhow!(err))?;
     load_code_hash(config.to_script_map());
-    Ok(config)
+
+    Ok(config.into())
 }
 
-pub fn start(config: ConfigFile) -> Result<()> {
+pub fn start(config: AppConfig) -> Result<()> {
     // runtime handle
     let (runtime_handle, runtime) = new_global_runtime();
 
     // bind address
-    let bind: Vec<&str> = config.network_config.listen_uri.split("//").collect();
+    let network_config = config.get_network_config();
+    let bind: Vec<&str> = network_config.get_listen_uri().split("//").collect();
     let bind_addr: SocketAddr = bind[1].parse()?;
 
     // init notify service
@@ -125,7 +123,7 @@ pub fn start(config: ConfigFile) -> Result<()> {
         .expect("Start Jsonrpc HTTP service");
     log::info!(
         "jsonrpc server started: {}",
-        config.network_config.listen_uri
+        config.get_network_config().get_listen_uri()
     );
 
     print_logo();
@@ -147,7 +145,7 @@ pub fn start(config: ConfigFile) -> Result<()> {
 
 fn init_plugins(
     service_provider: &HostServiceProvider,
-    config: &ConfigFile,
+    config: &AppConfig,
     runtime_handle: &Handle,
     notify_ctrl: &NotifyController,
 ) -> Result<PluginManager> {
@@ -156,19 +154,19 @@ fn init_plugins(
         PluginManager::new(Path::new("./free-space"), service_provider.handler());
 
     // init built-in plugins
-    if config.built_in_plugin_dust_collector.enabled {
+    if config.get_dust_collector_config().is_enabled() {
         let dust_collector = DustCollector::new(
             service_provider.handler(),
-            config.built_in_plugin_dust_collector.clone(),
-            CKB_URI.get().unwrap(),
+            config.get_dust_collector_config(),
+            config.get_ckb_config(),
         )
         .map_err(|err| anyhow!(err))?;
         plugin_manager.register_built_in_plugins(Box::new(dust_collector));
     }
 
     // init built-in plugins
-    if config.built_in_plugin_atomic_swap.enabled {
-        let atomic_swap = AtomicSwap::new(service_provider.handler(), CKB_URI.get().unwrap())
+    if config.get_atomic_swap_config().is_enabled() {
+        let atomic_swap = AtomicSwap::new(service_provider.handler(), config.get_ckb_config())
             .map_err(|err| anyhow!(err))?;
         plugin_manager.register_built_in_plugins(Box::new(atomic_swap));
     }
