@@ -1,6 +1,6 @@
 use crate::const_definition::{
-    GENESIS_BUILT_IN_ADDRESS_1, GENESIS_BUILT_IN_ADDRESS_1_PRIVATE_KEY, MERCURY_URI, UDT_1_HASH,
-    UDT_1_HOLDER_ACP_ADDRESS, UDT_1_HOLDER_PK, UDT_1_HOLDER_SECP_ADDRESS, UDT_2_HASH,
+    GENESIS_BUILT_IN_ADDRESS_1, GENESIS_BUILT_IN_ADDRESS_1_PRIVATE_KEY, MERCURY_URI, SCRIPT_CONFIG,
+    UDT_1_HASH, UDT_1_HOLDER_ACP_ADDRESS, UDT_1_HOLDER_PK, UDT_1_HOLDER_SECP_ADDRESS, UDT_2_HASH,
     UDT_2_HOLDER_ACP_ADDRESS, UDT_2_HOLDER_PK, UDT_2_HOLDER_SECP_ADDRESS,
 };
 use crate::utils::client::mercury_client::MercuryRpcClient;
@@ -31,7 +31,10 @@ pub fn issue_udt_1() -> Result<()> {
     // issue udt
     let (owner_address, owner_address_pk, _) =
         prepare_secp_address_with_ckb_capacity(5000_0000_0000_0000)?;
-    let udt_hash = get_udt_hash_by_owner(&owner_address)?;
+    let udt_hash = get_udt_hash_by_owner(
+        &owner_address,
+        SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash(),
+    )?;
     let _tx_hash = issue_udt_with_acp(&owner_address, &owner_address_pk, 20_000_000_000u128)?;
     let acp_address = build_acp_address(&owner_address)?;
 
@@ -58,7 +61,10 @@ pub fn issue_udt_2() -> Result<()> {
     // issue udt
     let (owner_address, owner_address_pk, _) =
         prepare_secp_address_with_ckb_capacity(5000_0000_0000_0000)?;
-    let udt_hash = get_udt_hash_by_owner(&owner_address)?;
+    let udt_hash = get_udt_hash_by_owner(
+        &owner_address,
+        SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash(),
+    )?;
     let _tx_hash = issue_udt_with_acp(&owner_address, &owner_address_pk, 20_000_000_000u128)?;
     let acp_address = build_acp_address(&owner_address)?;
 

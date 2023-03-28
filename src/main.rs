@@ -160,6 +160,7 @@ fn init_plugins(
             service_provider.handler(),
             config.get_dust_collector_config(),
             config.get_ckb_config(),
+            config.get_script_config(),
         )
         .map_err(|err| anyhow!(err))?;
         plugin_manager.register_built_in_plugins(Box::new(dust_collector));

@@ -1,8 +1,6 @@
 pub mod acp;
 pub mod omni;
 
-use crate::const_definition::XUDT_CODE_HASH;
-
 use anyhow::Result;
 use ckb_hash::blake2b_256;
 use ckb_sdk::Address;
@@ -31,10 +29,10 @@ pub fn generate_secp_args_from_pk(pk: &H256) -> Result<H160> {
     H160::from_slice(&pubkey_hash[0..20]).map_err(Into::into)
 }
 
-pub fn get_udt_hash_by_owner(owner_address: &Address) -> Result<H256> {
+pub fn get_udt_hash_by_owner(owner_address: &Address, xudt_code_hash: H256) -> Result<H256> {
     let owner_script: packed::Script = owner_address.payload().into();
     let sudt_type_script = packed::ScriptBuilder::default()
-        .code_hash(XUDT_CODE_HASH.get().expect("get xudt code hash").pack())
+        .code_hash(xudt_code_hash.pack())
         .args(owner_script.calc_script_hash().raw_data().pack())
         .hash_type(ScriptHashType::Type.into())
         .build();

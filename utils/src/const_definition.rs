@@ -4,8 +4,6 @@ use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 
 // script code hash
-pub static XUDT_CODE_HASH: OnceCell<H256> = OnceCell::new();
-pub static SUDT_CODE_HASH: OnceCell<H256> = OnceCell::new();
 pub static OMNI_CODE_HASH: OnceCell<H256> = OnceCell::new();
 pub static ANYONE_CAN_PAY_CODE_HASH: OnceCell<H256> = OnceCell::new();
 
@@ -24,15 +22,6 @@ pub struct ScriptInfo {
 }
 
 pub fn load_code_hash(script_info: HashMap<String, ScriptInfo>) {
-    let _ = XUDT_CODE_HASH.set(
-        script_info
-            .get("xudt_rce")
-            .cloned()
-            .expect("get xudt script info")
-            .script
-            .code_hash()
-            .unpack(),
-    );
     let _ = OMNI_CODE_HASH.set(
         script_info
             .get("omni_lock")
@@ -47,15 +36,6 @@ pub fn load_code_hash(script_info: HashMap<String, ScriptInfo>) {
             .get("anyone_can_pay")
             .cloned()
             .expect("get anyone can pay script info")
-            .script
-            .code_hash()
-            .unpack(),
-    );
-    let _ = SUDT_CODE_HASH.set(
-        script_info
-            .get("sudt")
-            .cloned()
-            .expect("get sudt script info")
             .script
             .code_hash()
             .unpack(),

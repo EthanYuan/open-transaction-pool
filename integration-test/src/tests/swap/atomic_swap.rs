@@ -1,8 +1,8 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::const_definition::{
-    CKB_URI, MERCURY_URI, OTX_POOL_URI, UDT_1_HASH, UDT_1_HOLDER_SECP_ADDRESS, UDT_2_HASH,
-    UDT_2_HOLDER_SECP_ADDRESS,
+    CKB_URI, MERCURY_URI, OTX_POOL_URI, SCRIPT_CONFIG, UDT_1_HASH, UDT_1_HOLDER_SECP_ADDRESS,
+    UDT_2_HASH, UDT_2_HOLDER_SECP_ADDRESS,
 };
 use crate::help::start_otx_pool;
 use crate::utils::client::mercury_client::MercuryRpcClient;
@@ -16,7 +16,6 @@ use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::types::{packed, OpenTxStatus};
 use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
 use utils::client::service_client::OtxPoolRpcClient;
-use utils::const_definition::XUDT_CODE_HASH;
 use utils::lock::omni::build_otx_omnilock_addr_from_secp;
 use utils::wallet::Wallet;
 
@@ -239,7 +238,16 @@ fn build_signed_otx(
     // 5. generate open transaction, pay UDT-1, get UDT-2, pay fee
     let xudt_1_issuer_script: Script = UDT_1_HOLDER_SECP_ADDRESS.get().unwrap().into();
     let xudt_1_type_script = Script::new_builder()
-        .code_hash(Byte32::from_slice(XUDT_CODE_HASH.get().unwrap().as_bytes()).unwrap())
+        .code_hash(
+            Byte32::from_slice(
+                SCRIPT_CONFIG
+                    .get()
+                    .unwrap()
+                    .get_xudt_rce_code_hash()
+                    .as_bytes(),
+            )
+            .unwrap(),
+        )
         .hash_type(ScriptHashType::Type.into())
         .args(xudt_1_issuer_script.calc_script_hash().raw_data().pack())
         .build();
@@ -252,7 +260,16 @@ fn build_signed_otx(
 
     let xudt_2_issuer_script: Script = UDT_2_HOLDER_SECP_ADDRESS.get().unwrap().into();
     let xudt_2_type_script = Script::new_builder()
-        .code_hash(Byte32::from_slice(XUDT_CODE_HASH.get().unwrap().as_bytes()).unwrap())
+        .code_hash(
+            Byte32::from_slice(
+                SCRIPT_CONFIG
+                    .get()
+                    .unwrap()
+                    .get_xudt_rce_code_hash()
+                    .as_bytes(),
+            )
+            .unwrap(),
+        )
         .hash_type(ScriptHashType::Type.into())
         .args(xudt_2_issuer_script.calc_script_hash().raw_data().pack())
         .build();
@@ -291,7 +308,7 @@ fn build_signed_otx(
         tx_view,
         None,
         None,
-        XUDT_CODE_HASH.get().unwrap().to_owned(),
+        SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash(),
         H256::default(),
         CKB_URI,
     )

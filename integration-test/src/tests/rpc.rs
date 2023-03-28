@@ -1,4 +1,4 @@
-use crate::const_definition::{CKB_URI, OTX_POOL_URI};
+use crate::const_definition::{CKB_URI, OTX_POOL_URI, SCRIPT_CONFIG};
 use crate::help::start_otx_pool;
 use crate::tests::helper::build_pay_ckb_signed_otx;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
@@ -7,7 +7,6 @@ use crate::IntegrationTest;
 use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_otx};
 use otx_format::types::packed;
 use utils::client::service_client::OtxPoolRpcClient;
-use utils::const_definition::{SUDT_CODE_HASH, XUDT_CODE_HASH};
 
 use ckb_jsonrpc_types::JsonBytes;
 use ckb_types::{prelude::Entity, H256};
@@ -41,8 +40,8 @@ fn test_service_rpc_submit_otx() {
         tx_view.clone(),
         None,
         None,
-        XUDT_CODE_HASH.get().unwrap().to_owned(),
-        SUDT_CODE_HASH.get().unwrap().to_owned(),
+        SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash(),
+        SCRIPT_CONFIG.get().unwrap().get_sudt_code_hash(),
         CKB_URI,
     )
     .unwrap();

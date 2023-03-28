@@ -8,7 +8,7 @@ use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
 use utils::aggregator::{AddOutputArgs, OtxAggregator, SignInfo};
 use utils::config::built_in_plugins::DustCollectorConfig;
-use utils::config::CkbConfig;
+use utils::config::{CkbConfig, ScriptConfig};
 
 use anyhow::{anyhow, Result};
 use ckb_sdk::rpc::ckb_indexer::{Order, ScriptType, SearchKey};
@@ -36,6 +36,7 @@ struct Context {
     otx_set: Arc<DashMap<H256, OpenTransaction>>,
     sign_info: SignInfo,
     ckb_config: CkbConfig,
+    script_config: ScriptConfig,
     service_handler: ServiceHandler,
 }
 
@@ -44,6 +45,7 @@ impl Context {
         plugin_name: &str,
         sign_info: SignInfo,
         ckb_config: CkbConfig,
+        script_config: ScriptConfig,
         service_handler: ServiceHandler,
     ) -> Self {
         Context {
@@ -51,6 +53,7 @@ impl Context {
             otx_set: Arc::new(DashMap::new()),
             sign_info,
             ckb_config,
+            script_config,
             service_handler,
         }
     }
@@ -96,6 +99,7 @@ impl DustCollector {
         service_handler: ServiceHandler,
         config: DustCollectorConfig,
         ckb_config: CkbConfig,
+        script_config: ScriptConfig,
     ) -> Result<DustCollector> {
         let name = "dust collector";
         let state = PluginState::new(PathBuf::default(), true, true);
@@ -113,6 +117,7 @@ impl DustCollector {
             name,
             SignInfo::new(&address, &key, ckb_config.clone()),
             ckb_config,
+            script_config,
             service_handler,
         ))?;
         Ok(DustCollector {
@@ -291,6 +296,7 @@ fn on_new_intervel(context: Context, elapsed: u64) {
         context.sign_info.secp_address(),
         context.sign_info.privkey(),
         context.ckb_config,
+        context.script_config,
     );
     let output_capacity =
         receive_ckb_capacity as u64 + cell.output.capacity.value() - DEFAULT_FEE as u64;

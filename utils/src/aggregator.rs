@@ -1,16 +1,21 @@
-use super::build_tx::{add_input, add_output, sighash_sign};
+use super::build_tx::TxBuilder;
 use super::const_definition::{OMNI_OPENTX_CELL_DEP_TX_HASH, OMNI_OPENTX_CELL_DEP_TX_IDX};
 use super::lock::omni::{build_cell_dep, TxInfo};
-use crate::config::CkbConfig;
+use crate::config::{CkbConfig, ScriptConfig};
 
 use anyhow::{anyhow, Result};
 use ckb_jsonrpc_types as json_types;
 use ckb_jsonrpc_types::TransactionView;
 use ckb_sdk::{
-    rpc::CkbRpcClient, traits::DefaultTransactionDependencyProvider,
+    constants::SIGHASH_TYPE_HASH, rpc::CkbRpcClient, traits::DefaultTransactionDependencyProvider,
     unlock::opentx::assembler::assemble_new_tx, unlock::OmniUnlockMode, Address, HumanCapacity,
 };
+use ckb_sdk::{
+    traits::SecpCkbRawKeySigner, tx_builder::unlock_tx, unlock::ScriptUnlocker,
+    unlock::SecpSighashUnlocker, ScriptGroup, ScriptId,
+};
 use ckb_types::{
+    core::TransactionView as CoreTransactionView,
     packed::{Script, Transaction, WitnessArgs},
     prelude::*,
     H256,
@@ -20,6 +25,7 @@ use json_types::OutPoint;
 use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_basic_otx};
 use otx_format::jsonrpc_types::OpenTransaction;
 
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
@@ -27,28 +33,26 @@ use std::path::PathBuf;
 pub struct OtxAggregator {
     pub signer: SignInfo,
     pub committer: Committer,
-    ckb_config: CkbConfig,
+    _ckb_config: CkbConfig,
+    tx_builder: TxBuilder,
 }
 
 impl OtxAggregator {
-    pub fn new(address: &Address, key: &H256, ckb_config: CkbConfig) -> Self {
+    pub fn new(
+        address: &Address,
+        key: &H256,
+        ckb_config: CkbConfig,
+        script_config: ScriptConfig,
+    ) -> Self {
         let signer = SignInfo::new(address, key, ckb_config.clone());
         let committer = Committer::new(ckb_config.get_ckb_uri());
+        let tx_builder = TxBuilder::new(ckb_config.clone(), script_config);
         OtxAggregator {
             signer,
             committer,
-            ckb_config,
+            _ckb_config: ckb_config,
+            tx_builder,
         }
-    }
-
-    pub fn try_new(address: Address, key_path: PathBuf, ckb_config: CkbConfig) -> Result<Self> {
-        let signer = SignInfo::try_new(address, key_path, ckb_config.clone())?;
-        let committer = Committer::new(ckb_config.get_ckb_uri());
-        Ok(OtxAggregator {
-            signer,
-            committer,
-            ckb_config,
-        })
     }
 
     pub fn add_input_and_output(
@@ -58,13 +62,12 @@ impl OtxAggregator {
         output: AddOutputArgs,
         udt_issuer_script: Script,
     ) -> Result<TransactionView> {
-        let tx_info = add_input(
+        let tx_info = self.tx_builder.add_input(
             open_tx,
             input.tx_hash,
             std::convert::Into::<u32>::into(input.index) as usize,
-            &self.ckb_config,
         )?;
-        add_output(
+        self.tx_builder.add_output(
             tx_info,
             self.signer.secp_address(),
             output.capacity,
@@ -192,13 +195,13 @@ impl SignInfo {
 
     pub fn sign_ckb_tx(&self, tx_view: TransactionView) -> Result<json_types::TransactionView> {
         let tx = Transaction::from(tx_view.inner).into_view();
-        let (tx, _) = sighash_sign(&[self.pk.clone()], tx, &self.ckb_config)?;
+        let (tx, _) = self.sighash_sign(&[self.pk.clone()], tx)?;
         Ok(json_types::TransactionView::from(tx))
     }
 
     pub fn sign_tx(&self, tx_info: TxInfo) -> Result<json_types::TransactionView> {
         let tx = Transaction::from(tx_info.tx.inner).into_view();
-        let (tx, _) = sighash_sign(&[self.pk.clone()], tx, &self.ckb_config)?;
+        let (tx, _) = self.sighash_sign(&[self.pk.clone()], tx)?;
         let witness_args =
             WitnessArgs::from_slice(tx.witnesses().get(0).unwrap().raw_data().as_ref())?;
         let lock_field = witness_args.lock().to_opt().unwrap().raw_data();
@@ -208,6 +211,47 @@ impl SignInfo {
             println!("failed to sign tx");
         }
         Ok(json_types::TransactionView::from(tx))
+    }
+
+    pub fn sighash_sign(
+        &self,
+        keys: &[H256],
+        tx: CoreTransactionView,
+    ) -> Result<(CoreTransactionView, Vec<ScriptGroup>)> {
+        if keys.is_empty() {
+            return Err(anyhow!("must provide sender-key to sign"));
+        }
+        let secret_key = secp256k1::SecretKey::from_slice(keys[0].as_bytes())
+            .map_err(|err| anyhow!("invalid sender secret key: {}", err))?;
+        // Build ScriptUnlocker
+        let signer = SecpCkbRawKeySigner::new_with_secret_keys(vec![secret_key]);
+        let sighash_unlocker = SecpSighashUnlocker::from(Box::new(signer) as Box<_>);
+        let sighash_script_id = ScriptId::new_type(SIGHASH_TYPE_HASH.clone());
+        let mut unlockers = HashMap::default();
+        unlockers.insert(
+            sighash_script_id,
+            Box::new(sighash_unlocker) as Box<dyn ScriptUnlocker>,
+        );
+
+        // Build the transaction
+        // let output = CellOutput::new_builder()
+        //     .lock(Script::from(&args.receiver))
+        //     .capacity(args.capacity.0.pack())
+        //     .build();
+        // let builder = CapacityTransferBuilder::new(vec![(output, Bytes::default())]);
+        // let (tx, still_locked_groups) = builder.build_unlocked(
+        //     &mut cell_collector,
+        //     &cell_dep_resolver,
+        //     &header_dep_resolver,
+        //     &tx_dep_provider,
+        //     &balancer,
+        //     &unlockers,
+        // )?;
+
+        let tx_dep_provider =
+            DefaultTransactionDependencyProvider::new(self.ckb_config.get_ckb_uri(), 10);
+        let (new_tx, new_still_locked_groups) = unlock_tx(tx, &tx_dep_provider, &unlockers)?;
+        Ok((new_tx, new_still_locked_groups))
     }
 }
 

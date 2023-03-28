@@ -1,4 +1,4 @@
-use crate::const_definition::{CKB_URI, MERCURY_URI, UDT_1_HOLDER_SECP_ADDRESS};
+use crate::const_definition::{CKB_URI, MERCURY_URI, SCRIPT_CONFIG, UDT_1_HOLDER_SECP_ADDRESS};
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
 use crate::utils::instruction::ckb::dump_data;
@@ -6,7 +6,6 @@ use crate::utils::instruction::mercury::prepare_udt_1;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 
 use utils::client::ckb_cli_client::{ckb_cli_get_capacity, ckb_cli_transfer_ckb};
-use utils::const_definition::XUDT_CODE_HASH;
 use utils::lock::omni::{MultiSigArgs, TxInfo};
 use utils::wallet::{GenOpenTxArgs, Wallet};
 
@@ -101,7 +100,16 @@ pub fn _bob_build_signed_otx() -> Result<TxInfo> {
     // 3. bob generate open transaction, pay 51 UDT
     let udt_issuer_script: Script = UDT_1_HOLDER_SECP_ADDRESS.get().unwrap().into();
     let xudt_type_script = Script::new_builder()
-        .code_hash(Byte32::from_slice(XUDT_CODE_HASH.get().unwrap().as_bytes()).unwrap())
+        .code_hash(
+            Byte32::from_slice(
+                SCRIPT_CONFIG
+                    .get()
+                    .unwrap()
+                    .get_xudt_rce_code_hash()
+                    .as_bytes(),
+            )
+            .unwrap(),
+        )
         .hash_type(ScriptHashType::Type.into())
         .args(udt_issuer_script.calc_script_hash().raw_data().pack())
         .build();
