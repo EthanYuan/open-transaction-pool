@@ -6,6 +6,7 @@ use crate::utils::instruction::mercury::prepare_udt_1;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 
 use utils::client::ckb_cli_client::{ckb_cli_get_capacity, ckb_cli_transfer_ckb};
+use utils::config::CkbConfig;
 use utils::lock::omni::{MultiSigArgs, TxInfo};
 use utils::wallet::{GenOpenTxArgs, Wallet};
 
@@ -30,7 +31,13 @@ pub fn build_pay_ckb_signed_otx(
 ) -> Result<TxInfo> {
     // 1. init wallet instance
     let (address, pk) = generate_rand_secp_address_pk_pair();
-    let wallet = Wallet::init_account(address, pk, CKB_URI);
+    let wallet = Wallet::new(
+        address,
+        pk,
+        CkbConfig::new("ckb_dev", CKB_URI),
+        SCRIPT_CONFIG.get().unwrap().clone(),
+    )
+    .unwrap();
     let omni_address = wallet.get_omni_otx_address();
 
     // 2. transfer capacity to omni address
@@ -76,7 +83,13 @@ pub fn build_pay_ckb_signed_otx(
 pub fn _bob_build_signed_otx() -> Result<TxInfo> {
     // 1. init bob's wallet
     let (address, pk) = generate_rand_secp_address_pk_pair();
-    let bob_wallet = Wallet::init_account(address, pk, CKB_URI);
+    let bob_wallet = Wallet::new(
+        address,
+        pk,
+        CkbConfig::new("ckb_dev", CKB_URI),
+        SCRIPT_CONFIG.get().unwrap().clone(),
+    )
+    .unwrap();
     let bob_otx_address = bob_wallet.get_omni_otx_address();
     let bob_omni_otx_script: Script = bob_otx_address.into();
 

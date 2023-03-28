@@ -1,6 +1,5 @@
-use crate::const_definition::{
-    OMNI_CODE_HASH, SECP_DATA_CELL_DEP_TX_HASH, SECP_DATA_CELL_DEP_TX_IDX,
-};
+use crate::config::{CkbConfig, ScriptConfig};
+use crate::const_definition::{SECP_DATA_CELL_DEP_TX_HASH, SECP_DATA_CELL_DEP_TX_IDX};
 
 use super::const_definition::{
     OMNI_OPENTX_CELL_DEP_TX_HASH, OMNI_OPENTX_CELL_DEP_TX_IDX, XUDT_CELL_DEP_TX_HASH,
@@ -64,19 +63,27 @@ pub struct Wallet {
     pk: H256,
     secp_address: Address,
     omni_otx_address: Address,
-    ckb_uri: String,
+    ckb_config: CkbConfig,
+    script_config: ScriptConfig,
 }
 
 impl Wallet {
-    pub fn init_account(secp_address: Address, pk: H256, ckb_uri: &str) -> Self {
-        let omni_otx_address = build_otx_omnilock_addr_from_secp(&secp_address, ckb_uri).unwrap();
+    pub fn new(
+        secp_address: Address,
+        pk: H256,
+        ckb_config: CkbConfig,
+        script_config: ScriptConfig,
+    ) -> Result<Wallet> {
+        let omni_otx_address =
+            build_otx_omnilock_addr_from_secp(&secp_address, ckb_config.get_ckb_uri())?;
 
-        Wallet {
+        Ok(Wallet {
             pk,
             secp_address,
             omni_otx_address,
-            ckb_uri: ckb_uri.to_owned(),
-        }
+            ckb_config,
+            script_config,
+        })
     }
 
     pub fn get_omni_otx_address(&self) -> &Address {
@@ -93,7 +100,7 @@ impl Wallet {
     }
 
     fn build_open_tx(&self, args: &GenOpenTxArgs) -> Result<(TransactionView, OmniLockConfig)> {
-        let mut ckb_client = CkbRpcClient::new(&self.ckb_uri);
+        let mut ckb_client = CkbRpcClient::new(self.ckb_config.get_ckb_uri());
         let omni_lock_info = build_cell_dep(
             &mut ckb_client,
             OMNI_OPENTX_CELL_DEP_TX_HASH
@@ -131,9 +138,10 @@ impl Wallet {
             omni_lock_info.cell_dep,
             "Omni Lock".to_string(),
         );
-        let header_dep_resolver = DefaultHeaderDepResolver::new(&self.ckb_uri);
-        let mut cell_collector = DefaultCellCollector::new(&self.ckb_uri);
-        let tx_dep_provider = DefaultTransactionDependencyProvider::new(&self.ckb_uri, 10);
+        let header_dep_resolver = DefaultHeaderDepResolver::new(self.ckb_config.get_ckb_uri());
+        let mut cell_collector = DefaultCellCollector::new(self.ckb_config.get_ckb_uri());
+        let tx_dep_provider =
+            DefaultTransactionDependencyProvider::new(self.ckb_config.get_ckb_uri(), 10);
 
         // Build base transaction
         let unlockers = build_omnilock_unlockers(
@@ -333,7 +341,8 @@ impl Wallet {
             .cell_deps(cell_deps)
             .witnesses(vec![packed::Bytes::default(); inputs.len()])
             .build();
-        let tx_dep_provider = DefaultTransactionDependencyProvider::new(&self.ckb_uri, 10);
+        let tx_dep_provider =
+            DefaultTransactionDependencyProvider::new(self.ckb_config.get_ckb_uri(), 10);
 
         // update opentx input list
         let wit = OpentxWitness::new_sig_all_relative(&tx, Some(0xdeadbeef)).unwrap();
@@ -363,7 +372,7 @@ impl Wallet {
         let unlockers = build_omnilock_unlockers(
             keys,
             omnilock_config.clone(),
-            OMNI_CODE_HASH.get().expect("get omni code hash").to_owned(),
+            self.script_config.get_omni_lock_code_hash(),
         );
         let (tx, _new_locked_groups) = unlock_tx(tx, &tx_dep_provider, &unlockers).unwrap();
 
@@ -420,9 +429,10 @@ impl Wallet {
         keys: Vec<secp256k1::SecretKey>,
     ) -> Result<(TransactionView, Vec<ScriptGroup>)> {
         // Unlock transaction
-        let tx_dep_provider = DefaultTransactionDependencyProvider::new(&self.ckb_uri, 10);
+        let tx_dep_provider =
+            DefaultTransactionDependencyProvider::new(self.ckb_config.get_ckb_uri(), 10);
 
-        let mut ckb_client = CkbRpcClient::new(&self.ckb_uri);
+        let mut ckb_client = CkbRpcClient::new(self.ckb_config.get_ckb_uri());
         let cell = build_cell_dep(
             &mut ckb_client,
             OMNI_OPENTX_CELL_DEP_TX_HASH

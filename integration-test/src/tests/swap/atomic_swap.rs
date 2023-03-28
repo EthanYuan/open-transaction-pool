@@ -16,6 +16,7 @@ use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::types::{packed, OpenTxStatus};
 use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
 use utils::client::service_client::OtxPoolRpcClient;
+use utils::config::CkbConfig;
 use utils::lock::omni::build_otx_omnilock_addr_from_secp;
 use utils::wallet::Wallet;
 
@@ -183,7 +184,14 @@ fn build_signed_otx(
     remain_capacity: usize,
 ) -> Result<packed::OpenTransaction> {
     // 1. init wallet
-    let wallet = Wallet::init_account(secp_address, pk, CKB_URI);
+    // let wallet = Wallet::init_account(secp_address, pk, CKB_URI);
+    let wallet = Wallet::new(
+        secp_address,
+        pk,
+        CkbConfig::new("ckb_dev", CKB_URI),
+        SCRIPT_CONFIG.get().unwrap().clone(),
+    )
+    .unwrap();
     let otx_address = wallet.get_omni_otx_address();
     let omni_otx_script: Script = otx_address.into();
 

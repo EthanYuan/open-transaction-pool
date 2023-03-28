@@ -4,7 +4,6 @@ use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 
 // script code hash
-pub static OMNI_CODE_HASH: OnceCell<H256> = OnceCell::new();
 pub static ANYONE_CAN_PAY_CODE_HASH: OnceCell<H256> = OnceCell::new();
 
 // cell deps
@@ -22,15 +21,6 @@ pub struct ScriptInfo {
 }
 
 pub fn load_code_hash(script_info: HashMap<String, ScriptInfo>) {
-    let _ = OMNI_CODE_HASH.set(
-        script_info
-            .get("omni_lock")
-            .cloned()
-            .expect("get omni script info")
-            .script
-            .code_hash()
-            .unpack(),
-    );
     let _ = ANYONE_CAN_PAY_CODE_HASH.set(
         script_info
             .get("anyone_can_pay")
