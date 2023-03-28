@@ -1,5 +1,4 @@
 use super::build_tx::TxBuilder;
-use super::const_definition::{OMNI_OPENTX_CELL_DEP_TX_HASH, OMNI_OPENTX_CELL_DEP_TX_IDX};
 use super::lock::omni::{build_cell_dep, TxInfo};
 use crate::config::{CkbConfig, ScriptConfig};
 
@@ -33,7 +32,8 @@ use std::path::PathBuf;
 pub struct OtxAggregator {
     pub signer: SignInfo,
     pub committer: Committer,
-    _ckb_config: CkbConfig,
+    ckb_config: CkbConfig,
+    script_config: ScriptConfig,
     tx_builder: TxBuilder,
 }
 
@@ -46,11 +46,12 @@ impl OtxAggregator {
     ) -> Self {
         let signer = SignInfo::new(address, key, ckb_config.clone());
         let committer = Committer::new(ckb_config.get_ckb_uri());
-        let tx_builder = TxBuilder::new(ckb_config.clone(), script_config);
+        let tx_builder = TxBuilder::new(ckb_config.clone(), script_config.clone());
         OtxAggregator {
             signer,
             committer,
-            _ckb_config: ckb_config,
+            ckb_config,
+            script_config,
             tx_builder,
         }
     }
@@ -76,10 +77,7 @@ impl OtxAggregator {
         )
     }
 
-    pub fn merge_otxs(
-        ckb_config: &CkbConfig,
-        otx_list: Vec<OpenTransaction>,
-    ) -> Result<OpenTransaction> {
+    pub fn merge_otxs(&self, otx_list: Vec<OpenTransaction>) -> Result<OpenTransaction> {
         let mut txs = vec![];
         for otx in otx_list {
             let tx = otx_to_tx_view(otx).map_err(|err| anyhow!(err.to_string()))?;
@@ -87,19 +85,22 @@ impl OtxAggregator {
             txs.push(tx);
         }
         if !txs.is_empty() {
-            let mut ckb_client = CkbRpcClient::new(ckb_config.get_ckb_uri());
+            let mut ckb_client = CkbRpcClient::new(self.ckb_config.get_ckb_uri());
             let cell = build_cell_dep(
                 &mut ckb_client,
-                OMNI_OPENTX_CELL_DEP_TX_HASH
-                    .get()
-                    .expect("get omni cell dep tx hash"),
-                OMNI_OPENTX_CELL_DEP_TX_IDX
-                    .get()
-                    .expect("get omni cell dep tx id")
-                    .to_owned(),
+                &self
+                    .script_config
+                    .get_omni_lock_cell_dep()
+                    .out_point
+                    .tx_hash,
+                self.script_config
+                    .get_omni_lock_cell_dep()
+                    .out_point
+                    .index
+                    .into(),
             )?;
             let tx_dep_provider =
-                DefaultTransactionDependencyProvider::new(ckb_config.get_ckb_uri(), 10);
+                DefaultTransactionDependencyProvider::new(self.ckb_config.get_ckb_uri(), 10);
             let tx = assemble_new_tx(txs, &tx_dep_provider, cell.type_hash.pack())?;
             let tx = json_types::TransactionView::from(tx);
 
@@ -108,7 +109,7 @@ impl OtxAggregator {
         Err(anyhow!("merge otxs failed!"))
     }
 
-    pub fn merge_open_txs(otx_list: Vec<TxInfo>, ckb_uri: &str) -> Result<TxInfo> {
+    pub fn merge_open_txs(&self, otx_list: Vec<TxInfo>, ckb_uri: &str) -> Result<TxInfo> {
         let mut txes = vec![];
         let mut omnilock_config = None;
         for tx_info in otx_list {
@@ -121,13 +122,16 @@ impl OtxAggregator {
             let mut ckb_client = CkbRpcClient::new(ckb_uri);
             let cell = build_cell_dep(
                 &mut ckb_client,
-                OMNI_OPENTX_CELL_DEP_TX_HASH
-                    .get()
-                    .expect("get omni cell dep tx hash"),
-                OMNI_OPENTX_CELL_DEP_TX_IDX
-                    .get()
-                    .expect("get omni cell dep tx id")
-                    .to_owned(),
+                &self
+                    .script_config
+                    .get_omni_lock_cell_dep()
+                    .out_point
+                    .tx_hash,
+                self.script_config
+                    .get_omni_lock_cell_dep()
+                    .out_point
+                    .index
+                    .into(),
             )?;
             let tx_dep_provider = DefaultTransactionDependencyProvider::new(ckb_uri, 10);
             let tx = assemble_new_tx(txes, &tx_dep_provider, cell.type_hash.pack())?;

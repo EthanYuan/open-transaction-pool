@@ -17,7 +17,6 @@ use otx_format::types::{packed, OpenTxStatus};
 use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
 use utils::client::service_client::OtxPoolRpcClient;
 use utils::config::CkbConfig;
-use utils::lock::omni::build_otx_omnilock_addr_from_secp;
 use utils::wallet::Wallet;
 
 use anyhow::Result;
@@ -50,9 +49,9 @@ fn test_swap_udt_to_udt() {
     // alice build otxs
     // pay 10 UDT-1, get 10 UDT-2, pay fee 1 CKB
     let (alice_address, alice_pk) = generate_rand_secp_address_pk_pair();
-    let alice_otx = build_signed_otx(
+    let (alice_otx, alice_wallet) = build_signed_otx(
         "alice",
-        alice_address.clone(),
+        alice_address,
         alice_pk,
         12,
         5,
@@ -66,9 +65,9 @@ fn test_swap_udt_to_udt() {
     // bob build otxs
     // pay 10 UDT-2, get 10 UDT-1, pay fee 1 CKB
     let (bob_address, bob_pk) = generate_rand_secp_address_pk_pair();
-    let bob_otx = build_signed_otx(
+    let (bob_otx, bob_wallet) = build_signed_otx(
         "bob",
-        bob_address.clone(),
+        bob_address,
         bob_pk,
         10,
         100,
@@ -121,8 +120,7 @@ fn test_swap_udt_to_udt() {
     // check alice assets
     let mut asset_infos = HashSet::new();
     asset_infos.insert(AssetInfo::new_udt(UDT_1_HASH.get().unwrap().clone()));
-    let alice_omni_otx_address =
-        build_otx_omnilock_addr_from_secp(&alice_address, CKB_URI).unwrap();
+    let alice_omni_otx_address = alice_wallet.get_omni_otx_address().unwrap();
     let payload = GetBalancePayload {
         item: JsonItem::Address(alice_omni_otx_address.to_string()),
         asset_infos,
@@ -148,7 +146,7 @@ fn test_swap_udt_to_udt() {
     // check bob assets
     let mut asset_infos = HashSet::new();
     asset_infos.insert(AssetInfo::new_udt(UDT_1_HASH.get().unwrap().clone()));
-    let bob_omni_otx_address = build_otx_omnilock_addr_from_secp(&bob_address, CKB_URI).unwrap();
+    let bob_omni_otx_address = bob_wallet.get_omni_otx_address().unwrap();
     let payload = GetBalancePayload {
         item: JsonItem::Address(bob_omni_otx_address.to_string()),
         asset_infos,
@@ -182,9 +180,8 @@ fn build_signed_otx(
     remain_udt_1: u128,
     remain_udt_2: u128,
     remain_capacity: usize,
-) -> Result<packed::OpenTransaction> {
+) -> Result<(packed::OpenTransaction, Wallet)> {
     // 1. init wallet
-    // let wallet = Wallet::init_account(secp_address, pk, CKB_URI);
     let wallet = Wallet::new(
         secp_address,
         pk,
@@ -192,11 +189,11 @@ fn build_signed_otx(
         SCRIPT_CONFIG.get().unwrap().clone(),
     )
     .unwrap();
-    let otx_address = wallet.get_omni_otx_address();
-    let omni_otx_script: Script = otx_address.into();
+    let otx_address = wallet.get_omni_otx_address()?;
+    let omni_otx_script: Script = (&otx_address).into();
 
     // 2. transfer udt-1 to omni address
-    let tx_hash = prepare_udt_1(prepare_udt_1_amount, otx_address).unwrap();
+    let tx_hash = prepare_udt_1(prepare_udt_1_amount, &otx_address).unwrap();
     let out_point_1 = OutPoint::new(Byte32::from_slice(tx_hash.as_bytes())?, 0u32);
     let balance_payload = GetBalancePayload {
         item: JsonItem::OutPoint(out_point_1.clone().into()),
@@ -211,7 +208,7 @@ fn build_signed_otx(
     assert_eq!(balance.balances[1].free, prepare_udt_1_amount.into());
 
     // 3. transfer udt-2 to omni address
-    let tx_hash = prepare_udt_2(prepare_udt_2_amount, otx_address).unwrap();
+    let tx_hash = prepare_udt_2(prepare_udt_2_amount, &otx_address).unwrap();
     let out_point_2 = OutPoint::new(Byte32::from_slice(tx_hash.as_bytes())?, 0u32);
     let balance_payload = GetBalancePayload {
         item: JsonItem::OutPoint(out_point_2.clone().into()),
@@ -226,7 +223,7 @@ fn build_signed_otx(
     assert_eq!(balance.balances[1].free, prepare_udt_2_amount.into());
 
     // 4. transfer capacity to omni address
-    let tx_hash = ckb_cli_transfer_ckb(otx_address, prepare_capacity / 1_0000_0000).unwrap();
+    let tx_hash = ckb_cli_transfer_ckb(&otx_address, prepare_capacity / 1_0000_0000).unwrap();
     aggregate_transactions_into_blocks().unwrap();
     let out_point_3 = OutPoint::new(Byte32::from_slice(tx_hash.as_bytes())?, 0u32);
     let balance_payload = GetBalancePayload {
@@ -328,5 +325,5 @@ fn build_signed_otx(
     )
     .unwrap();
 
-    Ok(otx.into())
+    Ok((otx.into(), wallet))
 }

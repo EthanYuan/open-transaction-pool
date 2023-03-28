@@ -250,18 +250,23 @@ fn on_new_intervel(context: Context, elapsed: u64) {
             otx.clone()
         })
         .collect();
-    let merged_otx =
-        if let Ok(merged_otx) = OtxAggregator::merge_otxs(&context.ckb_config, otx_list) {
-            log::debug!("otxs merge successfully.");
-            merged_otx
-        } else {
-            log::info!(
-                "Failed to merge otxs, all otxs staged by {} itself will be cleared.",
-                context.plugin_name
-            );
-            context.otx_set.clear();
-            return;
-        };
+    let aggregator = OtxAggregator::new(
+        context.sign_info.secp_address(),
+        context.sign_info.privkey(),
+        context.ckb_config.clone(),
+        context.script_config.clone(),
+    );
+    let merged_otx = if let Ok(merged_otx) = aggregator.merge_otxs(otx_list) {
+        log::debug!("otxs merge successfully.");
+        merged_otx
+    } else {
+        log::info!(
+            "Failed to merge otxs, all otxs staged by {} itself will be cleared.",
+            context.plugin_name
+        );
+        context.otx_set.clear();
+        return;
+    };
 
     // find a cell to receive assets
     let mut indexer = IndexerRpcClient::new(context.ckb_config.get_ckb_uri());

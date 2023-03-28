@@ -7,10 +7,11 @@ use otx_format::jsonrpc_types::get_payment_amount;
 use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
-use utils::aggregator::{Committer, OtxAggregator};
-use utils::config::CkbConfig;
+use utils::aggregator::{Committer, OtxAggregator, SignInfo};
+use utils::config::{CkbConfig, ScriptConfig};
 
 use ckb_jsonrpc_types::Script;
+use ckb_sdk_open_tx::Address;
 use ckb_types::core::service::Request;
 use ckb_types::H256;
 use crossbeam_channel::{bounded, select, unbounded};
@@ -18,6 +19,7 @@ use dashmap::DashMap;
 
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
@@ -27,7 +29,9 @@ pub const EVERY_INTERVALS: usize = 10;
 #[derive(Clone)]
 struct Context {
     plugin_name: String,
+    sign_info: SignInfo,
     ckb_config: CkbConfig,
+    script_config: ScriptConfig,
     service_handler: ServiceHandler,
 
     otxs: Arc<DashMap<H256, OpenTransaction>>,
@@ -35,10 +39,18 @@ struct Context {
 }
 
 impl Context {
-    fn new(plugin_name: &str, ckb_config: CkbConfig, service_handler: ServiceHandler) -> Self {
+    fn new(
+        plugin_name: &str,
+        sign_info: SignInfo,
+        ckb_config: CkbConfig,
+        script_config: ScriptConfig,
+        service_handler: ServiceHandler,
+    ) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
+            sign_info,
             ckb_config,
+            script_config,
             service_handler,
             otxs: Arc::new(DashMap::new()),
             orders: Arc::new(DashMap::new()),
@@ -104,6 +116,7 @@ impl AtomicSwap {
     pub fn new(
         service_handler: ServiceHandler,
         ckb_config: CkbConfig,
+        script_config: ScriptConfig,
     ) -> Result<AtomicSwap, String> {
         let name = "atomic swap";
         let state = PluginState::new(PathBuf::default(), true, true);
@@ -112,8 +125,20 @@ impl AtomicSwap {
             "One kind of xUDT can be used to swap another kind of xUDT.",
             "1.0",
         );
-        let (msg_handler, request_handler, thread) =
-            AtomicSwap::start_process(Context::new(name, ckb_config, service_handler))?;
+        let (msg_handler, request_handler, thread) = AtomicSwap::start_process(Context::new(
+            name,
+            SignInfo::new(
+                &Address::from_str(
+                    "ckb1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhzeqga", // TODO: refactor
+                )
+                .unwrap(),
+                &H256::default(),
+                ckb_config.clone(),
+            ),
+            ckb_config,
+            script_config,
+            service_handler,
+        ))?;
         Ok(AtomicSwap {
             state,
             info,
@@ -233,14 +258,19 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
 
             // merge_otx
             let otx_list = vec![otx, pair_otx];
-            let merged_otx =
-                if let Ok(merged_otx) = OtxAggregator::merge_otxs(&context.ckb_config, otx_list) {
-                    log::debug!("otxs merge successfully.");
-                    merged_otx
-                } else {
-                    log::info!("{} failed to merge otxs.", context.plugin_name);
-                    return;
-                };
+            let aggregator = OtxAggregator::new(
+                context.sign_info.secp_address(),
+                context.sign_info.privkey(),
+                context.ckb_config.clone(),
+                context.script_config,
+            );
+            let merged_otx = if let Ok(merged_otx) = aggregator.merge_otxs(otx_list) {
+                log::debug!("otxs merge successfully.");
+                merged_otx
+            } else {
+                log::info!("{} failed to merge otxs.", context.plugin_name);
+                return;
+            };
 
             // to final tx
             let tx = if let Ok(tx) = otx_to_tx_view(merged_otx) {

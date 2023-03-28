@@ -7,7 +7,6 @@ use otx_pool::{
     rpc::{OtxPoolRpc, OtxPoolRpcImpl},
 };
 use utils::config::{parse, AppConfig, ConfigFile};
-use utils::const_definition::load_code_hash;
 
 use anyhow::{anyhow, Result};
 use ckb_async_runtime::{new_global_runtime, Handle};
@@ -57,10 +56,6 @@ fn main() -> Result<()> {
 fn read_cli_args() -> Result<AppConfig> {
     let args = Args::parse();
     let config: ConfigFile = parse(args.config_path)?;
-
-    // TODO: remove this after refactor
-    load_code_hash(config.to_script_map());
-
     Ok(config.into())
 }
 
@@ -168,8 +163,12 @@ fn init_plugins(
 
     // init built-in plugins
     if config.get_atomic_swap_config().is_enabled() {
-        let atomic_swap = AtomicSwap::new(service_provider.handler(), config.get_ckb_config())
-            .map_err(|err| anyhow!(err))?;
+        let atomic_swap = AtomicSwap::new(
+            service_provider.handler(),
+            config.get_ckb_config(),
+            config.get_script_config(),
+        )
+        .map_err(|err| anyhow!(err))?;
         plugin_manager.register_built_in_plugins(Box::new(atomic_swap));
     }
 

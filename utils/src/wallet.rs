@@ -1,11 +1,5 @@
+use super::lock::omni::{build_cell_dep, MultiSigArgs, TxInfo};
 use crate::config::{CkbConfig, ScriptConfig};
-use crate::const_definition::{SECP_DATA_CELL_DEP_TX_HASH, SECP_DATA_CELL_DEP_TX_IDX};
-
-use super::const_definition::{
-    OMNI_OPENTX_CELL_DEP_TX_HASH, OMNI_OPENTX_CELL_DEP_TX_IDX, XUDT_CELL_DEP_TX_HASH,
-    XUDT_CELL_DEP_TX_IDX,
-};
-use super::lock::omni::{build_cell_dep, build_otx_omnilock_addr_from_secp, MultiSigArgs, TxInfo};
 
 use anyhow::{anyhow, Result};
 use ckb_crypto::secp::Pubkey;
@@ -22,18 +16,19 @@ use ckb_sdk::{
         balance_tx_capacity, fill_placeholder_witnesses, omni_lock::OmniLockTransferBuilder,
         unlock_tx, CapacityBalancer, TxBuilder,
     },
+    types::NetworkType,
     unlock::{
         opentx::OpentxWitness, IdentityFlag, MultisigConfig, OmniLockConfig, OmniLockScriptSigner,
     },
     unlock::{OmniLockUnlocker, OmniUnlockMode, ScriptUnlocker},
     util::{blake160, keccak160},
-    Address, HumanCapacity, ScriptGroup, ScriptId, SECP256K1,
+    Address, AddressPayload, HumanCapacity, ScriptGroup, ScriptId, SECP256K1,
 };
 use ckb_types::{
     bytes::Bytes,
     core::{BlockView, ScriptHashType, TransactionView},
     packed::{
-        self, Byte32, CellDep, CellInputBuilder, CellOutput, OutPoint, Script, Transaction,
+        self, CellDep, CellInputBuilder, CellOutput, OutPoint, Script, Transaction,
         WitnessArgs,
     },
     prelude::*,
@@ -62,7 +57,6 @@ pub struct GenOpenTxArgs {
 pub struct Wallet {
     pk: H256,
     secp_address: Address,
-    omni_otx_address: Address,
     ckb_config: CkbConfig,
     script_config: ScriptConfig,
 }
@@ -74,20 +68,51 @@ impl Wallet {
         ckb_config: CkbConfig,
         script_config: ScriptConfig,
     ) -> Result<Wallet> {
-        let omni_otx_address =
-            build_otx_omnilock_addr_from_secp(&secp_address, ckb_config.get_ckb_uri())?;
-
         Ok(Wallet {
             pk,
             secp_address,
-            omni_otx_address,
             ckb_config,
             script_config,
         })
     }
 
-    pub fn get_omni_otx_address(&self) -> &Address {
-        &self.omni_otx_address
+    fn build_otx_omnilock_addr_from_secp(&self) -> Result<Address> {
+        let mut ckb_client = CkbRpcClient::new(self.ckb_config.get_ckb_uri());
+        let cell = build_cell_dep(
+            &mut ckb_client,
+            &self
+                .script_config
+                .get_omni_lock_cell_dep()
+                .out_point
+                .tx_hash,
+            self.script_config
+                .get_omni_lock_cell_dep()
+                .out_point
+                .index
+                .into(),
+        )?;
+        let mut config = {
+            let arg = H160::from_slice(&self.secp_address.payload().args()).unwrap();
+            OmniLockConfig::new_pubkey_hash(arg)
+        };
+        config.set_opentx_mode();
+        let address_payload = {
+            let args = config.build_args();
+            AddressPayload::new_full(ScriptHashType::Type, cell.type_hash.pack(), args)
+        };
+        let lock_script = Script::from(&address_payload);
+        let address = Address::new(NetworkType::Testnet, address_payload.clone(), true);
+        let resp = serde_json::json!({
+            "testnet": address.to_string(),
+            "lock-arg": format!("0x{}", hex_string(address_payload.args().as_ref())),
+            "lock-hash": format!("{:#x}", lock_script.calc_script_hash())
+        });
+        println!("{}", serde_json::to_string_pretty(&resp)?);
+        Ok(address)
+    }
+
+    pub fn get_omni_otx_address(&self) -> Result<Address> {
+        self.build_otx_omnilock_addr_from_secp()
     }
 
     pub fn gen_open_tx(&self, args: &GenOpenTxArgs) -> Result<TxInfo> {
@@ -103,13 +128,16 @@ impl Wallet {
         let mut ckb_client = CkbRpcClient::new(self.ckb_config.get_ckb_uri());
         let omni_lock_info = build_cell_dep(
             &mut ckb_client,
-            OMNI_OPENTX_CELL_DEP_TX_HASH
-                .get()
-                .expect("get omni cell dep tx hash"),
-            OMNI_OPENTX_CELL_DEP_TX_IDX
-                .get()
-                .expect("get omni cell dep tx id")
-                .to_owned(),
+            &self
+                .script_config
+                .get_omni_lock_cell_dep()
+                .out_point
+                .tx_hash,
+            self.script_config
+                .get_omni_lock_cell_dep()
+                .out_point
+                .index
+                .into(),
         )?;
 
         let mut omnilock_config =
@@ -257,46 +285,13 @@ impl Wallet {
         outputs_data: Vec<packed::Bytes>,
     ) -> Result<TxInfo> {
         let secp_data_cell_dep = CellDep::new_builder()
-            .out_point(OutPoint::new(
-                Byte32::from_slice(
-                    SECP_DATA_CELL_DEP_TX_HASH
-                        .get()
-                        .expect("get secp data cell dep tx hash")
-                        .as_bytes(),
-                )?,
-                SECP_DATA_CELL_DEP_TX_IDX
-                    .get()
-                    .expect("get secp data cell dep tx id")
-                    .to_owned() as u32,
-            ))
+            .out_point(self.script_config.get_secp_data_cell_dep().out_point.into())
             .build();
         let omin_cell_dep = CellDep::new_builder()
-            .out_point(OutPoint::new(
-                Byte32::from_slice(
-                    OMNI_OPENTX_CELL_DEP_TX_HASH
-                        .get()
-                        .expect("get omni cell dep tx hash")
-                        .as_bytes(),
-                )?,
-                OMNI_OPENTX_CELL_DEP_TX_IDX
-                    .get()
-                    .expect("get cell dep tx id")
-                    .to_owned() as u32,
-            ))
+            .out_point(self.script_config.get_omni_lock_cell_dep().out_point.into())
             .build();
         let xudt_cell_dep = CellDep::new_builder()
-            .out_point(OutPoint::new(
-                Byte32::from_slice(
-                    XUDT_CELL_DEP_TX_HASH
-                        .get()
-                        .expect("get xudt cell dep tx hash")
-                        .as_bytes(),
-                )?,
-                XUDT_CELL_DEP_TX_IDX
-                    .get()
-                    .expect("get xudt cell dep tx id")
-                    .to_owned() as u32,
-            ))
+            .out_point(self.script_config.get_xdut_cell_dep().out_point.into())
             .build();
         let cell_deps = vec![secp_data_cell_dep, omin_cell_dep, xudt_cell_dep];
 
@@ -347,7 +342,7 @@ impl Wallet {
         // update opentx input list
         let wit = OpentxWitness::new_sig_all_relative(&tx, Some(0xdeadbeef)).unwrap();
         omnilock_config.set_opentx_input(wit);
-        let lock: Script = (&self.omni_otx_address).into();
+        let lock: Script = (&self.get_omni_otx_address()?).into();
         let tx = OmniLockTransferBuilder::update_opentx_witness(
             tx,
             &omnilock_config,
@@ -435,13 +430,16 @@ impl Wallet {
         let mut ckb_client = CkbRpcClient::new(self.ckb_config.get_ckb_uri());
         let cell = build_cell_dep(
             &mut ckb_client,
-            OMNI_OPENTX_CELL_DEP_TX_HASH
-                .get()
-                .expect("get omni cell dep tx hash"),
-            OMNI_OPENTX_CELL_DEP_TX_IDX
-                .get()
-                .expect("get omni cell dep tx id")
-                .to_owned(),
+            &self
+                .script_config
+                .get_omni_lock_cell_dep()
+                .out_point
+                .tx_hash,
+            self.script_config
+                .get_omni_lock_cell_dep()
+                .out_point
+                .index
+                .into(),
         )?;
 
         let mut _still_locked_groups = None;

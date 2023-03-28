@@ -38,15 +38,15 @@ pub fn build_pay_ckb_signed_otx(
         SCRIPT_CONFIG.get().unwrap().clone(),
     )
     .unwrap();
-    let omni_address = wallet.get_omni_otx_address();
+    let omni_address = wallet.get_omni_otx_address()?;
 
     // 2. transfer capacity to omni address
     let capacity = prepare_capacity;
     log::info!("{} prepare wallet: {:?} CKB", payer, capacity);
-    let _tx_hash = ckb_cli_transfer_ckb(omni_address, capacity).unwrap();
+    let _tx_hash = ckb_cli_transfer_ckb(&omni_address, capacity).unwrap();
     aggregate_transactions_into_blocks()?;
 
-    let capacity = ckb_cli_get_capacity(omni_address).unwrap();
+    let capacity = ckb_cli_get_capacity(&omni_address).unwrap();
     assert_eq!(prepare_capacity as f64, capacity);
 
     // 3. generate open transaction
@@ -57,7 +57,7 @@ pub fn build_pay_ckb_signed_otx(
             threshold: 1,
             sighash_address: vec![],
         },
-        receiver: omni_address.to_owned(),
+        receiver: omni_address,
         capacity_with_open: Some((
             HumanCapacity::from_str(&remain_capacity.to_string()).unwrap(),
             HumanCapacity::from_str(&open_capacity.to_string()).unwrap(),
@@ -90,13 +90,13 @@ pub fn _bob_build_signed_otx() -> Result<TxInfo> {
         SCRIPT_CONFIG.get().unwrap().clone(),
     )
     .unwrap();
-    let bob_otx_address = bob_wallet.get_omni_otx_address();
-    let bob_omni_otx_script: Script = bob_otx_address.into();
+    let bob_otx_address = bob_wallet.get_omni_otx_address()?;
+    let bob_omni_otx_script: Script = (&bob_otx_address).into();
 
     // 2. transfer udt to bob omni address
     let udt_amount = 51u128;
     log::info!("prepare bob wallet: {:?} UDT", udt_amount);
-    let tx_hash = prepare_udt_1(udt_amount, bob_otx_address).unwrap();
+    let tx_hash = prepare_udt_1(udt_amount, &bob_otx_address).unwrap();
     let out_point = OutPoint::new(Byte32::from_slice(tx_hash.as_bytes())?, 0u32);
     let balance_payload = GetBalancePayload {
         item: JsonItem::OutPoint(out_point.clone().into()),

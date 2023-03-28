@@ -9,7 +9,6 @@ use crate::utils::instruction::{ckb::generate_blocks, ckb::unlock_frozen_capacit
 use utils::client::ckb_client::CkbRpcClient;
 use utils::client::service_client::OtxPoolRpcClient;
 use utils::config::{parse, AppConfig, ConfigFile};
-use utils::const_definition::load_code_hash;
 use utils::instruction::command::run_command_spawn;
 
 use common::lazy::{
@@ -32,7 +31,6 @@ pub fn setup() -> Vec<Child> {
 
     let app_config: Result<ConfigFile> = parse("dev_chain/devnet_config.toml");
     let app_config: AppConfig = if let Ok(app_config) = app_config {
-        load_code_hash(app_config.to_script_map());
         app_config.into()
     } else {
         panic!("load code hash failed");

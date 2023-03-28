@@ -3,8 +3,6 @@ pub mod ckb_config;
 pub mod network;
 pub mod script;
 
-use crate::const_definition::ScriptInfo;
-
 pub use ckb_config::CkbConfig;
 pub use network::NetworkConfig;
 pub use script::ScriptConfigItem;
@@ -13,6 +11,7 @@ use built_in_plugins::{AtomicSwapConfig, DustCollectorConfig};
 
 use anyhow::Result;
 use ckb_jsonrpc_types::{CellDep, DepType, Script};
+use ckb_types::packed;
 use ckb_types::prelude::*;
 use ckb_types::H256;
 use serde::de::DeserializeOwned;
@@ -20,6 +19,12 @@ use serde::Deserialize;
 
 use std::collections::HashMap;
 use std::{fs::File, io::Read, path::Path};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ScriptInfo {
+    pub script: packed::Script,
+    pub cell_dep: packed::CellDep,
+}
 
 #[derive(Deserialize, Default, Clone, Debug)]
 pub struct ConfigFile {

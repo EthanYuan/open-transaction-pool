@@ -1,7 +1,4 @@
-use crate::{
-    config::{CkbConfig, ScriptConfig},
-    const_definition::{XUDT_CELL_DEP_TX_HASH, XUDT_CELL_DEP_TX_IDX},
-};
+use crate::config::{CkbConfig, ScriptConfig};
 
 use anyhow::Result;
 use ckb_jsonrpc_types as json_types;
@@ -109,15 +106,17 @@ impl TxBuilder {
         let xudt_cell_dep = CellDep::new_builder()
             .out_point(OutPoint::new(
                 Byte32::from_slice(
-                    XUDT_CELL_DEP_TX_HASH
-                        .get()
-                        .expect("get xudt cell dep tx hash")
+                    self.script_config
+                        .get_xdut_cell_dep()
+                        .out_point
+                        .tx_hash
                         .as_bytes(),
                 )?,
-                XUDT_CELL_DEP_TX_IDX
-                    .get()
-                    .expect("get xudt cell dep tx id")
-                    .to_owned() as u32,
+                self.script_config
+                    .get_xdut_cell_dep()
+                    .out_point
+                    .index
+                    .into(),
             ))
             .build();
 
