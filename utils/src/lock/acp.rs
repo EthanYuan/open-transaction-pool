@@ -1,18 +1,14 @@
-use crate::const_definition::ANYONE_CAN_PAY_CODE_HASH;
-
 use anyhow::Result;
 use ckb_sdk::{Address, AddressPayload, NetworkType};
-use ckb_types::{core::ScriptHashType, packed, prelude::*};
+use ckb_types::{core::ScriptHashType, packed, prelude::*, H256};
 
-pub fn build_acp_address(secp_address: &Address) -> Result<Address> {
+pub fn build_acp_address(
+    secp_address: &Address,
+    anyone_cap_pay_code_hash: H256,
+) -> Result<Address> {
     let secp_script: packed::Script = secp_address.payload().into();
-    let acp_code_hash = packed::Byte32::from_slice(
-        ANYONE_CAN_PAY_CODE_HASH
-            .get()
-            .expect("get anyone can pay code hash")
-            .as_bytes(),
-    )
-    .expect("impossible:");
+    let acp_code_hash =
+        packed::Byte32::from_slice(anyone_cap_pay_code_hash.as_bytes()).expect("impossible:");
     let payload = AddressPayload::new_full(
         ScriptHashType::Type,
         acp_code_hash,

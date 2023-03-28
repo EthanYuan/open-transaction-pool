@@ -36,7 +36,10 @@ pub fn issue_udt_1() -> Result<()> {
         SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash(),
     )?;
     let _tx_hash = issue_udt_with_acp(&owner_address, &owner_address_pk, 20_000_000_000u128)?;
-    let acp_address = build_acp_address(&owner_address)?;
+    let acp_address = build_acp_address(
+        &owner_address,
+        SCRIPT_CONFIG.get().unwrap().get_anyone_can_pay_code_hash(),
+    )?;
 
     UDT_1_HASH.set(udt_hash).expect("init UDT_HASH_1");
     UDT_1_HOLDER_SECP_ADDRESS
@@ -66,7 +69,10 @@ pub fn issue_udt_2() -> Result<()> {
         SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash(),
     )?;
     let _tx_hash = issue_udt_with_acp(&owner_address, &owner_address_pk, 20_000_000_000u128)?;
-    let acp_address = build_acp_address(&owner_address)?;
+    let acp_address = build_acp_address(
+        &owner_address,
+        SCRIPT_CONFIG.get().unwrap().get_anyone_can_pay_code_hash(),
+    )?;
 
     UDT_2_HASH.set(udt_hash).expect("init UDT_HASH_2");
     UDT_2_HOLDER_SECP_ADDRESS
@@ -123,7 +129,11 @@ pub(crate) fn issue_udt_with_acp(
     owner_pk: &H256,
     udt_amount: u128,
 ) -> Result<H256> {
-    let acp_address = build_acp_address(owner_address).expect("build acp address");
+    let acp_address = build_acp_address(
+        owner_address,
+        SCRIPT_CONFIG.get().unwrap().get_anyone_can_pay_code_hash(),
+    )
+    .expect("build acp address");
     let payload = SudtIssuePayload {
         owner: owner_address.to_string(),
         from: vec![JsonItem::Address(owner_address.to_string())],

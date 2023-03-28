@@ -3,9 +3,6 @@ use once_cell::sync::OnceCell;
 
 use std::collections::HashMap;
 
-// script code hash
-pub static ANYONE_CAN_PAY_CODE_HASH: OnceCell<H256> = OnceCell::new();
-
 // cell deps
 pub static XUDT_CELL_DEP_TX_HASH: OnceCell<H256> = OnceCell::new();
 pub static XUDT_CELL_DEP_TX_IDX: OnceCell<usize> = OnceCell::new();
@@ -21,15 +18,6 @@ pub struct ScriptInfo {
 }
 
 pub fn load_code_hash(script_info: HashMap<String, ScriptInfo>) {
-    let _ = ANYONE_CAN_PAY_CODE_HASH.set(
-        script_info
-            .get("anyone_can_pay")
-            .cloned()
-            .expect("get anyone can pay script info")
-            .script
-            .code_hash()
-            .unpack(),
-    );
     let _ = SECP_DATA_CELL_DEP_TX_HASH.set(
         script_info
             .get("dao")
