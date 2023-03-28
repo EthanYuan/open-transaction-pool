@@ -2,7 +2,7 @@
 
 ## About CKB Open Transaction
 
-[CKB Open Transaction](https://github.com/doitian/rfcs/blob/rfc-open-transaction/rfcs/0046-open-transaction/0046-open-transaction.md) (OTX) is an extensible transaction format and a workflow engine to construct CKB transactions in an offline manner.
+[CKB Open Transaction](https://github.com/doitian/rfcs/blob/rfc-open-transaction/rfcs/0046-open-transaction/0046-open-transaction.md) (OTX) is an extensible transaction format and workflow engine that supports the combination of multiple partial signed OTXs or multi-signed OTXs off-chain to construct a CKB transaction.
 
 Compared to the CKB Transaction format described in the [RFC 0022-transaction-structure](https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0022-transaction-structure/0022-transaction-structure.md), OTX can carry more auxiliary information to describe how it can be aggregated into a complete CKB transaction.
 
