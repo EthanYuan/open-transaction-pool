@@ -28,8 +28,7 @@ use ckb_types::{
     bytes::Bytes,
     core::{BlockView, ScriptHashType, TransactionView},
     packed::{
-        self, CellDep, CellInputBuilder, CellOutput, OutPoint, Script, Transaction,
-        WitnessArgs,
+        self, CellDep, CellInputBuilder, CellOutput, OutPoint, Script, Transaction, WitnessArgs,
     },
     prelude::*,
     H160, H256,

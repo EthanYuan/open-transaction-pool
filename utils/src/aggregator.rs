@@ -225,10 +225,13 @@ impl SignInfo {
         if keys.is_empty() {
             return Err(anyhow!("must provide sender-key to sign"));
         }
-        let secret_key = secp256k1::SecretKey::from_slice(keys[0].as_bytes())
-            .map_err(|err| anyhow!("invalid sender secret key: {}", err))?;
+        let secret_keys = keys
+            .iter()
+            .map(|key| secp256k1::SecretKey::from_slice(key.as_bytes()))
+            .collect::<Result<Vec<secp256k1::SecretKey>, _>>()?;
+
         // Build ScriptUnlocker
-        let signer = SecpCkbRawKeySigner::new_with_secret_keys(vec![secret_key]);
+        let signer = SecpCkbRawKeySigner::new_with_secret_keys(secret_keys);
         let sighash_unlocker = SecpSighashUnlocker::from(Box::new(signer) as Box<_>);
         let sighash_script_id = ScriptId::new_type(SIGHASH_TYPE_HASH.clone());
         let mut unlockers = HashMap::default();
@@ -236,21 +239,6 @@ impl SignInfo {
             sighash_script_id,
             Box::new(sighash_unlocker) as Box<dyn ScriptUnlocker>,
         );
-
-        // Build the transaction
-        // let output = CellOutput::new_builder()
-        //     .lock(Script::from(&args.receiver))
-        //     .capacity(args.capacity.0.pack())
-        //     .build();
-        // let builder = CapacityTransferBuilder::new(vec![(output, Bytes::default())]);
-        // let (tx, still_locked_groups) = builder.build_unlocked(
-        //     &mut cell_collector,
-        //     &cell_dep_resolver,
-        //     &header_dep_resolver,
-        //     &tx_dep_provider,
-        //     &balancer,
-        //     &unlockers,
-        // )?;
 
         let tx_dep_provider =
             DefaultTransactionDependencyProvider::new(self.ckb_config.get_ckb_uri(), 10);

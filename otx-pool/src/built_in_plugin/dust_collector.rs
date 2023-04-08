@@ -297,12 +297,6 @@ fn on_new_intervel(context: Context, elapsed: u64) {
         log::error!("open tx converts to Ckb tx failed.");
         return;
     };
-    let aggregator = OtxAggregator::new(
-        context.sign_info.secp_address(),
-        context.sign_info.privkey(),
-        context.ckb_config,
-        context.script_config,
-    );
     let output_capacity =
         receive_ckb_capacity as u64 + cell.output.capacity.value() - DEFAULT_FEE as u64;
     let output = AddOutputArgs {
