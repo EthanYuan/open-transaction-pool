@@ -10,6 +10,8 @@ pub enum OpenTxStatus {
     Pending,
     /// Status "proposed". The open transaction is in the pool and has been proposed by some agent.
     Proposed(String),
+    /// Status "merged". The open transaction has been merged into another open transaction.
+    Merged(H256),
     /// Status "committed". The open transaction has been committed to the canonical chain.
     Committed(H256),
     /// Status "unknown". The pool has not seen the transaction,

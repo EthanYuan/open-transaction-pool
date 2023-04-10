@@ -4,6 +4,7 @@ use otx_pool::{
     notify::{NotifyController, NotifyService},
     plugin::host_service::HostServiceProvider,
     plugin::manager::PluginManager,
+    pool::OtxPool,
     rpc::{OtxPoolRpc, OtxPoolRpcImpl},
 };
 use utils::config::{parse, AppConfig, ConfigFile};
@@ -11,7 +12,6 @@ use utils::config::{parse, AppConfig, ConfigFile};
 use anyhow::{anyhow, Result};
 use ckb_async_runtime::{new_global_runtime, Handle};
 use clap::Parser;
-use dashmap::DashMap;
 use jsonrpc_core::IoHandler;
 use jsonrpc_http_server::ServerBuilder;
 use jsonrpc_server_utils::cors::AccessControlAllowOrigin;
@@ -84,14 +84,12 @@ pub fn start(config: AppConfig) -> Result<()> {
         }
     });
 
-    // pool data
-    let raw_otxs = Arc::new(DashMap::new());
-    let sent_txs = Arc::new(DashMap::new());
+    // otx pool
+    let otx_pool = Arc::new(OtxPool::new(notify_ctrl.clone()));
 
     // init host service
-    let service_provider =
-        HostServiceProvider::start(notify_ctrl.clone(), raw_otxs.clone(), sent_txs.clone())
-            .map_err(|err| anyhow!(err))?;
+    let service_provider = HostServiceProvider::start(notify_ctrl.clone(), otx_pool.clone())
+        .map_err(|err| anyhow!(err))?;
 
     // init plugins
     let plugin_manager = init_plugins(&service_provider, &config, &runtime_handle, &notify_ctrl)?;
@@ -104,7 +102,7 @@ pub fn start(config: AppConfig) -> Result<()> {
         .for_each(|(_, plugin)| log::info!("plugin name: {:?}", plugin.1.name));
 
     // init otx pool rpc
-    let rpc_impl = OtxPoolRpcImpl::new(raw_otxs, sent_txs, notify_ctrl);
+    let rpc_impl = OtxPoolRpcImpl::new(otx_pool);
     let mut io_handler = IoHandler::new();
     io_handler.extend_with(rpc_impl.to_delegate());
 

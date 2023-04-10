@@ -3,7 +3,6 @@ use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
 
-use otx_format::jsonrpc_types::get_payment_amount;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
 use utils::aggregator::{Committer, OtxAggregator, SignInfo};
@@ -221,7 +220,7 @@ impl AtomicSwap {
 }
 
 fn on_new_open_tx(context: Context, otx: OpenTransaction) {
-    let payment_amount = if let Ok(payment_amount) = get_payment_amount(&otx) {
+    let payment_amount = if let Ok(payment_amount) = otx.get_payment_amount() {
         log::info!("payment: {:?}", payment_amount);
         if payment_amount.capacity <= 0
             || payment_amount.capacity > MIN_PAYMENT as i128

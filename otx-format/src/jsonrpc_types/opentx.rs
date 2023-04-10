@@ -159,6 +159,130 @@ impl OpenTransaction {
         let tx_view: Result<core::TransactionView, _> = self.to_owned().try_into();
         tx_view.map(|tx| tx.witness_hash().unpack())
     }
+
+    pub fn get_payment_amount(&self) -> Result<PaymentAmount, OtxFormatError> {
+        let mut kv_map = to_tuple_kv_map(&self.meta)?;
+
+        // capacity
+        let input_capacity = get_value_by_first_element(&kv_map, OTX_ACCOUNTING_META_INPUT_CKB)
+            .map(|input_ckb| {
+                let capacity: u64 = Uint64::from_slice(input_ckb.as_bytes())
+                    .expect("get input ckb")
+                    .unpack();
+                capacity
+            })
+            .ok_or_else(|| {
+                OtxFormatError::OtxMapParseMissingField(OTX_ACCOUNTING_META_INPUT_CKB.to_string())
+            })?;
+
+        let output_capacity = get_value_by_first_element(&kv_map, OTX_ACCOUNTING_META_OUTPUT_CKB)
+            .map(|output_ckb| {
+                let capacity: u64 = Uint64::from_slice(output_ckb.as_bytes())
+                    .expect("get output ckb")
+                    .unpack();
+                capacity
+            })
+            .ok_or_else(|| {
+                OtxFormatError::OtxMapParseMissingField(OTX_ACCOUNTING_META_OUTPUT_CKB.to_string())
+            })?;
+
+        let mut x_udt_amount = HashMap::new();
+        loop {
+            let input_xudt_amount =
+                pop_entry_by_first_element(&mut kv_map, OTX_ACCOUNTING_META_INPUT_XUDT);
+            if input_xudt_amount.is_none() {
+                break;
+            }
+            let ((_, script), input_xudt_amount) = input_xudt_amount.unwrap();
+            let script = ckb_types::packed::Script::from_slice(
+                script.to_owned().expect("get script").as_bytes(),
+            )
+            .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+            .into();
+            let input_xudt_amount: u128 = Uint128::from_slice(input_xudt_amount.as_bytes())
+                .expect("get input xudt amount")
+                .unpack();
+            *x_udt_amount.entry(script).or_insert(0) += input_xudt_amount as i128;
+        }
+        loop {
+            let output_xudt_amount =
+                pop_entry_by_first_element(&mut kv_map, OTX_ACCOUNTING_META_OUTPUT_XUDT);
+            if output_xudt_amount.is_none() {
+                break;
+            }
+            let ((_, script), output_xudt_amount) = output_xudt_amount.unwrap();
+            let script = ckb_types::packed::Script::from_slice(
+                script.to_owned().expect("get script").as_bytes(),
+            )
+            .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+            .into();
+            let output_xudt_amount: u128 = Uint128::from_slice(output_xudt_amount.as_bytes())
+                .expect("get input xudt amount")
+                .unpack();
+            *x_udt_amount.entry(script).or_insert(0) -= output_xudt_amount as i128;
+        }
+
+        let mut s_udt_amount = HashMap::new();
+        loop {
+            let input_sudt_amount =
+                pop_entry_by_first_element(&mut kv_map, OTX_ACCOUNTING_META_INPUT_SUDT);
+            if input_sudt_amount.is_none() {
+                break;
+            }
+            let ((_, script), input_sudt_amount) = input_sudt_amount.unwrap();
+            let script = ckb_types::packed::Script::from_slice(
+                script.to_owned().expect("get script").as_bytes(),
+            )
+            .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+            .into();
+            let input_sudt_amount: u128 = Uint128::from_slice(input_sudt_amount.as_bytes())
+                .expect("get input xudt amount")
+                .unpack();
+            *s_udt_amount.entry(script).or_insert(0) += input_sudt_amount as i128;
+        }
+        loop {
+            let output_sudt_amount =
+                pop_entry_by_first_element(&mut kv_map, OTX_ACCOUNTING_META_OUTPUT_SUDT);
+            if output_sudt_amount.is_none() {
+                break;
+            }
+            let ((_, script), output_sudt_amount) = output_sudt_amount.unwrap();
+            let script = ckb_types::packed::Script::from_slice(
+                script.to_owned().expect("get script").as_bytes(),
+            )
+            .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+            .into();
+            let output_sudt_amount: u128 = Uint128::from_slice(output_sudt_amount.as_bytes())
+                .expect("get input xudt amount")
+                .unpack();
+            *s_udt_amount.entry(script).or_insert(0) -= output_sudt_amount as i128;
+        }
+
+        Ok(PaymentAmount {
+            capacity: input_capacity as i128 - output_capacity as i128,
+            x_udt_amount,
+            s_udt_amount,
+        })
+    }
+}
+
+fn get_value_by_first_element(
+    map: &HashMap<(u32, Option<JsonBytes>), JsonBytes>,
+    first_element: u32,
+) -> Option<&JsonBytes> {
+    let found_key = map.keys().find(|(element, _)| *element == first_element);
+    found_key.and_then(|key| map.get(key))
+}
+fn pop_entry_by_first_element(
+    map: &mut HashMap<(u32, Option<JsonBytes>), JsonBytes>,
+    first_element: u32,
+) -> Option<((u32, Option<JsonBytes>), JsonBytes)> {
+    let found_key = map
+        .keys()
+        .find(|(element, _)| *element == first_element)?
+        .to_owned();
+    let value = map.remove(&found_key)?;
+    Some((found_key, value))
 }
 
 impl From<OpenTransaction> for packed::OpenTransaction {
@@ -660,128 +784,4 @@ pub struct PaymentAmount {
     pub capacity: i128,
     pub x_udt_amount: HashMap<Script, i128>,
     pub s_udt_amount: HashMap<Script, i128>,
-}
-
-pub fn get_payment_amount(otx: &OpenTransaction) -> Result<PaymentAmount, OtxFormatError> {
-    fn get_value_by_first_element(
-        map: &HashMap<(u32, Option<JsonBytes>), JsonBytes>,
-        first_element: u32,
-    ) -> Option<&JsonBytes> {
-        let found_key = map.keys().find(|(element, _)| *element == first_element);
-        found_key.and_then(|key| map.get(key))
-    }
-    fn pop_entry_by_first_element(
-        map: &mut HashMap<(u32, Option<JsonBytes>), JsonBytes>,
-        first_element: u32,
-    ) -> Option<((u32, Option<JsonBytes>), JsonBytes)> {
-        let found_key = map
-            .keys()
-            .find(|(element, _)| *element == first_element)?
-            .to_owned();
-        let value = map.remove(&found_key)?;
-        Some((found_key, value))
-    }
-
-    let mut kv_map = to_tuple_kv_map(&otx.meta)?;
-
-    // capacity
-    let input_capacity = get_value_by_first_element(&kv_map, OTX_ACCOUNTING_META_INPUT_CKB)
-        .map(|input_ckb| {
-            let capacity: u64 = Uint64::from_slice(input_ckb.as_bytes())
-                .expect("get input ckb")
-                .unpack();
-            capacity
-        })
-        .ok_or_else(|| {
-            OtxFormatError::OtxMapParseMissingField(OTX_ACCOUNTING_META_INPUT_CKB.to_string())
-        })?;
-
-    let output_capacity = get_value_by_first_element(&kv_map, OTX_ACCOUNTING_META_OUTPUT_CKB)
-        .map(|output_ckb| {
-            let capacity: u64 = Uint64::from_slice(output_ckb.as_bytes())
-                .expect("get output ckb")
-                .unpack();
-            capacity
-        })
-        .ok_or_else(|| {
-            OtxFormatError::OtxMapParseMissingField(OTX_ACCOUNTING_META_OUTPUT_CKB.to_string())
-        })?;
-
-    let mut x_udt_amount = HashMap::new();
-    loop {
-        let input_xudt_amount =
-            pop_entry_by_first_element(&mut kv_map, OTX_ACCOUNTING_META_INPUT_XUDT);
-        if input_xudt_amount.is_none() {
-            break;
-        }
-        let ((_, script), input_xudt_amount) = input_xudt_amount.unwrap();
-        let script = ckb_types::packed::Script::from_slice(
-            script.to_owned().expect("get script").as_bytes(),
-        )
-        .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
-        .into();
-        let input_xudt_amount: u128 = Uint128::from_slice(input_xudt_amount.as_bytes())
-            .expect("get input xudt amount")
-            .unpack();
-        *x_udt_amount.entry(script).or_insert(0) += input_xudt_amount as i128;
-    }
-    loop {
-        let output_xudt_amount =
-            pop_entry_by_first_element(&mut kv_map, OTX_ACCOUNTING_META_OUTPUT_XUDT);
-        if output_xudt_amount.is_none() {
-            break;
-        }
-        let ((_, script), output_xudt_amount) = output_xudt_amount.unwrap();
-        let script = ckb_types::packed::Script::from_slice(
-            script.to_owned().expect("get script").as_bytes(),
-        )
-        .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
-        .into();
-        let output_xudt_amount: u128 = Uint128::from_slice(output_xudt_amount.as_bytes())
-            .expect("get input xudt amount")
-            .unpack();
-        *x_udt_amount.entry(script).or_insert(0) -= output_xudt_amount as i128;
-    }
-
-    let mut s_udt_amount = HashMap::new();
-    loop {
-        let input_sudt_amount =
-            pop_entry_by_first_element(&mut kv_map, OTX_ACCOUNTING_META_INPUT_SUDT);
-        if input_sudt_amount.is_none() {
-            break;
-        }
-        let ((_, script), input_sudt_amount) = input_sudt_amount.unwrap();
-        let script = ckb_types::packed::Script::from_slice(
-            script.to_owned().expect("get script").as_bytes(),
-        )
-        .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
-        .into();
-        let input_sudt_amount: u128 = Uint128::from_slice(input_sudt_amount.as_bytes())
-            .expect("get input xudt amount")
-            .unpack();
-        *s_udt_amount.entry(script).or_insert(0) += input_sudt_amount as i128;
-    }
-    loop {
-        let output_sudt_amount =
-            pop_entry_by_first_element(&mut kv_map, OTX_ACCOUNTING_META_OUTPUT_SUDT);
-        if output_sudt_amount.is_none() {
-            break;
-        }
-        let ((_, script), output_sudt_amount) = output_sudt_amount.unwrap();
-        let script = ckb_types::packed::Script::from_slice(
-            script.to_owned().expect("get script").as_bytes(),
-        )
-        .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
-        .into();
-        let output_sudt_amount: u128 = Uint128::from_slice(output_sudt_amount.as_bytes())
-            .expect("get input xudt amount")
-            .unpack();
-        *s_udt_amount.entry(script).or_insert(0) -= output_sudt_amount as i128;
-    }
-
-    Ok(PaymentAmount {
-        capacity: input_capacity as i128 - output_capacity as i128,
-        x_udt_amount,
-        s_udt_amount,
-    })
 }
