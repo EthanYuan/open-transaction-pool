@@ -21,7 +21,8 @@ use ckb_types::{
 };
 use faster_hex::hex_decode;
 use json_types::OutPoint;
-use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_basic_otx};
+use otx_format::error::OtxFormatError;
+use otx_format::jsonrpc_types::tx_view::tx_view_to_basic_otx;
 use otx_format::jsonrpc_types::OpenTransaction;
 
 use std::collections::HashMap;
@@ -80,7 +81,9 @@ impl OtxAggregator {
     pub fn merge_otxs(&self, otx_list: Vec<OpenTransaction>) -> Result<OpenTransaction> {
         let mut txs = vec![];
         for otx in otx_list {
-            let tx = otx_to_tx_view(otx).map_err(|err| anyhow!(err.to_string()))?;
+            let tx: TransactionView = otx
+                .try_into()
+                .map_err(|err: OtxFormatError| anyhow!(err.to_string()))?;
             let tx = Transaction::from(tx.inner.clone()).into_view();
             txs.push(tx);
         }

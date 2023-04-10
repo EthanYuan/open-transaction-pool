@@ -1,7 +1,6 @@
 use crate::error::InnerResult;
 use crate::notify::NotifyController;
 
-use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::{
     jsonrpc_types::OpenTransaction,
     types::{packed, OpenTxWithStatus},
@@ -34,11 +33,8 @@ impl OtxPool {
     }
 
     pub fn insert(&self, otx: JsonBytes) -> InnerResult<H256> {
-        let otx = parse_otx(otx)?;
-        let tx_hash = {
-            let tx_view = otx_to_tx_view(otx.clone())?;
-            tx_view.hash
-        };
+        let mut otx = parse_otx(otx)?;
+        let tx_hash = otx.get_or_insert_otx_id()?;
         match self.raw_otxs.entry(tx_hash.clone()) {
             Entry::Vacant(entry) => {
                 entry.insert(OpenTxWithStatus::new(otx.clone()));

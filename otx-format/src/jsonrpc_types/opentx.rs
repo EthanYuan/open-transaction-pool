@@ -10,14 +10,18 @@ use crate::constant::essential_keys::{
 use crate::constant::extra_keys::{
     OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_INPUT_SUDT, OTX_ACCOUNTING_META_INPUT_XUDT,
     OTX_ACCOUNTING_META_OUTPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_SUDT,
-    OTX_ACCOUNTING_META_OUTPUT_XUDT,
+    OTX_ACCOUNTING_META_OUTPUT_XUDT, OTX_IDENTIFYING_META_TX_HASH,
 };
 use crate::error::OtxFormatError;
 use crate::types::packed::{self, OpenTransactionBuilder, OtxMapBuilder, OtxMapVecBuilder};
 
-use ckb_jsonrpc_types::{CellDep, CellInput, CellOutput, DepType, JsonBytes, Script, Uint32};
+use anyhow::Result;
+use ckb_jsonrpc_types::{
+    CellDep, CellInput, CellOutput, DepType, JsonBytes, Script, TransactionView, Uint32,
+};
 use ckb_types::bytes::Bytes;
-use ckb_types::core::{self, ScriptHashType};
+use ckb_types::constants::TX_VERSION;
+use ckb_types::core::{self, ScriptHashType, TransactionBuilder};
 use ckb_types::packed::{Byte32, OutPointBuilder, Uint128, Uint64, WitnessArgs};
 use ckb_types::{self, prelude::*, H256};
 use serde::{Deserialize, Serialize};
@@ -27,6 +31,7 @@ pub type Witness = JsonBytes;
 pub type OutputData = JsonBytes;
 
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::hash::Hash;
 use std::slice::Iter;
 
@@ -125,6 +130,35 @@ impl OpenTransaction {
             outputs,
         }
     }
+
+    pub fn get_or_insert_otx_id(&mut self) -> Result<H256, OtxFormatError> {
+        if let Some(key_pair) = self
+            .meta
+            .iter()
+            .find(|key_pair| key_pair.key_type == OTX_IDENTIFYING_META_TX_HASH.into())
+        {
+            H256::from_slice(key_pair.value_data.as_bytes())
+                .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))
+        } else {
+            let id = self.get_tx_hash()?;
+            self.meta.push(OtxKeyPair {
+                key_type: OTX_IDENTIFYING_META_TX_HASH.into(),
+                key_data: None,
+                value_data: JsonBytes::from_bytes(id.as_bytes().to_owned().into()),
+            });
+            Ok(id)
+        }
+    }
+
+    pub fn get_tx_hash(&self) -> Result<H256, OtxFormatError> {
+        let tx_view: Result<TransactionView, _> = self.to_owned().try_into();
+        tx_view.map(|tx| tx.hash)
+    }
+
+    pub fn get_tx_witness_hash(&self) -> Result<H256, OtxFormatError> {
+        let tx_view: Result<core::TransactionView, _> = self.to_owned().try_into();
+        tx_view.map(|tx| tx.witness_hash().unpack())
+    }
 }
 
 impl From<OpenTransaction> for packed::OpenTransaction {
@@ -153,6 +187,65 @@ impl From<packed::OpenTransaction> for OpenTransaction {
     }
 }
 
+impl TryFrom<OpenTransaction> for core::TransactionView {
+    type Error = OtxFormatError;
+    fn try_from(otx: OpenTransaction) -> Result<Self, Self::Error> {
+        let witnesses = otx
+            .witnesses
+            .into_iter()
+            .map(|witness| witness.try_into())
+            .collect::<Result<Vec<Witness>, _>>()?;
+
+        let inputs = otx
+            .inputs
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<CellInput>, _>>()?;
+
+        let outputs: Vec<(CellOutput, OutputData)> = otx
+            .outputs
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<(CellOutput, OutputData)>, _>>()?;
+        let (outputs, outputs_data): (Vec<_>, Vec<_>) =
+            outputs.into_iter().map(|(a, b)| (a, b)).unzip();
+
+        let cell_deps = otx
+            .cell_deps
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<CellDep>, _>>()?;
+
+        let header_deps = otx
+            .header_deps
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<HeaderDep>, _>>()?;
+
+        let tx_view = TransactionBuilder::default()
+            .version(TX_VERSION.pack())
+            .witnesses(
+                witnesses
+                    .into_iter()
+                    .map(|witness| witness.as_bytes().pack()),
+            )
+            .inputs(inputs.into_iter().map(Into::into))
+            .outputs(outputs.into_iter().map(Into::into))
+            .outputs_data(outputs_data.into_iter().map(Into::into))
+            .cell_deps(cell_deps.into_iter().map(Into::into))
+            .header_deps(header_deps.into_iter().map(|h| h.pack()))
+            .build();
+        Ok(tx_view)
+    }
+}
+
+impl TryFrom<OpenTransaction> for TransactionView {
+    type Error = OtxFormatError;
+    fn try_from(otx: OpenTransaction) -> Result<Self, Self::Error> {
+        TryInto::<core::TransactionView>::try_into(otx).map(Into::into)
+    }
+}
+
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
 pub struct OtxMap(Vec<OtxKeyPair>);
 
@@ -167,6 +260,18 @@ impl IntoIterator for OtxMap {
 impl OtxMap {
     pub fn iter(&self) -> Iter<OtxKeyPair> {
         self.0.iter()
+    }
+
+    pub fn push_unique(&mut self, key_pair: OtxKeyPair) -> Result<(), OtxFormatError> {
+        // check duplicate key
+        if self.0.iter().any(|k| k.key_type == key_pair.key_type) {
+            Err(OtxFormatError::OtxMapHasDuplicateKeypair(
+                key_pair.key_type.to_string(),
+            ))
+        } else {
+            self.0.push(key_pair);
+            Ok(())
+        }
     }
 
     pub fn push(&mut self, key_pair: OtxKeyPair) {

@@ -4,7 +4,6 @@ use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
 
 use otx_format::jsonrpc_types::get_payment_amount;
-use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
 use utils::aggregator::{Committer, OtxAggregator, SignInfo};
@@ -188,7 +187,7 @@ impl AtomicSwap {
                                     (_, MessageFromHost::NewOtx(otx)) => {
                                         log::info!("{} receivers msg NewOtx hash: {:?}",
                                             context.plugin_name,
-                                            otx_to_tx_view(otx.clone()).unwrap().hash.to_string());
+                                            otx.get_tx_hash().expect("get otx tx hash").to_string());
                                         on_new_open_tx(context.clone(), otx);
                                     }
                                     (_, MessageFromHost::CommitOtx(otx_hashes)) => {
@@ -250,7 +249,7 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
         return;
     }
 
-    let otx_hash = otx_to_tx_view(otx.clone()).unwrap().hash;
+    let otx_hash = otx.get_tx_hash().expect("get otx tx hash");
     if let Some(item) = context.orders.get(&order_key.pair_order()) {
         if let Some(pair_tx_hash) = item.value().iter().next() {
             log::info!("matched tx: {:#x}", pair_tx_hash);
@@ -273,7 +272,7 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
             };
 
             // to final tx
-            let tx = if let Ok(tx) = otx_to_tx_view(merged_otx) {
+            let tx = if let Ok(tx) = merged_otx.try_into() {
                 tx
             } else {
                 log::info!("Failed to generate final tx.");

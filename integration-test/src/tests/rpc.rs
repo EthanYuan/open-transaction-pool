@@ -4,7 +4,7 @@ use crate::tests::helper::build_pay_ckb_signed_otx;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
-use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_otx};
+use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::types::packed;
 use utils::client::service_client::OtxPoolRpcClient;
 
@@ -53,6 +53,6 @@ fn test_service_rpc_submit_otx() {
     let id = service_client.submit_otx(otx).unwrap();
     log::debug!("id: {:?}", id);
     let otx = service_client.query_otx_by_id(id).unwrap().unwrap();
-    let tx_view_rebuilt = otx_to_tx_view(otx.otx).unwrap();
+    let tx_view_rebuilt = otx.otx.try_into().unwrap();
     assert_eq!(tx_view, tx_view_rebuilt);
 }

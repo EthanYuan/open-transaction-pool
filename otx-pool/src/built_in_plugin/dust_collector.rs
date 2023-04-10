@@ -3,7 +3,6 @@ use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
 
 use otx_format::jsonrpc_types::get_payment_amount;
-use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
 use utils::aggregator::{AddOutputArgs, OtxAggregator, SignInfo};
@@ -166,7 +165,7 @@ impl DustCollector {
                                     (_, MessageFromHost::NewOtx(otx)) => {
                                         log::info!("{} receivers msg NewOtx hash: {:?}",
                                             context.plugin_name,
-                                            otx_to_tx_view(otx.clone()).unwrap().hash.to_string());
+                                            otx.get_tx_hash().expect("get tx hash"));
                                         on_new_open_tx(context.clone(), otx);
                                     }
                                     (_, MessageFromHost::CommitOtx(otx_hashes)) => {
@@ -211,7 +210,7 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
     } else {
         return;
     };
-    let otx_hash = otx_to_tx_view(otx.clone()).unwrap().hash;
+    let otx_hash = otx.get_tx_hash().expect("get tx hash");
     context.otx_set.insert(otx_hash, otx);
 }
 
@@ -291,7 +290,7 @@ fn on_new_intervel(context: Context, elapsed: u64) {
     };
 
     // add input and output
-    let tx = if let Ok(tx) = otx_to_tx_view(merged_otx) {
+    let tx = if let Ok(tx) = merged_otx.try_into() {
         tx
     } else {
         log::error!("open tx converts to Ckb tx failed.");
@@ -328,10 +327,7 @@ fn on_new_intervel(context: Context, elapsed: u64) {
     let hashes: Vec<H256> = context
         .otx_set
         .iter()
-        .map(|otx| {
-            let tx_view = otx_to_tx_view(otx.clone()).unwrap();
-            tx_view.hash
-        })
+        .map(|otx| otx.get_tx_hash().expect("get tx hash"))
         .collect();
     let message = MessageFromPlugin::SendCkbTx((tx_hash, hashes));
     if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
