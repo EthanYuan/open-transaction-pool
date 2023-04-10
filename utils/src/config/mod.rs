@@ -7,7 +7,7 @@ pub use ckb_config::CkbConfig;
 pub use network::NetworkConfig;
 pub use script::ScriptConfigItem;
 
-use built_in_plugins::{AtomicSwapConfig, DustCollectorConfig};
+use built_in_plugins::{AtomicSwapConfig, DustCollectorConfig, SignerConfig};
 
 use anyhow::Result;
 use ckb_jsonrpc_types::{CellDep, DepType, Script};
@@ -33,6 +33,7 @@ pub struct ConfigFile {
     pub scripts: Vec<ScriptConfigItem>,
     pub built_in_plugin_dust_collector: DustCollectorConfig,
     pub built_in_plugin_atomic_swap: AtomicSwapConfig,
+    pub built_in_plugin_signer: SignerConfig,
 }
 
 impl ConfigFile {
@@ -68,6 +69,7 @@ pub struct AppConfig {
     script_config: ScriptConfig,
     plugin_dust_collector_config: DustCollectorConfig,
     plugin_atomic_swap_config: AtomicSwapConfig,
+    plugin_signer_config: SignerConfig,
 }
 
 impl AppConfig {
@@ -79,6 +81,7 @@ impl AppConfig {
             script_config: ScriptConfig::new(script_config),
             plugin_dust_collector_config: config_file.built_in_plugin_dust_collector,
             plugin_atomic_swap_config: config_file.built_in_plugin_atomic_swap,
+            plugin_signer_config: config_file.built_in_plugin_signer,
         }
     }
 
@@ -100,6 +103,10 @@ impl AppConfig {
 
     pub fn get_atomic_swap_config(&self) -> AtomicSwapConfig {
         self.plugin_atomic_swap_config.clone()
+    }
+
+    pub fn get_signer_config(&self) -> SignerConfig {
+        self.plugin_signer_config.clone()
     }
 }
 

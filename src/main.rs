@@ -1,5 +1,5 @@
 use otx_pool::{
-    built_in_plugin::{atomic_swap::AtomicSwap, DustCollector},
+    built_in_plugin::{AtomicSwap, DustCollector, Signer},
     cli::print_logo,
     notify::{NotifyController, NotifyService},
     plugin::host_service::HostServiceProvider,
@@ -170,6 +170,18 @@ fn init_plugins(
         )
         .map_err(|err| anyhow!(err))?;
         plugin_manager.register_built_in_plugins(Box::new(atomic_swap));
+    }
+
+    // init built-in plugins
+    if config.get_signer_config().is_enabled() {
+        let signer = Signer::new(
+            service_provider.handler(),
+            config.get_signer_config(),
+            config.get_ckb_config(),
+            config.get_script_config(),
+        )
+        .map_err(|err| anyhow!(err))?;
+        plugin_manager.register_built_in_plugins(Box::new(signer));
     }
 
     // init third-party plugins

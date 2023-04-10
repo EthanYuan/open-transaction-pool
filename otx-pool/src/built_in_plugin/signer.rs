@@ -5,11 +5,16 @@ use crate::plugin::Plugin;
 use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
+use utils::aggregator::SignInfo;
+use utils::config::{built_in_plugins::SignerConfig, CkbConfig, ScriptConfig};
 
+use anyhow::{anyhow, Result};
+use ckb_sdk_open_tx::types::Address;
 use ckb_types::core::service::Request;
 use ckb_types::H256;
 use crossbeam_channel::{bounded, select, unbounded};
 
+use std::env;
 use std::path::PathBuf;
 use std::thread;
 use std::thread::JoinHandle;
@@ -17,21 +22,31 @@ use std::thread::JoinHandle;
 #[derive(Clone)]
 struct Context {
     plugin_name: String,
-    _ckb_uri: String,
-    _service_handler: ServiceHandler,
+    sign_info: SignInfo,
+    ckb_config: CkbConfig,
+    script_config: ScriptConfig,
+    service_handler: ServiceHandler,
 }
 
 impl Context {
-    fn new(plugin_name: &str, ckb_uri: &str, service_handler: ServiceHandler) -> Self {
+    fn new(
+        plugin_name: &str,
+        sign_info: SignInfo,
+        ckb_config: CkbConfig,
+        script_config: ScriptConfig,
+        service_handler: ServiceHandler,
+    ) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
-            _ckb_uri: ckb_uri.to_owned(),
-            _service_handler: service_handler,
+            sign_info,
+            ckb_config,
+            script_config,
+            service_handler,
         }
     }
 }
 
-pub struct Agent {
+pub struct Signer {
     state: PluginState,
     info: PluginInfo,
 
@@ -44,7 +59,7 @@ pub struct Agent {
     _thread: JoinHandle<()>,
 }
 
-impl Plugin for Agent {
+impl Plugin for Signer {
     fn get_name(&self) -> String {
         self.info.name.clone()
     }
@@ -66,18 +81,33 @@ impl Plugin for Agent {
     }
 }
 
-impl Agent {
-    pub fn new(service_handler: ServiceHandler, ckb_uri: &str) -> Result<Agent, String> {
-        let name = "agent template";
+impl Signer {
+    pub fn new(
+        service_handler: ServiceHandler,
+        config: SignerConfig,
+        ckb_config: CkbConfig,
+        script_config: ScriptConfig,
+    ) -> Result<Signer> {
+        let name = "singer";
         let state = PluginState::new(PathBuf::default(), true, true);
         let info = PluginInfo::new(
             name,
-            "Collect micropayment otx and aggregate them into ckb tx.",
+            "This plugin indexes OTXs that are waiting to be signed and enables them to be signed using a hosted private key.",
             "1.0",
         );
-        let (msg_handler, request_handler, thread) =
-            Agent::start_process(Context::new(name, ckb_uri, service_handler))?;
-        Ok(Agent {
+        let key = env::var(config.get_env_key_name())?.parse::<H256>()?;
+        let address = env::var(config.get_env_default_address())?
+            .parse::<Address>()
+            .map_err(|e| anyhow!(e))?;
+
+        let (msg_handler, request_handler, thread) = Signer::start_process(Context::new(
+            name,
+            SignInfo::new(&address, &key, ckb_config.clone()),
+            ckb_config,
+            script_config,
+            service_handler,
+        ))?;
+        Ok(Signer {
             state,
             info,
             msg_handler,
@@ -87,10 +117,8 @@ impl Agent {
     }
 }
 
-impl Agent {
-    fn start_process(
-        context: Context,
-    ) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>), String> {
+impl Signer {
+    fn start_process(context: Context) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>)> {
         // the host request channel receives request from host to plugin
         let (host_request_sender, host_request_receiver) = bounded(1);
         // the channel sends notifications or responses from the host to plugin
@@ -120,8 +148,7 @@ impl Agent {
                         match msg {
                             Ok(msg) => {
                                 match msg {
-                                    (_, MessageFromHost::NewInterval(elapsed)) => {
-                                        on_new_intervel(context.clone(), elapsed);
+                                    (_, MessageFromHost::NewInterval(_)) => {
                                     }
                                     (_, MessageFromHost::NewOtx(otx)) => {
                                         log::info!("{} receivers msg NewOtx hash: {:?}",
@@ -171,5 +198,3 @@ fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
             .collect::<Vec<String>>()
     );
 }
-
-fn on_new_intervel(_context: Context, _elapsed: u64) {}
