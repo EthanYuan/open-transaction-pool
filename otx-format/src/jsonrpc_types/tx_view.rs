@@ -4,9 +4,9 @@ use crate::constant::essential_keys::OTX_META_VERSION;
 use crate::constant::extra_keys::{
     OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_INPUT_SUDT, OTX_ACCOUNTING_META_INPUT_XUDT,
     OTX_ACCOUNTING_META_OUTPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_SUDT,
-    OTX_ACCOUNTING_META_OUTPUT_XUDT, OTX_IDENTIFYING_META_TX_HASH,
-    OTX_IDENTIFYING_META_TX_WITNESS_HASH, OTX_LOCATING_INPUT_CAPACITY,
-    OTX_VERSIONING_META_OPEN_TX_VERSION,
+    OTX_ACCOUNTING_META_OUTPUT_XUDT, OTX_IDENTIFYING_META_AGGREGATE_COUNT,
+    OTX_IDENTIFYING_META_TX_HASH, OTX_IDENTIFYING_META_TX_WITNESS_HASH,
+    OTX_LOCATING_INPUT_CAPACITY, OTX_VERSIONING_META_OPEN_TX_VERSION,
 };
 use crate::error::OtxFormatError;
 use crate::jsonrpc_types::{OpenTransaction, OtxKeyPair, OtxMap};
@@ -72,10 +72,9 @@ pub fn tx_view_to_basic_otx(tx_view: TransactionView) -> Result<OpenTransaction,
 
 pub fn tx_view_to_otx(
     tx_view: TransactionView,
-    _min_ckb_fee: Option<u64>,
-    _max_ckb_fee: Option<u64>,
     xudt_code_hash: H256,
     sudt_code_hash: H256,
+    aggregate_count: u32,
     ckb_uri: &str,
 ) -> Result<OpenTransaction, OtxFormatError> {
     let mut ckb_rpc_client = CkbRpcClient::new(ckb_uri);
@@ -109,6 +108,11 @@ pub fn tx_view_to_otx(
             OTX_IDENTIFYING_META_TX_WITNESS_HASH.into(),
             None,
             core_tx_view.witness_hash().as_bytes().pack().into(),
+        ),
+        OtxKeyPair::new(
+            OTX_IDENTIFYING_META_AGGREGATE_COUNT.into(),
+            None,
+            JsonBytes::from_bytes(Uint32::from(aggregate_count).pack().as_bytes()),
         ),
     ];
 

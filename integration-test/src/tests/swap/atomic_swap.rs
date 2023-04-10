@@ -308,13 +308,11 @@ fn build_signed_otx(
     )
     .unwrap();
 
-    let tx_view = open_tx.tx;
     let otx = tx_view_to_otx(
-        tx_view,
-        None,
-        None,
+        open_tx.tx,
         SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash(),
         H256::default(),
+        1,
         CKB_URI,
     )
     .unwrap();

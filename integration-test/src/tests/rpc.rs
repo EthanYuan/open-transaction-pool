@@ -38,10 +38,9 @@ fn test_service_rpc_submit_otx() {
     let tx_view = tx_info.tx;
     let otx = tx_view_to_otx(
         tx_view.clone(),
-        None,
-        None,
         SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash(),
         SCRIPT_CONFIG.get().unwrap().get_sudt_code_hash(),
+        1,
         CKB_URI,
     )
     .unwrap();
