@@ -1,3 +1,5 @@
+pub mod rpc;
+
 use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
@@ -62,7 +64,7 @@ pub struct Signer {
     _thread: JoinHandle<()>,
 }
 
-impl Plugin for Signer {
+impl Plugin for Arc<Signer> {
     fn get_name(&self) -> String {
         self.info.name.clone()
     }

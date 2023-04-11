@@ -1,6 +1,7 @@
 mod helper;
 mod payment;
 mod rpc;
+mod signer;
 mod swap;
 
 #[derive(Debug)]

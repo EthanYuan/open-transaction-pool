@@ -1,5 +1,5 @@
 use otx_pool::{
-    built_in_plugin::{AtomicSwap, DustCollector, Signer},
+    built_in_plugin::{AtomicSwap, DustCollector, Signer, SignerRpc},
     cli::print_logo,
     notify::{NotifyController, NotifyService},
     plugin::host_service::HostServiceProvider,
@@ -87,12 +87,21 @@ pub fn start(config: AppConfig) -> Result<()> {
     // otx pool
     let otx_pool = Arc::new(OtxPool::new(notify_ctrl.clone()));
 
-    // init host service
+    // init host service for plugins
     let service_provider = HostServiceProvider::start(notify_ctrl.clone(), otx_pool.clone())
         .map_err(|err| anyhow!(err))?;
 
+    // init rpc io handler
+    let mut io_handler = IoHandler::new();
+
     // init plugins
-    let plugin_manager = init_plugins(&service_provider, &config, &runtime_handle, &notify_ctrl)?;
+    let plugin_manager = init_plugins(
+        &service_provider,
+        &config,
+        &runtime_handle,
+        &notify_ctrl,
+        &mut io_handler,
+    )?;
 
     // display all names of plugins
     let plugins = plugin_manager.plugin_configs();
@@ -101,9 +110,8 @@ pub fn start(config: AppConfig) -> Result<()> {
         .iter()
         .for_each(|(_, plugin)| log::info!("plugin name: {:?}", plugin.1.name));
 
-    // init otx pool rpc
+    // new otx pool rpc
     let rpc_impl = OtxPoolRpcImpl::new(otx_pool);
-    let mut io_handler = IoHandler::new();
     io_handler.extend_with(rpc_impl.to_delegate());
 
     // start rpc server
@@ -142,6 +150,7 @@ fn init_plugins(
     config: &AppConfig,
     runtime_handle: &Handle,
     notify_ctrl: &NotifyController,
+    io_handler: &mut IoHandler,
 ) -> Result<PluginManager> {
     // create plugin manager
     let mut plugin_manager =
@@ -172,13 +181,16 @@ fn init_plugins(
 
     // init built-in plugins
     if config.get_signer_config().is_enabled() {
-        let signer = Signer::new(
-            service_provider.handler(),
-            config.get_signer_config(),
-            config.get_ckb_config(),
-            config.get_script_config(),
-        )
-        .map_err(|err| anyhow!(err))?;
+        let signer = Arc::new(
+            Signer::new(
+                service_provider.handler(),
+                config.get_signer_config(),
+                config.get_ckb_config(),
+                config.get_script_config(),
+            )
+            .map_err(|err| anyhow!(err))?,
+        );
+        io_handler.extend_with(signer.clone().to_delegate());
         plugin_manager.register_built_in_plugins(Box::new(signer));
     }
 

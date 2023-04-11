@@ -2351,6 +2351,7 @@ dependencies = [
  "log",
  "once_cell",
  "otx-format",
+ "otx-plugin-protocol",
  "rand 0.8.5",
  "reqwest",
  "secp256k1 0.24.3",
