@@ -31,7 +31,6 @@ use std::io::Read;
 use std::path::PathBuf;
 
 pub struct OtxAggregator {
-    pub signer: SignInfo,
     pub committer: Committer,
     ckb_config: CkbConfig,
     script_config: ScriptConfig,
@@ -39,17 +38,10 @@ pub struct OtxAggregator {
 }
 
 impl OtxAggregator {
-    pub fn new(
-        address: &Address,
-        key: &H256,
-        ckb_config: CkbConfig,
-        script_config: ScriptConfig,
-    ) -> Self {
-        let signer = SignInfo::new(address, key, ckb_config.clone());
+    pub fn new(ckb_config: CkbConfig, script_config: ScriptConfig) -> Self {
         let committer = Committer::new(ckb_config.get_ckb_uri());
         let tx_builder = TxBuilder::new(ckb_config.clone(), script_config.clone());
         OtxAggregator {
-            signer,
             committer,
             ckb_config,
             script_config,
@@ -61,7 +53,8 @@ impl OtxAggregator {
         &self,
         open_tx: OpenTransaction,
         input: OutPoint,
-        output: AddOutputArgs,
+        output_address: &Address,
+        output_amout: OutputAmount,
         udt_issuer_script: Script,
     ) -> Result<OpenTransaction> {
         let aggregate_count = open_tx
@@ -77,9 +70,9 @@ impl OtxAggregator {
         )?;
         let ckb_tx = self.tx_builder.add_output(
             tx_info,
-            self.signer.secp_address(),
-            output.capacity,
-            output.udt_amount,
+            output_address,
+            output_amout.capacity,
+            output_amout.udt_amount,
             udt_issuer_script,
         )?;
         tx_view_to_otx(
@@ -298,7 +291,7 @@ fn decode_hex(mut input: &str) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
-pub struct AddOutputArgs {
+pub struct OutputAmount {
     pub capacity: HumanCapacity,
     pub udt_amount: Option<u128>,
 }
