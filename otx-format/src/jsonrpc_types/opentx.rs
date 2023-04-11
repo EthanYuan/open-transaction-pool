@@ -10,7 +10,8 @@ use crate::constant::essential_keys::{
 use crate::constant::extra_keys::{
     OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_INPUT_SUDT, OTX_ACCOUNTING_META_INPUT_XUDT,
     OTX_ACCOUNTING_META_OUTPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_SUDT,
-    OTX_ACCOUNTING_META_OUTPUT_XUDT, OTX_IDENTIFYING_META_TX_HASH,
+    OTX_ACCOUNTING_META_OUTPUT_XUDT, OTX_IDENTIFYING_META_AGGREGATE_COUNT,
+    OTX_IDENTIFYING_META_TX_HASH,
 };
 use crate::error::OtxFormatError;
 use crate::types::packed::{self, OpenTransactionBuilder, OtxMapBuilder, OtxMapVecBuilder};
@@ -158,6 +159,28 @@ impl OpenTransaction {
     pub fn get_tx_witness_hash(&self) -> Result<H256, OtxFormatError> {
         let tx_view: Result<core::TransactionView, _> = self.to_owned().try_into();
         tx_view.map(|tx| tx.witness_hash().unpack())
+    }
+
+    pub fn get_aggregate_count(&self) -> Result<u32, OtxFormatError> {
+        let kv_map = to_tuple_kv_map(&self.meta)?;
+
+        // aggregate count
+        let aggregate_count =
+            get_value_by_first_element(&kv_map, OTX_IDENTIFYING_META_AGGREGATE_COUNT)
+                .map(|aggregate_count| {
+                    let count: u32 =
+                        ckb_types::packed::Uint32::from_slice(aggregate_count.as_bytes())
+                            .expect("get aggregate count")
+                            .unpack();
+                    count
+                })
+                .ok_or_else(|| {
+                    OtxFormatError::OtxMapParseMissingField(
+                        OTX_IDENTIFYING_META_AGGREGATE_COUNT.to_string(),
+                    )
+                })?;
+
+        Ok(aggregate_count)
     }
 
     pub fn get_payment_amount(&self) -> Result<PaymentAmount, OtxFormatError> {

@@ -59,23 +59,37 @@ impl OtxAggregator {
 
     pub fn add_input_and_output(
         &self,
-        open_tx: TransactionView,
+        open_tx: OpenTransaction,
         input: OutPoint,
         output: AddOutputArgs,
         udt_issuer_script: Script,
-    ) -> Result<TransactionView> {
+    ) -> Result<OpenTransaction> {
+        let aggregate_count = open_tx
+            .get_aggregate_count()
+            .map_err(|err| anyhow!(err.to_string()))?;
+        let ckb_tx = open_tx
+            .try_into()
+            .map_err(|_| anyhow!("open tx convert to ckb tx"))?;
         let tx_info = self.tx_builder.add_input(
-            open_tx,
+            ckb_tx,
             input.tx_hash,
             std::convert::Into::<u32>::into(input.index) as usize,
         )?;
-        self.tx_builder.add_output(
+        let ckb_tx = self.tx_builder.add_output(
             tx_info,
             self.signer.secp_address(),
             output.capacity,
             output.udt_amount,
             udt_issuer_script,
+        )?;
+        tx_view_to_otx(
+            ckb_tx,
+            self.script_config.get_xudt_rce_code_hash(),
+            self.script_config.get_sudt_code_hash(),
+            aggregate_count,
+            self.ckb_config.get_ckb_uri(),
         )
+        .map_err(|err| anyhow!(err.to_string()))
     }
 
     pub fn merge_otxs(&self, otx_list: Vec<OpenTransaction>) -> Result<OpenTransaction> {

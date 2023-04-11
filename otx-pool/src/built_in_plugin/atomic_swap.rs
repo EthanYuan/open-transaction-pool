@@ -220,6 +220,13 @@ impl AtomicSwap {
 }
 
 fn on_new_open_tx(context: Context, otx: OpenTransaction) {
+    log::info!("on_new_open_tx, index otxs count: {:?}", context.otxs.len());
+    if let Ok(aggregate_count) = otx.get_aggregate_count() {
+        log::info!("aggregate count: {:?}", aggregate_count);
+        if aggregate_count > 1 {
+            return;
+        }
+    }
     let payment_amount = if let Ok(payment_amount) = otx.get_payment_amount() {
         log::info!("payment: {:?}", payment_amount);
         if payment_amount.capacity <= 0
@@ -289,8 +296,10 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
             log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
 
             // call host service
-            let message =
-                MessageFromPlugin::SendCkbTx((tx_hash, vec![pair_tx_hash.to_owned(), otx_hash]));
+            let message = MessageFromPlugin::SendCkbTxWithOtxs((
+                tx_hash,
+                vec![pair_tx_hash.to_owned(), otx_hash],
+            ));
             if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
                 context.otxs.remove(pair_tx_hash);
                 context.orders.retain(|_, hashes| {

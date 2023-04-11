@@ -54,6 +54,20 @@ impl OtxPool {
     pub fn insert_sent_tx(&self, tx_hash: H256, otx_hashes: Vec<H256>) {
         self.sent_txs.insert(tx_hash, otx_hashes);
     }
+
+    pub fn get_otxs_by_merged_otx_id(&self, id: &H256) -> Vec<OpenTxWithStatus> {
+        self.raw_otxs
+            .iter()
+            .filter(|pair| {
+                if let OpenTxStatus::Merged(merged_otx_id) = &pair.value().status {
+                    merged_otx_id == id
+                } else {
+                    false
+                }
+            })
+            .map(|pair| pair.value().clone())
+            .collect()
+    }
 }
 
 fn parse_otx(otx: JsonBytes) -> InnerResult<OpenTransaction> {

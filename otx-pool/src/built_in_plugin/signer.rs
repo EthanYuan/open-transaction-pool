@@ -4,7 +4,7 @@ use crate::plugin::Plugin;
 
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
-use utils::aggregator::SignInfo;
+use utils::aggregator::{Committer, SignInfo};
 use utils::config::{built_in_plugins::SignerConfig, CkbConfig, ScriptConfig};
 
 use anyhow::{anyhow, Result};
@@ -12,18 +12,21 @@ use ckb_sdk_open_tx::types::Address;
 use ckb_types::core::service::Request;
 use ckb_types::H256;
 use crossbeam_channel::{bounded, select, unbounded};
+use dashmap::DashMap;
 
 use std::env;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
 
 #[derive(Clone)]
 struct Context {
     plugin_name: String,
+    otxs: Arc<DashMap<H256, OpenTransaction>>,
     sign_info: SignInfo,
     ckb_config: CkbConfig,
-    script_config: ScriptConfig,
+    _script_config: ScriptConfig,
     service_handler: ServiceHandler,
 }
 
@@ -37,9 +40,10 @@ impl Context {
     ) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
+            otxs: Arc::new(DashMap::new()),
             sign_info,
             ckb_config,
-            script_config,
+            _script_config: script_config,
             service_handler,
         }
     }
@@ -185,7 +189,48 @@ impl Signer {
     }
 }
 
-fn on_new_open_tx(_context: Context, _otx: OpenTransaction) {}
+fn on_new_open_tx(context: Context, otx: OpenTransaction) {
+    log::info!("on_new_open_tx, index otxs count: {:?}", context.otxs.len());
+    if let Ok(aggregate_count) = otx.get_aggregate_count() {
+        log::info!("aggregate count: {:?}", aggregate_count);
+        if aggregate_count == 1 {
+            return;
+        }
+    }
+    let otx_hash = otx.get_tx_hash().expect("get tx hash");
+    context.otxs.insert(otx_hash, otx.clone());
+
+    let ckb_tx = if let Ok(tx) = otx.try_into() {
+        tx
+    } else {
+        log::error!("open tx converts to Ckb tx failed.");
+        return;
+    };
+
+    // sign
+    let signer = SignInfo::new(
+        context.sign_info.secp_address(),
+        context.sign_info.privkey(),
+        context.ckb_config.clone(),
+    );
+    let signed_ckb_tx = signer.sign_ckb_tx(ckb_tx).unwrap();
+
+    // send_ckb
+    let committer = Committer::new(context.ckb_config.get_ckb_uri());
+    let tx_hash = if let Ok(tx_hash) = committer.send_tx(signed_ckb_tx) {
+        tx_hash
+    } else {
+        log::error!("failed to send final tx.");
+        return;
+    };
+    log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
+
+    // call host service to notify the host that the final tx has been sent
+    let message = MessageFromPlugin::SendCkbTx(tx_hash);
+    if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
+        context.otxs.clear();
+    }
+}
 
 fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
     log::info!(
@@ -196,4 +241,7 @@ fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
             .map(|hash| hash.to_string())
             .collect::<Vec<String>>()
     );
+    otx_hashes.iter().for_each(|otx_hash| {
+        context.otxs.remove(otx_hash);
+    })
 }

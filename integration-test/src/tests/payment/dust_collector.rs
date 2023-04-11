@@ -89,6 +89,12 @@ fn test_payment_dust_collect_ckb() {
         OpenTxStatus::Committed(_)
     ));
     assert_eq!(alice_otx_with_status.status, bob_otx_with_status.status);
+    if let OpenTxStatus::Committed(tx_hash) = alice_otx_with_status.status {
+        let merged_otx = service_client.query_otx_by_id(tx_hash).unwrap().unwrap();
+        assert!(matches!(merged_otx.status, OpenTxStatus::Committed(_)));
+    } else {
+        panic!()
+    }
 
     // check dust collector assets
     let response = mercury_client.get_balance(payload).unwrap();

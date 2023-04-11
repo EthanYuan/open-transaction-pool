@@ -2,7 +2,6 @@ use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
 
-use otx_format::jsonrpc_types::get_payment_amount;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
 use utils::aggregator::{AddOutputArgs, OtxAggregator, SignInfo};
@@ -32,7 +31,7 @@ pub const DEFAULT_FEE: usize = 1000_0000;
 #[derive(Clone)]
 struct Context {
     plugin_name: String,
-    otx_set: Arc<DashMap<H256, OpenTransaction>>,
+    otxs: Arc<DashMap<H256, OpenTransaction>>,
     sign_info: SignInfo,
     ckb_config: CkbConfig,
     script_config: ScriptConfig,
@@ -49,7 +48,7 @@ impl Context {
     ) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
-            otx_set: Arc::new(DashMap::new()),
+            otxs: Arc::new(DashMap::new()),
             sign_info,
             ckb_config,
             script_config,
@@ -199,7 +198,14 @@ impl DustCollector {
 }
 
 fn on_new_open_tx(context: Context, otx: OpenTransaction) {
-    if let Ok(payment_amount) = get_payment_amount(&otx) {
+    log::info!("on_new_open_tx, index otxs count: {:?}", context.otxs.len());
+    if let Ok(aggregate_count) = otx.get_aggregate_count() {
+        log::info!("aggregate count: {:?}", aggregate_count);
+        if aggregate_count > 1 {
+            return;
+        }
+    }
+    if let Ok(payment_amount) = otx.get_payment_amount() {
         log::info!("payment: {:?}", payment_amount);
         if payment_amount.capacity < MIN_PAYMENT as i128
             || !payment_amount.x_udt_amount.is_empty()
@@ -211,7 +217,7 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
         return;
     };
     let otx_hash = otx.get_tx_hash().expect("get tx hash");
-    context.otx_set.insert(otx_hash, otx);
+    context.otxs.insert(otx_hash, otx);
 }
 
 fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
@@ -224,31 +230,23 @@ fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
             .collect::<Vec<String>>()
     );
     otx_hashes.iter().for_each(|otx_hash| {
-        context.otx_set.remove(otx_hash);
+        context.otxs.remove(otx_hash);
     })
 }
 
 fn on_new_intervel(context: Context, elapsed: u64) {
-    if elapsed % EVERY_INTERVALS as u64 != 0 || context.otx_set.len() <= 1 {
+    if elapsed % EVERY_INTERVALS as u64 != 0 || context.otxs.len() <= 1 {
         return;
     }
 
     log::info!(
         "on new {} intervals otx set len: {:?}",
         EVERY_INTERVALS,
-        context.otx_set.len()
+        context.otxs.len()
     );
 
     // merge_otx
-    let mut receive_ckb_capacity = 0;
-    let otx_list: Vec<OpenTransaction> = context
-        .otx_set
-        .iter()
-        .map(|otx| {
-            receive_ckb_capacity += get_payment_amount(&otx).unwrap().capacity;
-            otx.clone()
-        })
-        .collect();
+    let otx_list: Vec<OpenTransaction> = context.otxs.iter().map(|otx| otx.clone()).collect();
     let aggregator = OtxAggregator::new(
         context.sign_info.secp_address(),
         context.sign_info.privkey(),
@@ -263,11 +261,11 @@ fn on_new_intervel(context: Context, elapsed: u64) {
             "Failed to merge otxs, all otxs staged by {} itself will be cleared.",
             context.plugin_name
         );
-        context.otx_set.clear();
+        context.otxs.clear();
         return;
     };
 
-    // find a cell to receive assets
+    // find a input cell to receive assets
     let mut indexer = IndexerRpcClient::new(context.ckb_config.get_ckb_uri());
     let lock_script: packed::Script = context.sign_info.secp_address().into();
     let search_key = SearchKey {
@@ -290,20 +288,15 @@ fn on_new_intervel(context: Context, elapsed: u64) {
     };
 
     // add input and output
-    let tx = if let Ok(tx) = merged_otx.try_into() {
-        tx
-    } else {
-        log::error!("open tx converts to Ckb tx failed.");
-        return;
-    };
+    let receive_ckb_capacity = merged_otx.get_payment_amount().unwrap().capacity;
     let output_capacity =
         receive_ckb_capacity as u64 + cell.output.capacity.value() - DEFAULT_FEE as u64;
     let output = AddOutputArgs {
         capacity: HumanCapacity::from(output_capacity),
         udt_amount: None,
     };
-    let ckb_tx = if let Ok(ckb_tx) =
-        aggregator.add_input_and_output(tx, cell.out_point, output, Script::default())
+    let unsigned_otx = if let Ok(ckb_tx) =
+        aggregator.add_input_and_output(merged_otx, cell.out_point, output, Script::default())
     {
         ckb_tx
     } else {
@@ -311,26 +304,14 @@ fn on_new_intervel(context: Context, elapsed: u64) {
         return;
     };
 
-    // sign
-    let signed_ckb_tx = aggregator.signer.sign_ckb_tx(ckb_tx).unwrap();
-
-    // send_ckb
-    let tx_hash = if let Ok(tx_hash) = aggregator.committer.send_tx(signed_ckb_tx) {
-        tx_hash
-    } else {
-        log::error!("failed to send final tx.");
-        return;
-    };
-    log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
-
     // call host service
     let hashes: Vec<H256> = context
-        .otx_set
+        .otxs
         .iter()
         .map(|otx| otx.get_tx_hash().expect("get tx hash"))
         .collect();
-    let message = MessageFromPlugin::SendCkbTx((tx_hash, hashes));
+    let message = MessageFromPlugin::NewMergedOtx((unsigned_otx, hashes));
     if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
-        context.otx_set.clear();
+        context.otxs.clear();
     }
 }
