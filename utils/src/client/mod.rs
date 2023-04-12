@@ -1,6 +1,6 @@
 pub mod ckb_cli_client;
 pub mod ckb_client;
-pub mod service_client;
+pub mod otx_pool_client;
 
 use anyhow::{anyhow, Result};
 use jsonrpc_core::types::{
@@ -41,6 +41,7 @@ pub fn request<T: Serialize, U: DeserializeOwned>(
 ) -> Result<U> {
     let request = build_request(method, params)?;
     let response = client.rpc_exec(&request)?;
+    println!("{:?}", response);
     handle_response(response)
 }
 

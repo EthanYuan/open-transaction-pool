@@ -15,7 +15,7 @@ use crate::IntegrationTest;
 use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::types::{packed, OpenTxStatus};
 use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
-use utils::client::service_client::OtxPoolRpcClient;
+use utils::client::otx_pool_client::OtxPoolRpcClient;
 use utils::config::CkbConfig;
 use utils::wallet::Wallet;
 
@@ -86,10 +86,10 @@ fn test_swap_udt_to_udt() {
 
     // query alice otxs
     let alice_otx_with_status = service_client
-        .query_otx_by_id(alice_otx_id.clone())
+        .query_otx_status_by_id(alice_otx_id.clone())
         .unwrap()
         .unwrap();
-    assert_eq!(alice_otx_with_status.status, OpenTxStatus::Pending);
+    assert_eq!(alice_otx_with_status, OpenTxStatus::Pending);
 
     // submit bob otxs
     let bob_otx_id = service_client
@@ -101,19 +101,16 @@ fn test_swap_udt_to_udt() {
 
     // query otxs
     let alice_otx_with_status = service_client
-        .query_otx_by_id(alice_otx_id)
+        .query_otx_status_by_id(alice_otx_id)
         .unwrap()
         .unwrap();
-    let bob_otx_with_status = service_client.query_otx_by_id(bob_otx_id).unwrap().unwrap();
-    assert!(matches!(
-        alice_otx_with_status.status,
-        OpenTxStatus::Committed(_)
-    ));
-    assert!(matches!(
-        bob_otx_with_status.status,
-        OpenTxStatus::Committed(_)
-    ));
-    assert_eq!(alice_otx_with_status.status, bob_otx_with_status.status);
+    let bob_otx_status = service_client
+        .query_otx_status_by_id(bob_otx_id)
+        .unwrap()
+        .unwrap();
+    assert!(matches!(alice_otx_with_status, OpenTxStatus::Committed(_)));
+    assert!(matches!(bob_otx_status, OpenTxStatus::Committed(_)));
+    assert_eq!(alice_otx_with_status, bob_otx_status);
 
     let mercury_client = MercuryRpcClient::new(MERCURY_URI.to_string());
 

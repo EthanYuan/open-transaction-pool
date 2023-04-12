@@ -4,7 +4,7 @@
 
 - [RPC Methods](#rpc-methods)
   - [Method `submit_otx`](#method-submit_otx)
-  - [Method `query_otx_by_id`](#method-query_otx_by_id)
+  - [Method `query_otx_status_by_id`](#method-query_otx_status_by_id)
 - [RPC Errors](#rpc-errors)
 - [RPC Types](#rpc-types)
   - [Type `H256`](#type-h256)
@@ -62,11 +62,11 @@ Response
 }
 ```
 
-### Method `query_otx_by_id`
+### Method `query_otx_status_by_id`
 
-- `query_otx_by_id(otx)`
+- `query_otx_status_by_id(id)`
   - `id`: [`H256`](#type-h256)
-- result: [`OpenTxWithStatus`](#type-opentxwithstatus) 
+- result: [`OpenTxStatus`](#type-opentxstatus) 
 
 Return the status of an open transaction.
 
@@ -86,7 +86,7 @@ Request
 {
   "id": 42,
   "jsonrpc": "2.0",
-  "method": "query_otx_by_id",
+  "method": "query_otx_status_by_id",
   "params": [
     "0x4ba6616b9f1db87cd64dc179e53eb12e5591e7453565effd3d41149f38050922"
   ]
@@ -100,142 +100,7 @@ Response
 {
   "id": 42,
   "jsonrpc": "2.0",
-    "result": {
-    "otx": {
-        "meta": [
-        {
-            "key_type": "0x1",
-            "key_data": null,
-            "value_data": "0x00000000"
-        },
-        {
-            "key_type": "0x10000",
-            "key_data": null,
-            "value_data": "0x01000000"
-        },
-        {
-            "key_type": "0x10010",
-            "key_data": null,
-            "value_data": "0x11a63f9b2fbcabf6feb9c40b890290e70ffdf320c61c144cf8997f8adbe12e25"
-        },
-        {
-            "key_type": "0x10011",
-            "key_data": null,
-            "value_data": "0x61fea25e3fe992213c6bba31eb75498a1a5372d55c36cee8153c6f1bf7077b49"
-        },
-        {
-            "key_type": "0x10040",
-            "key_data": null,
-            "value_data": "0x00b7078403000000"
-        },
-        {
-            "key_type": "0x10041",
-            "key_data": null,
-            "value_data": "0x00e40b5402000000"
-        }
-        ],
-        "cell_deps": [
-        [
-            {
-            "key_type": "0x2",
-            "key_data": null,
-            "value_data": "0x8592d17f7d574cf51b744d66fe9e14a09b915ecaf7ff40450d270c8b2a7a1372"
-            },
-            {
-            "key_type": "0x3",
-            "key_data": null,
-            "value_data": "0x03000000"
-            },
-            {
-            "key_type": "0x4",
-            "key_data": null,
-            "value_data": "0x00"
-            }
-        ],
-        [
-            {
-            "key_type": "0x2",
-            "key_data": null,
-            "value_data": "0x8592d17f7d574cf51b744d66fe9e14a09b915ecaf7ff40450d270c8b2a7a1372"
-            },
-            {
-            "key_type": "0x3",
-            "key_data": null,
-            "value_data": "0x09000000"
-            },
-            {
-            "key_type": "0x4",
-            "key_data": null,
-            "value_data": "0x00"
-            }
-        ]
-        ],
-        "header_deps": [],
-        "inputs": [
-        [
-            {
-            "key_type": "0x6",
-            "key_data": null,
-            "value_data": "0x20ba0c00def92c214b75ab30fd9a25a7e5d4d3ef3ae4a6477400adb7da6c8ac9"
-            },
-            {
-            "key_type": "0x7",
-            "key_data": null,
-            "value_data": "0x00000000"
-            },
-            {
-            "key_type": "0x8",
-            "key_data": null,
-            "value_data": "0x0000000000000000"
-            },
-            {
-            "key_type": "0x10050",
-            "key_data": "0x00",
-            "value_data": "0x00b7078403000000"
-            }
-        ]
-        ],
-        "witnesses": [
-        [
-            {
-            "key_type": "0x9",
-            "key_data": null,
-            "value_data": "0x8d000000100000008d0000008d0000007900000079000000100000007900000079000000650000000000000000000000010000001400f07f1600f0011200f07f20efbead20de0000f0000000c29462d0b6d14d6fd60c2a05f7c4408a1979e3195c6cf8bda2c61103db89183c0ab2a428f76b2c5ffcb4f9867f2528c43f25eb4a5e30487b97405ea3acdf24ed01"
-            }
-        ]
-        ],
-        "outputs": [
-        [
-            {
-            "key_type": "0xd",
-            "key_data": null,
-            "value_data": "0x00e40b5402000000"
-            },
-            {
-            "key_type": "0xe",
-            "key_data": null,
-            "value_data": "0xbb4469004225b39e983929db71fe2253cba1d49a76223e9e1d212cdca1f79f28"
-            },
-            {
-            "key_type": "0xf",
-            "key_data": null,
-            "value_data": "0x01"
-            },
-            {
-            "key_type": "0x10",
-            "key_data": null,
-            "value_data": "0x00c61204d170d6cca289d317f89b119436040ef47910"
-            },
-            {
-            "key_type": "0x15",
-            "key_data": null,
-            "value_data": "0x"
-            }
-        ]
-        ]
-    },
-    "status": "Pending"
-    }
+  "result": "Pending"
 }
 ```
 

@@ -138,7 +138,11 @@ impl HostServiceProvider {
         Ok(())
     }
 
-    fn handle_sent_ckb_tx(final_otx_hash: H256, notify_ctrl: NotifyController, otx_pool: Arc<OtxPool>) {
+    fn handle_sent_ckb_tx(
+        final_otx_hash: H256,
+        notify_ctrl: NotifyController,
+        otx_pool: Arc<OtxPool>,
+    ) {
         let otx_hashes: Vec<H256> = otx_pool
             .get_otxs_by_merged_otx_id(&final_otx_hash)
             .iter_mut()
@@ -156,7 +160,10 @@ impl HostServiceProvider {
         for otx_hash in otx_hashes.iter() {
             otx_pool.update_otx_status(otx_hash, OpenTxStatus::Committed(final_otx_hash.clone()));
         }
-        otx_pool.update_otx_status(&final_otx_hash, OpenTxStatus::Committed(final_otx_hash.clone()));
+        otx_pool.update_otx_status(
+            &final_otx_hash,
+            OpenTxStatus::Committed(final_otx_hash.clone()),
+        );
         notify_ctrl.notify_commit_open_tx(otx_hashes.clone());
         otx_pool.insert_sent_tx(final_otx_hash, otx_hashes);
     }
