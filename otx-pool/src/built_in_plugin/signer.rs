@@ -226,7 +226,7 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
     log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
 
     // call host service to notify the host that the final tx has been sent
-    let message = MessageFromPlugin::SendCkbTx(tx_hash);
+    let message = MessageFromPlugin::SentToCkb(tx_hash);
     if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
         context.otxs.clear();
     }

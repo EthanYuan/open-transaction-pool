@@ -278,9 +278,9 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
             log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
 
             // call host service
-            let message = MessageFromPlugin::SendCkbTxWithOtxs((
-                tx_hash,
+            let message = MessageFromPlugin::MergeOtxsAndSentToCkb((
                 vec![pair_tx_hash.to_owned(), otx_hash],
+                tx_hash,
             ));
             if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
                 context.otxs.remove(pair_tx_hash);
