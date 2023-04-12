@@ -60,6 +60,10 @@ listen_uri = "http://127.0.0.1:8118"
 ```toml
 [built_in_plugin_dust_collector]
 enabled = true
+default_address = "DEFAUT_ADDRESS"
+
+[built_in_plugin_signer]
+enabled = true
 key = "PRIVKEY"
 default_address = "DEFAUT_ADDRESS"
 ```
