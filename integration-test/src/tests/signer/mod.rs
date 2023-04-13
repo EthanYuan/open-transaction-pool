@@ -3,7 +3,7 @@ use crate::help::start_otx_pool;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
-use utils::client::service_client::OtxPoolRpcClient;
+use utils::client::otx_pool_client::OtxPoolRpcClient;
 
 inventory::submit!(IntegrationTest {
     name: "test_plugin_rpc_get_plugin_info",

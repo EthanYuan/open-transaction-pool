@@ -25,7 +25,7 @@ use std::thread::JoinHandle;
 #[derive(Clone)]
 struct Context {
     plugin_name: String,
-    otxs: Arc<DashMap<H256, OpenTransaction>>,
+    otxs: DashMap<H256, OpenTransaction>,
     sign_info: SignInfo,
     ckb_config: CkbConfig,
     _script_config: ScriptConfig,
@@ -42,7 +42,7 @@ impl Context {
     ) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
-            otxs: Arc::new(DashMap::new()),
+            otxs: DashMap::new(),
             sign_info,
             ckb_config,
             _script_config: script_config,
@@ -105,13 +105,14 @@ impl Signer {
             .parse::<Address>()
             .map_err(|e| anyhow!(e))?;
 
-        let (msg_handler, request_handler, thread) = Signer::start_process(Context::new(
+        let context = Context::new(
             name,
             SignInfo::new(&address, &key, ckb_config.clone()),
             ckb_config,
             script_config,
             service_handler,
-        ))?;
+        );
+        let (msg_handler, request_handler, thread) = Signer::start_process(Arc::new(context))?;
         Ok(Signer {
             state,
             info,
@@ -123,7 +124,9 @@ impl Signer {
 }
 
 impl Signer {
-    fn start_process(context: Context) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>)> {
+    fn start_process(
+        context: Arc<Context>,
+    ) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>)> {
         // the host request channel receives request from host to plugin
         let (host_request_sender, host_request_receiver) = bounded(1);
         // the channel sends notifications or responses from the host to plugin
@@ -191,7 +194,7 @@ impl Signer {
     }
 }
 
-fn on_new_open_tx(context: Context, otx: OpenTransaction) {
+fn on_new_open_tx(context: Arc<Context>, otx: OpenTransaction) {
     log::info!("on_new_open_tx, index otxs count: {:?}", context.otxs.len());
     if let Ok(aggregate_count) = otx.get_aggregate_count() {
         log::info!("aggregate count: {:?}", aggregate_count);
@@ -234,7 +237,7 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
     }
 }
 
-fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
+fn on_commit_open_tx(context: Arc<Context>, otx_hashes: Vec<H256>) {
     log::info!(
         "{} on commit open tx remove committed otx: {:?}",
         context.plugin_name,
