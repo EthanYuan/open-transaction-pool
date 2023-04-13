@@ -21,7 +21,8 @@ use ckb_types::{
 };
 use faster_hex::hex_decode;
 use json_types::OutPoint;
-use otx_format::jsonrpc_types::tx_view::{otx_to_tx_view, tx_view_to_basic_otx};
+use otx_format::error::OtxFormatError;
+use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::jsonrpc_types::OpenTransaction;
 
 use std::collections::HashMap;
@@ -30,7 +31,6 @@ use std::io::Read;
 use std::path::PathBuf;
 
 pub struct OtxAggregator {
-    pub signer: SignInfo,
     pub committer: Committer,
     ckb_config: CkbConfig,
     script_config: ScriptConfig,
@@ -38,17 +38,10 @@ pub struct OtxAggregator {
 }
 
 impl OtxAggregator {
-    pub fn new(
-        address: &Address,
-        key: &H256,
-        ckb_config: CkbConfig,
-        script_config: ScriptConfig,
-    ) -> Self {
-        let signer = SignInfo::new(address, key, ckb_config.clone());
+    pub fn new(ckb_config: CkbConfig, script_config: ScriptConfig) -> Self {
         let committer = Committer::new(ckb_config.get_ckb_uri());
         let tx_builder = TxBuilder::new(ckb_config.clone(), script_config.clone());
         OtxAggregator {
-            signer,
             committer,
             ckb_config,
             script_config,
@@ -58,29 +51,47 @@ impl OtxAggregator {
 
     pub fn add_input_and_output(
         &self,
-        open_tx: TransactionView,
+        open_tx: OpenTransaction,
         input: OutPoint,
-        output: AddOutputArgs,
+        output_address: &Address,
+        output_amout: OutputAmount,
         udt_issuer_script: Script,
-    ) -> Result<TransactionView> {
+    ) -> Result<OpenTransaction> {
+        let aggregate_count = open_tx
+            .get_aggregate_count()
+            .map_err(|err| anyhow!(err.to_string()))?;
+        let ckb_tx = open_tx
+            .try_into()
+            .map_err(|_| anyhow!("open tx convert to ckb tx"))?;
         let tx_info = self.tx_builder.add_input(
-            open_tx,
+            ckb_tx,
             input.tx_hash,
             std::convert::Into::<u32>::into(input.index) as usize,
         )?;
-        self.tx_builder.add_output(
+        let ckb_tx = self.tx_builder.add_output(
             tx_info,
-            self.signer.secp_address(),
-            output.capacity,
-            output.udt_amount,
+            output_address,
+            output_amout.capacity,
+            output_amout.udt_amount,
             udt_issuer_script,
+        )?;
+        tx_view_to_otx(
+            ckb_tx,
+            self.script_config.get_xudt_rce_code_hash(),
+            self.script_config.get_sudt_code_hash(),
+            aggregate_count,
+            self.ckb_config.get_ckb_uri(),
         )
+        .map_err(|err| anyhow!(err.to_string()))
     }
 
     pub fn merge_otxs(&self, otx_list: Vec<OpenTransaction>) -> Result<OpenTransaction> {
         let mut txs = vec![];
+        let aggregate_count = otx_list.len();
         for otx in otx_list {
-            let tx = otx_to_tx_view(otx).map_err(|err| anyhow!(err.to_string()))?;
+            let tx: TransactionView = otx
+                .try_into()
+                .map_err(|err: OtxFormatError| anyhow!(err.to_string()))?;
             let tx = Transaction::from(tx.inner.clone()).into_view();
             txs.push(tx);
         }
@@ -104,7 +115,14 @@ impl OtxAggregator {
             let tx = assemble_new_tx(txs, &tx_dep_provider, cell.type_hash.pack())?;
             let tx = json_types::TransactionView::from(tx);
 
-            return tx_view_to_basic_otx(tx).map_err(|err| anyhow!(err.to_string()));
+            return tx_view_to_otx(
+                tx,
+                self.script_config.get_xudt_rce_code_hash(),
+                self.script_config.get_sudt_code_hash(),
+                aggregate_count as u32,
+                self.ckb_config.get_ckb_uri(),
+            )
+            .map_err(|err| anyhow!(err.to_string()));
         }
         Err(anyhow!("merge otxs failed!"))
     }
@@ -225,10 +243,13 @@ impl SignInfo {
         if keys.is_empty() {
             return Err(anyhow!("must provide sender-key to sign"));
         }
-        let secret_key = secp256k1::SecretKey::from_slice(keys[0].as_bytes())
-            .map_err(|err| anyhow!("invalid sender secret key: {}", err))?;
+        let secret_keys = keys
+            .iter()
+            .map(|key| secp256k1::SecretKey::from_slice(key.as_bytes()))
+            .collect::<Result<Vec<secp256k1::SecretKey>, _>>()?;
+
         // Build ScriptUnlocker
-        let signer = SecpCkbRawKeySigner::new_with_secret_keys(vec![secret_key]);
+        let signer = SecpCkbRawKeySigner::new_with_secret_keys(secret_keys);
         let sighash_unlocker = SecpSighashUnlocker::from(Box::new(signer) as Box<_>);
         let sighash_script_id = ScriptId::new_type(SIGHASH_TYPE_HASH.clone());
         let mut unlockers = HashMap::default();
@@ -236,21 +257,6 @@ impl SignInfo {
             sighash_script_id,
             Box::new(sighash_unlocker) as Box<dyn ScriptUnlocker>,
         );
-
-        // Build the transaction
-        // let output = CellOutput::new_builder()
-        //     .lock(Script::from(&args.receiver))
-        //     .capacity(args.capacity.0.pack())
-        //     .build();
-        // let builder = CapacityTransferBuilder::new(vec![(output, Bytes::default())]);
-        // let (tx, still_locked_groups) = builder.build_unlocked(
-        //     &mut cell_collector,
-        //     &cell_dep_resolver,
-        //     &header_dep_resolver,
-        //     &tx_dep_provider,
-        //     &balancer,
-        //     &unlockers,
-        // )?;
 
         let tx_dep_provider =
             DefaultTransactionDependencyProvider::new(self.ckb_config.get_ckb_uri(), 10);
@@ -285,7 +291,7 @@ fn decode_hex(mut input: &str) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
-pub struct AddOutputArgs {
+pub struct OutputAmount {
     pub capacity: HumanCapacity,
     pub udt_amount: Option<u128>,
 }

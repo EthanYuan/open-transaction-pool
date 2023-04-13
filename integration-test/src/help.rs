@@ -7,7 +7,7 @@ use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::{ckb::generate_blocks, ckb::unlock_frozen_capacity_in_genesis};
 
 use utils::client::ckb_client::CkbRpcClient;
-use utils::client::service_client::OtxPoolRpcClient;
+use utils::client::otx_pool_client::OtxPoolRpcClient;
 use utils::config::{parse, AppConfig, ConfigFile};
 use utils::instruction::command::run_command_spawn;
 
@@ -154,7 +154,7 @@ pub(crate) fn start_otx_pool(address: Address, pk: H256) {
     };
     let client = OtxPoolRpcClient::new(OTX_POOL_URI.to_string());
     for _try in 0..=RPC_TRY_COUNT {
-        let resp = client.query_otx_by_id(H256::default());
+        let resp = client.query_otx_status_by_id(H256::default());
         if resp.is_ok() {
             if let Some(child) = lock.as_mut() {
                 *child = service

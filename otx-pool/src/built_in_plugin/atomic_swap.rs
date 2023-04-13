@@ -3,15 +3,12 @@ use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
 
-use otx_format::jsonrpc_types::get_payment_amount;
-use otx_format::jsonrpc_types::tx_view::otx_to_tx_view;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
-use utils::aggregator::{Committer, OtxAggregator, SignInfo};
+use utils::aggregator::{Committer, OtxAggregator};
 use utils::config::{CkbConfig, ScriptConfig};
 
 use ckb_jsonrpc_types::Script;
-use ckb_sdk_open_tx::Address;
 use ckb_types::core::service::Request;
 use ckb_types::H256;
 use crossbeam_channel::{bounded, select, unbounded};
@@ -19,7 +16,6 @@ use dashmap::DashMap;
 
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
@@ -29,7 +25,6 @@ pub const EVERY_INTERVALS: usize = 10;
 #[derive(Clone)]
 struct Context {
     plugin_name: String,
-    sign_info: SignInfo,
     ckb_config: CkbConfig,
     script_config: ScriptConfig,
     service_handler: ServiceHandler,
@@ -41,14 +36,12 @@ struct Context {
 impl Context {
     fn new(
         plugin_name: &str,
-        sign_info: SignInfo,
         ckb_config: CkbConfig,
         script_config: ScriptConfig,
         service_handler: ServiceHandler,
     ) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
-            sign_info,
             ckb_config,
             script_config,
             service_handler,
@@ -127,14 +120,6 @@ impl AtomicSwap {
         );
         let (msg_handler, request_handler, thread) = AtomicSwap::start_process(Context::new(
             name,
-            SignInfo::new(
-                &Address::from_str(
-                    "ckb1qgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhzeqga", // TODO: refactor
-                )
-                .unwrap(),
-                &H256::default(),
-                ckb_config.clone(),
-            ),
             ckb_config,
             script_config,
             service_handler,
@@ -188,7 +173,7 @@ impl AtomicSwap {
                                     (_, MessageFromHost::NewOtx(otx)) => {
                                         log::info!("{} receivers msg NewOtx hash: {:?}",
                                             context.plugin_name,
-                                            otx_to_tx_view(otx.clone()).unwrap().hash.to_string());
+                                            otx.get_tx_hash().expect("get otx tx hash").to_string());
                                         on_new_open_tx(context.clone(), otx);
                                     }
                                     (_, MessageFromHost::CommitOtx(otx_hashes)) => {
@@ -222,7 +207,14 @@ impl AtomicSwap {
 }
 
 fn on_new_open_tx(context: Context, otx: OpenTransaction) {
-    let payment_amount = if let Ok(payment_amount) = get_payment_amount(&otx) {
+    log::info!("on_new_open_tx, index otxs count: {:?}", context.otxs.len());
+    if let Ok(aggregate_count) = otx.get_aggregate_count() {
+        log::info!("aggregate count: {:?}", aggregate_count);
+        if aggregate_count > 1 {
+            return;
+        }
+    }
+    let payment_amount = if let Ok(payment_amount) = otx.get_payment_amount() {
         log::info!("payment: {:?}", payment_amount);
         if payment_amount.capacity <= 0
             || payment_amount.capacity > MIN_PAYMENT as i128
@@ -250,7 +242,7 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
         return;
     }
 
-    let otx_hash = otx_to_tx_view(otx.clone()).unwrap().hash;
+    let otx_hash = otx.get_tx_hash().expect("get otx tx hash");
     if let Some(item) = context.orders.get(&order_key.pair_order()) {
         if let Some(pair_tx_hash) = item.value().iter().next() {
             log::info!("matched tx: {:#x}", pair_tx_hash);
@@ -258,12 +250,7 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
 
             // merge_otx
             let otx_list = vec![otx, pair_otx];
-            let aggregator = OtxAggregator::new(
-                context.sign_info.secp_address(),
-                context.sign_info.privkey(),
-                context.ckb_config.clone(),
-                context.script_config,
-            );
+            let aggregator = OtxAggregator::new(context.ckb_config.clone(), context.script_config);
             let merged_otx = if let Ok(merged_otx) = aggregator.merge_otxs(otx_list) {
                 log::debug!("otxs merge successfully.");
                 merged_otx
@@ -273,7 +260,7 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
             };
 
             // to final tx
-            let tx = if let Ok(tx) = otx_to_tx_view(merged_otx) {
+            let tx = if let Ok(tx) = merged_otx.try_into() {
                 tx
             } else {
                 log::info!("Failed to generate final tx.");
@@ -291,8 +278,10 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
             log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
 
             // call host service
-            let message =
-                MessageFromPlugin::SendCkbTx((tx_hash, vec![pair_tx_hash.to_owned(), otx_hash]));
+            let message = MessageFromPlugin::MergeOtxsAndSentToCkb((
+                vec![pair_tx_hash.to_owned(), otx_hash],
+                tx_hash,
+            ));
             if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
                 context.otxs.remove(pair_tx_hash);
                 context.orders.retain(|_, hashes| {

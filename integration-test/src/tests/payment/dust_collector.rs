@@ -10,7 +10,7 @@ use crate::IntegrationTest;
 use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::types::{packed, OpenTxStatus};
 use otx_pool::built_in_plugin::dust_collector::DEFAULT_FEE;
-use utils::client::service_client::OtxPoolRpcClient;
+use utils::client::otx_pool_client::OtxPoolRpcClient;
 
 use anyhow::Result;
 use ckb_jsonrpc_types::JsonBytes;
@@ -60,35 +60,41 @@ fn test_payment_dust_collect_ckb() {
         .unwrap();
 
     // query otxs immediately
-    let alice_otx_with_status = service_client
-        .query_otx_by_id(alice_otx_id.clone())
+    let alice_otx_status = service_client
+        .query_otx_status_by_id(alice_otx_id.clone())
         .unwrap()
         .unwrap();
-    assert_eq!(alice_otx_with_status.status, OpenTxStatus::Pending);
-    let bob_otx_with_status = service_client
-        .query_otx_by_id(bob_otx_id.clone())
+    assert_eq!(alice_otx_status, OpenTxStatus::Pending);
+    let bob_otx_status = service_client
+        .query_otx_status_by_id(bob_otx_id.clone())
         .unwrap()
         .unwrap();
-    assert_eq!(bob_otx_with_status.status, OpenTxStatus::Pending);
+    assert_eq!(bob_otx_status, OpenTxStatus::Pending);
 
     sleep(Duration::from_secs(12));
     aggregate_transactions_into_blocks().unwrap();
 
     // query otxs after a few secs
-    let alice_otx_with_status = service_client
-        .query_otx_by_id(alice_otx_id)
+    let alice_otx_status = service_client
+        .query_otx_status_by_id(alice_otx_id)
         .unwrap()
         .unwrap();
-    let bob_otx_with_status = service_client.query_otx_by_id(bob_otx_id).unwrap().unwrap();
-    assert!(matches!(
-        alice_otx_with_status.status,
-        OpenTxStatus::Committed(_)
-    ));
-    assert!(matches!(
-        bob_otx_with_status.status,
-        OpenTxStatus::Committed(_)
-    ));
-    assert_eq!(alice_otx_with_status.status, bob_otx_with_status.status);
+    let bob_otx_status = service_client
+        .query_otx_status_by_id(bob_otx_id)
+        .unwrap()
+        .unwrap();
+    assert!(matches!(alice_otx_status, OpenTxStatus::Committed(_)));
+    assert!(matches!(bob_otx_status, OpenTxStatus::Committed(_)));
+    assert_eq!(alice_otx_status, bob_otx_status);
+    if let OpenTxStatus::Committed(tx_hash) = alice_otx_status {
+        let merged_otx_status = service_client
+            .query_otx_status_by_id(tx_hash)
+            .unwrap()
+            .unwrap();
+        assert!(matches!(merged_otx_status, OpenTxStatus::Committed(_)));
+    } else {
+        panic!()
+    }
 
     // check dust collector assets
     let response = mercury_client.get_balance(payload).unwrap();
@@ -112,10 +118,9 @@ fn build_pay_ckb_otx(
     let tx_view = tx_info.tx;
     let otx = tx_view_to_otx(
         tx_view,
-        None,
-        None,
         SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash(),
         SCRIPT_CONFIG.get().unwrap().get_sudt_code_hash(),
+        1,
         CKB_URI,
     )
     .unwrap();
@@ -127,10 +132,9 @@ fn _bob_build_otx() -> Result<packed::OpenTransaction> {
     let tx_view = tx_info.tx;
     let otx = tx_view_to_otx(
         tx_view,
-        None,
-        None,
         SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash(),
         SCRIPT_CONFIG.get().unwrap().get_sudt_code_hash(),
+        1,
         CKB_URI,
     )
     .unwrap();

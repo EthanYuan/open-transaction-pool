@@ -1,6 +1,6 @@
 use super::{OtxPoolRpc, OtxPoolRpcImpl};
 
-use otx_format::types::OpenTxWithStatus;
+use otx_format::types::OpenTxStatus;
 
 use ckb_jsonrpc_types::JsonBytes;
 use ckb_types::H256;
@@ -11,7 +11,7 @@ impl OtxPoolRpc for OtxPoolRpcImpl {
         self.otx_pool.insert(otx).map_err(Into::into)
     }
 
-    fn query_otx_by_id(&self, id: H256) -> RpcResult<Option<OpenTxWithStatus>> {
-        Ok(self.otx_pool.get_otx_by_id(id))
+    fn query_otx_status_by_id(&self, id: H256) -> RpcResult<Option<OpenTxStatus>> {
+        Ok(self.otx_pool.get_otx_by_id(id).map(|otx| otx.status))
     }
 }

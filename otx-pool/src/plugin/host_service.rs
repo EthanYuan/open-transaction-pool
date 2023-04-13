@@ -1,12 +1,16 @@
 use crate::notify::NotifyController;
+use crate::pool::OtxPool;
 
-use otx_format::types::{OpenTxStatus, OpenTxWithStatus};
+use ckb_types::prelude::Entity;
+use otx_format::jsonrpc_types::OpenTransaction;
+use otx_format::types::{packed, OpenTxStatus};
 use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin};
 
+use anyhow::{anyhow, Result};
+use ckb_jsonrpc_types::JsonBytes;
 use ckb_types::core::service::Request;
 use ckb_types::H256;
 use crossbeam_channel::{bounded, select, Sender};
-use dashmap::DashMap;
 
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
@@ -23,8 +27,7 @@ pub struct HostServiceProvider {
 impl HostServiceProvider {
     pub fn start(
         notify_ctrl: NotifyController,
-        raw_otxs: Arc<DashMap<H256, OpenTxWithStatus>>,
-        sent_txs: Arc<DashMap<H256, Vec<H256>>>,
+        otx_pool: Arc<OtxPool>,
     ) -> Result<HostServiceProvider, String> {
         let (sender, receiver) = bounded(5);
         let (stop_sender, stop_receiver) = bounded(1);
@@ -46,14 +49,35 @@ impl HostServiceProvider {
                                 MessageFromPlugin::DiscardOtx(_id) => {
                                     let _ = responder.send(MessageFromHost::Ok);
                                 }
-                                MessageFromPlugin::SendCkbTx((tx_hash, otx_hashes)) => {
-                                    Self::on_send_ckb_tx(
-                                        tx_hash,
-                                        otx_hashes,
+                                MessageFromPlugin::SentToCkb(otx_hash) => {
+                                    Self::handle_sent_ckb_tx(
+                                        otx_hash,
                                         notify_ctrl.clone(),
-                                        raw_otxs.clone(),
-                                        sent_txs.clone(),
+                                        otx_pool.clone(),
                                     );
+                                    let _ = responder.send(MessageFromHost::Ok);
+                                }
+                                MessageFromPlugin::MergeOtxsAndSentToCkb((otx_hashes, tx_hash)) => {
+                                    Self::handle_merge_otxs_and_sent(
+                                        otx_hashes,
+                                        tx_hash,
+                                        notify_ctrl.clone(),
+                                        otx_pool.clone(),
+                                    );
+                                    let _ = responder.send(MessageFromHost::Ok);
+                                }
+                                MessageFromPlugin::NewMergedOtx((merged_otx, otx_hashes)) => {
+                                    match Self::handle_new_merged_otx(
+                                        merged_otx,
+                                        otx_hashes,
+                                        otx_pool.clone()
+                                    ) {
+                                        Ok(_) => {let _ = responder.send(MessageFromHost::Ok);}
+                                        Err(err) => {
+                                            log::warn!("handle new merged otx error: {:?}", err);
+                                            let _ = responder.send(MessageFromHost::Error(err.to_string()));
+                                        }
+                                    }
                                 }
                                 _ => unreachable!(),
                             }
@@ -86,15 +110,72 @@ impl HostServiceProvider {
         self.handler.clone()
     }
 
-    pub fn on_send_ckb_tx(
-        tx_hash: H256,
-        otx_hashes: Vec<H256>,
+    fn handle_new_merged_otx(
+        new_merged_otx: OpenTransaction,
+        included_otx_hashes: Vec<H256>,
+        otx_pool: Arc<OtxPool>,
+    ) -> Result<()> {
+        let merged_otx_hash = if let Ok(hash) = new_merged_otx.get_tx_hash() {
+            hash
+        } else {
+            return Err(anyhow!("invalid merged otx"));
+        };
+        log::info!(
+            "handle new merged otx: {:?}, includes otxs: {:?}",
+            merged_otx_hash,
+            included_otx_hashes
+                .iter()
+                .map(|hash| hash.to_string())
+                .collect::<Vec<String>>()
+        );
+        for otx_hash in included_otx_hashes.iter() {
+            otx_pool.update_otx_status(otx_hash, OpenTxStatus::Merged(merged_otx_hash.clone()));
+        }
+        let otx: packed::OpenTransaction = new_merged_otx.into();
+        otx_pool
+            .insert(JsonBytes::from_bytes(otx.as_bytes()))
+            .expect("insert merged otx");
+        Ok(())
+    }
+
+    fn handle_sent_ckb_tx(
+        final_otx_hash: H256,
         notify_ctrl: NotifyController,
-        raw_otxs: Arc<DashMap<H256, OpenTxWithStatus>>,
-        sent_txs: Arc<DashMap<H256, Vec<H256>>>,
+        otx_pool: Arc<OtxPool>,
+    ) {
+        let otx_hashes: Vec<H256> = otx_pool
+            .get_otxs_by_merged_otx_id(&final_otx_hash)
+            .iter_mut()
+            .map(|otx| otx.otx.get_or_insert_otx_id().expect("get otx id"))
+            .collect();
+        log::info!(
+            "handle sent ckb tx: {:?}, includes otxs: {:?}",
+            final_otx_hash.to_string(),
+            otx_hashes
+                .iter()
+                .map(|hash| hash.to_string())
+                .collect::<Vec<String>>()
+        );
+
+        for otx_hash in otx_hashes.iter() {
+            otx_pool.update_otx_status(otx_hash, OpenTxStatus::Committed(final_otx_hash.clone()));
+        }
+        otx_pool.update_otx_status(
+            &final_otx_hash,
+            OpenTxStatus::Committed(final_otx_hash.clone()),
+        );
+        notify_ctrl.notify_commit_open_tx(otx_hashes.clone());
+        otx_pool.insert_sent_tx(final_otx_hash, otx_hashes);
+    }
+
+    fn handle_merge_otxs_and_sent(
+        otx_hashes: Vec<H256>,
+        tx_hash: H256,
+        notify_ctrl: NotifyController,
+        otx_pool: Arc<OtxPool>,
     ) {
         log::info!(
-            "on send ckb tx: {:?}, includes otxs: {:?}",
+            "handle sent ckb tx: {:?}, includes otxs: {:?}",
             tx_hash.to_string(),
             otx_hashes
                 .iter()
@@ -103,10 +184,10 @@ impl HostServiceProvider {
         );
 
         for otx_hash in otx_hashes.iter() {
-            raw_otxs.get_mut(otx_hash).unwrap().status = OpenTxStatus::Committed(tx_hash.clone());
+            otx_pool.update_otx_status(otx_hash, OpenTxStatus::Committed(tx_hash.clone()));
         }
         notify_ctrl.notify_commit_open_tx(otx_hashes.clone());
-        sent_txs.insert(tx_hash, otx_hashes);
+        otx_pool.insert_sent_tx(tx_hash, otx_hashes);
     }
 }
 

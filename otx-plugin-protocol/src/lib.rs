@@ -47,19 +47,22 @@ pub enum MessageFromPlugin {
     PluginInfo(PluginInfo),
 
     // Request
-    NewOtx(OpenTransaction),
+    NewMergedOtx((OpenTransaction, Vec<H256>)),
     DiscardOtx((H256, OpenTransaction)),
     ModifyOtx((H256, OpenTransaction)),
-    SendCkbTx((H256, Vec<H256>)),
+    SentToCkb(H256),
+    MergeOtxsAndSentToCkb((Vec<H256>, H256)),
 }
 
 impl MessageFromPlugin {
     pub fn get_message_type(&self) -> MessageType {
         match self {
             Self::Ok | Self::Error(_) | Self::PluginInfo(_) => MessageType::Response,
-            Self::NewOtx(_) | Self::DiscardOtx(_) | Self::ModifyOtx(_) | Self::SendCkbTx(_) => {
-                MessageType::Request
-            }
+            Self::NewMergedOtx(_)
+            | Self::DiscardOtx(_)
+            | Self::ModifyOtx(_)
+            | Self::SentToCkb(_)
+            | Self::MergeOtxsAndSentToCkb(_) => MessageType::Request,
         }
     }
 }
