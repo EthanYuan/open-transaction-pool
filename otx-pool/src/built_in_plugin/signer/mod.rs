@@ -10,12 +10,14 @@ use utils::aggregator::{Committer, SignInfo};
 use utils::config::{built_in_plugins::SignerConfig, CkbConfig, ScriptConfig};
 
 use anyhow::{anyhow, Result};
-use ckb_sdk_open_tx::types::Address;
+use ckb_jsonrpc_types::Script;
+use ckb_sdk::Address;
 use ckb_types::core::service::Request;
-use ckb_types::H256;
+use ckb_types::{packed, H256};
 use crossbeam_channel::{bounded, select, unbounded};
 use dashmap::DashMap;
 
+use std::collections::HashSet;
 use std::env;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -26,6 +28,7 @@ use std::thread::JoinHandle;
 struct Context {
     plugin_name: String,
     otxs: DashMap<H256, OpenTransaction>,
+    indexed_otxs_by_lock: DashMap<Script, HashSet<H256>>,
     sign_info: SignInfo,
     ckb_config: CkbConfig,
     _script_config: ScriptConfig,
@@ -43,6 +46,7 @@ impl Context {
         Context {
             plugin_name: plugin_name.to_owned(),
             otxs: DashMap::new(),
+            indexed_otxs_by_lock: DashMap::new(),
             sign_info,
             ckb_config,
             _script_config: script_config,
@@ -54,6 +58,7 @@ impl Context {
 pub struct Signer {
     state: PluginState,
     info: PluginInfo,
+    context: Arc<Context>,
 
     /// Send request to plugin thread, and expect a response.
     request_handler: RequestHandler,
@@ -102,20 +107,21 @@ impl Signer {
         );
         let key = env::var(config.get_env_key_name())?.parse::<H256>()?;
         let address = env::var(config.get_env_default_address())?
-            .parse::<Address>()
+            .parse::<ckb_sdk_open_tx::Address>()
             .map_err(|e| anyhow!(e))?;
 
-        let context = Context::new(
+        let context = Arc::new(Context::new(
             name,
             SignInfo::new(&address, &key, ckb_config.clone()),
             ckb_config,
             script_config,
             service_handler,
-        );
-        let (msg_handler, request_handler, thread) = Signer::start_process(Arc::new(context))?;
+        ));
+        let (msg_handler, request_handler, thread) = Signer::start_process(context.clone())?;
         Ok(Signer {
             state,
             info,
+            context,
             msg_handler,
             request_handler,
             _thread: thread,
@@ -124,6 +130,19 @@ impl Signer {
 }
 
 impl Signer {
+    fn get_index_sign_otxs(&self, address: Address) -> Vec<OpenTransaction> {
+        let script: packed::Script = (&address).into();
+        if let Some(otx_hashes) = self.context.indexed_otxs_by_lock.get(&script.into()) {
+            otx_hashes
+                .iter()
+                .filter_map(|hash| self.context.otxs.get(hash))
+                .map(|otx| otx.value().clone())
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+
     fn start_process(
         context: Arc<Context>,
     ) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>)> {

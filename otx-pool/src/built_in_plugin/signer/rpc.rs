@@ -1,13 +1,16 @@
 use super::Signer;
+use crate::error::{OtxPoolError, OtxRpcError};
 use crate::plugin::Plugin;
 
+use ckb_sdk::Address;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::PluginInfo;
 
+use jsonrpc_core::Error;
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_derive::rpc;
 
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
 #[rpc(server)]
 pub trait SignerRpc {
@@ -24,7 +27,11 @@ impl SignerRpc for Arc<Signer> {
         Ok(plugin_info)
     }
 
-    fn get_pending_sign_otxs(&self, _address: String) -> RpcResult<Vec<OpenTransaction>> {
-        todo!()
+    fn get_pending_sign_otxs(&self, address: String) -> RpcResult<Vec<OpenTransaction>> {
+        let address = Address::from_str(&address)
+            .map_err(OtxPoolError::RpcParamParseError)
+            .map_err(Into::<OtxRpcError>::into)
+            .map_err(Into::<Error>::into)?;
+        Ok(self.get_index_sign_otxs(address))
     }
 }
