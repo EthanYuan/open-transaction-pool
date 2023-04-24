@@ -7,7 +7,7 @@ pub use ckb_config::CkbConfig;
 pub use network::NetworkConfig;
 pub use script::ScriptConfigItem;
 
-use built_in_plugins::{AtomicSwapConfig, DustCollectorConfig, SignerConfig};
+use built_in_plugins::{AtomicSwapConfig, DustCollectorConfig, P2PRelayerConfig, SignerConfig};
 
 use anyhow::Result;
 use ckb_jsonrpc_types::{CellDep, DepType, Script};
@@ -34,6 +34,7 @@ pub struct ConfigFile {
     pub built_in_plugin_dust_collector: DustCollectorConfig,
     pub built_in_plugin_atomic_swap: AtomicSwapConfig,
     pub built_in_plugin_signer: SignerConfig,
+    pub built_in_plugin_p2p_relayer: P2PRelayerConfig,
 }
 
 impl ConfigFile {
@@ -70,6 +71,7 @@ pub struct AppConfig {
     plugin_dust_collector_config: DustCollectorConfig,
     plugin_atomic_swap_config: AtomicSwapConfig,
     plugin_signer_config: SignerConfig,
+    plugin_p2p_relayer_config: P2PRelayerConfig,
 }
 
 impl AppConfig {
@@ -82,6 +84,7 @@ impl AppConfig {
             plugin_dust_collector_config: config_file.built_in_plugin_dust_collector,
             plugin_atomic_swap_config: config_file.built_in_plugin_atomic_swap,
             plugin_signer_config: config_file.built_in_plugin_signer,
+            plugin_p2p_relayer_config: config_file.built_in_plugin_p2p_relayer,
         }
     }
 
@@ -107,6 +110,10 @@ impl AppConfig {
 
     pub fn get_signer_config(&self) -> SignerConfig {
         self.plugin_signer_config.clone()
+    }
+
+    pub fn get_p2p_relayer_config(&self) -> P2PRelayerConfig {
+        self.plugin_p2p_relayer_config.clone()
     }
 }
 

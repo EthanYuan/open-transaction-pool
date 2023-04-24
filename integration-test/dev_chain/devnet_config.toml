@@ -17,6 +17,8 @@ enabled = true
 key = "PRIVKEY"
 default_address = "DEFAUT_ADDRESS"
 
+[built_in_plugin_p2p_relayer]
+enabled = false
 
 [ckb_config]
 network_type = "ckb"

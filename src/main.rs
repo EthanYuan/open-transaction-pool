@@ -1,5 +1,5 @@
 use otx_pool::{
-    built_in_plugin::{AtomicSwap, DustCollector, Signer},
+    built_in_plugin::{AtomicSwap, DustCollector, P2PRelayer, Signer},
     cli::print_logo,
     notify::{NotifyController, NotifyService},
     plugin::host_service::HostServiceProvider,
@@ -180,6 +180,14 @@ fn init_plugins(
         )
         .map_err(|err| anyhow!(err))?;
         plugin_manager.register_built_in_plugins(Box::new(signer));
+    }
+
+    // init built-in plugins
+    if config.get_p2p_relayer_config().is_enabled() {
+        let p2p_relayer =
+            P2PRelayer::new(service_provider.handler(), config.get_p2p_relayer_config())
+                .map_err(|err| anyhow!(err))?;
+        plugin_manager.register_built_in_plugins(Box::new(p2p_relayer));
     }
 
     // init third-party plugins
