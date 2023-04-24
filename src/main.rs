@@ -28,7 +28,7 @@ pub const PLUGINS_DIRNAME: &str = "plugins";
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    #[clap(short, long)]
+    #[clap(short, long, env = "OTXP_CONFIG_PATH")]
     config_path: String,
 }
 
