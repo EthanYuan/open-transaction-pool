@@ -26,6 +26,9 @@ molecule = "=0.7.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1", features = ["sync", "process"] }
+tentacle = { version = "0.4.0" }
+futures = { version = "0.3.0" }
+bytes = "1.0.0"
 
 otx-format = { path = "../otx-format" }
 otx-plugin-protocol = { path = "../otx-plugin-protocol" }

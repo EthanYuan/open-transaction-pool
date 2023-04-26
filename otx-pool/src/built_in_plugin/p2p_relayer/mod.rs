@@ -1,3 +1,5 @@
+mod p2p;
+
 use std::path::PathBuf;
 use std::thread::{self, JoinHandle};
 
@@ -7,6 +9,7 @@ use crate::plugin::{
     Plugin,
 };
 use anyhow::Result;
+use ckb_async_runtime::Handle as RuntimeHandle;
 use ckb_types::core::service::Request;
 use crossbeam_channel::{bounded, select, unbounded};
 use otx_format::jsonrpc_types::OpenTransaction;
@@ -29,14 +32,20 @@ struct Context {
 }
 
 impl P2PRelayer {
-    pub fn new(service_handler: ServiceHandler, config: P2PRelayerConfig) -> Result<Self> {
+    pub fn new(
+        runtime_handle: &RuntimeHandle,
+        service_handler: ServiceHandler,
+        config: P2PRelayerConfig,
+    ) -> Result<Self> {
         log::info!("P2PRelayer started with config: {:?}", config);
         let name = "p2p_relayer";
         let state = PluginState::new(PathBuf::default(), true, true);
         let info = PluginInfo::new(name, "This plugin relays OTXs via P2P network.", "1.0");
 
-        let (msg_handler, request_handler, thread) =
-            P2PRelayer::start_process(Context::new(name.to_owned(), config, service_handler))?;
+        let (msg_handler, request_handler, thread) = P2PRelayer::start_process(
+            runtime_handle,
+            Context::new(name.to_owned(), config, service_handler),
+        )?;
         Ok(P2PRelayer {
             state,
             info,
@@ -46,13 +55,22 @@ impl P2PRelayer {
         })
     }
 
-    fn start_process(context: Context) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>)> {
+    fn start_process(
+        runtime_handle: &RuntimeHandle,
+        context: Context,
+    ) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>)> {
         // the host request channel receives request from host to plugin
         let (host_request_sender, host_request_receiver) = bounded(1);
         // the channel sends notifications or responses from the host to plugin
         let (host_msg_sender, host_msg_receiver) = unbounded();
 
         let plugin_name = context.plugin_name.to_owned();
+
+        if context.config.listen().is_some() {
+            p2p::server(runtime_handle);
+        } else {
+            p2p::client(runtime_handle);
+        }
 
         // this thread processes information from host to plugin
         let thread = thread::spawn(move || {

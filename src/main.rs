@@ -184,9 +184,12 @@ fn init_plugins(
 
     // init built-in plugins
     if config.get_p2p_relayer_config().is_enabled() {
-        let p2p_relayer =
-            P2PRelayer::new(service_provider.handler(), config.get_p2p_relayer_config())
-                .map_err(|err| anyhow!(err))?;
+        let p2p_relayer = P2PRelayer::new(
+            runtime_handle,
+            service_provider.handler(),
+            config.get_p2p_relayer_config(),
+        )
+        .map_err(|err| anyhow!(err))?;
         plugin_manager.register_built_in_plugins(Box::new(p2p_relayer));
     }
 
