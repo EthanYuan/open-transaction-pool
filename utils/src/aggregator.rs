@@ -82,6 +82,10 @@ impl OtxAggregator {
             aggregate_count,
             self.ckb_config.get_ckb_uri(),
         )
+        .map(|mut map| {
+            map.add_pending_signature_script(output_address.into());
+            map
+        })
         .map_err(|err| anyhow!(err.to_string()))
     }
 

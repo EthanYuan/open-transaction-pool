@@ -11,7 +11,7 @@ use crate::constant::extra_keys::{
     OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_INPUT_SUDT, OTX_ACCOUNTING_META_INPUT_XUDT,
     OTX_ACCOUNTING_META_OUTPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_SUDT,
     OTX_ACCOUNTING_META_OUTPUT_XUDT, OTX_IDENTIFYING_META_AGGREGATE_COUNT,
-    OTX_IDENTIFYING_META_TX_HASH,
+    OTX_IDENTIFYING_META_TX_HASH, OTX_SIGNING_WITNESS_SIGHASH_ALL_SCRIPT,
 };
 use crate::error::OtxFormatError;
 use crate::types::packed::{self, OpenTransactionBuilder, OtxMapBuilder, OtxMapVecBuilder};
@@ -23,7 +23,9 @@ use ckb_jsonrpc_types::{
 use ckb_types::bytes::Bytes;
 use ckb_types::constants::TX_VERSION;
 use ckb_types::core::{self, ScriptHashType, TransactionBuilder};
-use ckb_types::packed::{Byte32, OutPointBuilder, Uint128, Uint64, WitnessArgs};
+use ckb_types::packed::{
+    Byte32, OutPointBuilder, Script as PackedScript, Uint128, Uint64, WitnessArgs,
+};
 use ckb_types::{self, prelude::*, H256};
 use serde::{Deserialize, Serialize};
 
@@ -75,6 +77,12 @@ impl From<packed::OtxKeyPair> for OtxKeyPair {
 
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
 pub struct OtxMapVec(Vec<OtxMap>);
+
+impl OtxMapVec {
+    pub fn push(&mut self, map: OtxMap) {
+        self.0.push(map)
+    }
+}
 
 impl IntoIterator for OtxMapVec {
     type Item = OtxMap;
@@ -286,6 +294,16 @@ impl OpenTransaction {
             x_udt_amount,
             s_udt_amount,
         })
+    }
+
+    pub fn add_pending_signature_script(&mut self, script: PackedScript) {
+        let witness = OtxKeyPair::new(
+            OTX_SIGNING_WITNESS_SIGHASH_ALL_SCRIPT.into(),
+            None,
+            JsonBytes::from_bytes(script.as_bytes()),
+        );
+        let witness: OtxMap = vec![witness].into();
+        self.witnesses.push(witness);
     }
 }
 
