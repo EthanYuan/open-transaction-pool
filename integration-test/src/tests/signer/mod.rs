@@ -17,3 +17,18 @@ fn test_plugin_rpc_get_plugin_info() {
     let plugin_info = service_client.get_signer_info().unwrap();
     assert_eq!(plugin_info.name, "singer");
 }
+
+inventory::submit!(IntegrationTest {
+    name: "test_plugin_rpc_get_pending_sign_otxs",
+    test_fn: test_plugin_rpc_get_pending_sign_otxs
+});
+fn test_plugin_rpc_get_pending_sign_otxs() {
+    let (address, pk) = generate_rand_secp_address_pk_pair();
+    start_otx_pool(address.clone(), pk);
+
+    let service_client = OtxPoolRpcClient::new(OTX_POOL_URI.to_string());
+    let otxs = service_client
+        .get_pending_sign_otxs(address.to_string())
+        .unwrap();
+    assert_eq!(otxs.len(), 0);
+}

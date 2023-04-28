@@ -1,5 +1,6 @@
 use super::{request, RpcClient};
 
+use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::OpenTxStatus;
 use otx_plugin_protocol::PluginInfo;
 
@@ -27,5 +28,9 @@ impl OtxPoolRpcClient {
 
     pub fn get_signer_info(&self) -> Result<PluginInfo> {
         request(&self.client, "get_signer_info", ())
+    }
+
+    pub fn get_pending_sign_otxs(&self, address: String) -> Result<Vec<OpenTransaction>> {
+        request(&self.client, "get_pending_sign_otxs", vec![address])
     }
 }
