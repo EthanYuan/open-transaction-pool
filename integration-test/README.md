@@ -13,28 +13,28 @@
 - create tables and indexes
 
 ```bash
-cd integration
+cd integration-test
 psql -h localhost -U postgres -d mercury-otx-dev -f devtools/create_table.sql
 ```
 
 ### Init CKB
 
 ```bash
-cd integration
+cd integration-test
 rm -rf ./dev_chain/dev/data  ./free-space
 ```
 
 ### Run integration tests
 
 ```bash
-cd integration
+cd integration-test
 cargo run
 ```
 
 or
  
 ```bash
-cd integration
+cd integration-test
 cargo run -- -t test_service_rpc
 ```
 
@@ -151,7 +151,7 @@ If you need to deploy contract scripts on the dev chain, you need to do the foll
 - run integration tests
 
     ```bash
-    cd integration
+    cd integration-test
     cargo run
     ```
 
