@@ -29,7 +29,7 @@ struct Context {
     plugin_name: String,
     otxs: DashMap<H256, OpenTransaction>,
     indexed_otxs_by_lock: DashMap<Script, HashSet<H256>>,
-    sign_info: SignInfo,
+    sign_info: Option<SignInfo>,
     ckb_config: CkbConfig,
     _script_config: ScriptConfig,
     service_handler: ServiceHandler,
@@ -38,7 +38,7 @@ struct Context {
 impl Context {
     fn new(
         plugin_name: &str,
-        sign_info: SignInfo,
+        sign_info: Option<SignInfo>,
         ckb_config: CkbConfig,
         script_config: ScriptConfig,
         service_handler: ServiceHandler,
@@ -105,14 +105,24 @@ impl Signer {
             "This plugin indexes OTXs that are waiting to be signed and enables them to be signed using a hosted private key.",
             "1.0",
         );
-        let key = env::var(config.get_env_key_name())?.parse::<H256>()?;
-        let address = env::var(config.get_env_default_address())?
-            .parse::<ckb_sdk_open_tx::Address>()
-            .map_err(|e| anyhow!(e))?;
+
+        let address = env::var(config.get_env_default_address());
+        let key = env::var(config.get_env_key_name());
+        let sign_info = if address.is_ok() && key.is_ok() {
+            Some(SignInfo::new(
+                &address?
+                    .parse::<ckb_sdk_open_tx::Address>()
+                    .map_err(|e| anyhow!(e))?,
+                &key?.parse::<H256>()?,
+                ckb_config.clone(),
+            ))
+        } else {
+            None
+        };
 
         let context = Arc::new(Context::new(
             name,
-            SignInfo::new(&address, &key, ckb_config.clone()),
+            sign_info,
             ckb_config,
             script_config,
             service_handler,
@@ -224,18 +234,12 @@ fn on_new_open_tx(context: Arc<Context>, otx: OpenTransaction) {
     context.otxs.insert(otx_hash.clone(), otx.clone());
     log::info!("on_new_open_tx, index otxs count: {:?}", context.otxs.len());
 
-    // hosted private key
-    let signer = SignInfo::new(
-        context.sign_info.secp_address(),
-        context.sign_info.privkey(),
-        context.ckb_config.clone(),
-    );
-
     // index pending signature otx
     // when the hosted private key cannot be signed
-    if lock_scripts
-        .iter()
-        .any(|(_, script)| script != &signer.lock_script())
+    if context.sign_info.is_none()
+        || lock_scripts
+            .iter()
+            .any(|(_, script)| script != &context.sign_info.clone().unwrap().lock_script())
     {
         lock_scripts.into_iter().for_each(|(_, script)| {
             context
@@ -254,12 +258,13 @@ fn on_new_open_tx(context: Arc<Context>, otx: OpenTransaction) {
         log::error!("open tx converts to Ckb tx failed.");
         return;
     };
-    let signed_ckb_tx = if let Ok(signed_ckb_tx) = signer.sign_ckb_tx(ckb_tx) {
-        signed_ckb_tx
-    } else {
-        log::error!("sign open tx failed.");
-        return;
-    };
+    let signed_ckb_tx =
+        if let Ok(signed_ckb_tx) = context.sign_info.clone().unwrap().sign_ckb_tx(ckb_tx) {
+            signed_ckb_tx
+        } else {
+            log::error!("sign open tx failed.");
+            return;
+        };
 
     // send_ckb
     let committer = Committer::new(context.ckb_config.get_ckb_uri());

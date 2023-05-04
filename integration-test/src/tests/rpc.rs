@@ -17,7 +17,7 @@ inventory::submit!(IntegrationTest {
 });
 fn test_service_rpc() {
     let (address, pk) = generate_rand_secp_address_pk_pair();
-    start_otx_pool(address, pk);
+    start_otx_pool(address, Some(pk));
 
     let service_client = OtxPoolRpcClient::new(OTX_POOL_URI.to_string());
     let ret = service_client.submit_otx(JsonBytes::default());
@@ -32,7 +32,7 @@ inventory::submit!(IntegrationTest {
 });
 fn test_service_rpc_submit_otx() {
     let (address, pk) = generate_rand_secp_address_pk_pair();
-    start_otx_pool(address, pk);
+    start_otx_pool(address, Some(pk));
 
     let tx_info = build_pay_ckb_signed_otx("alice", 151, 100, 51).unwrap();
     let tx_view = tx_info.tx;

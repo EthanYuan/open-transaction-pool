@@ -127,14 +127,16 @@ pub(crate) fn start_mercury(ckb: Child) -> (Child, Child) {
     panic!("Setup test environment failed");
 }
 
-pub(crate) fn start_otx_pool(address: Address, pk: H256) {
+pub(crate) fn start_otx_pool(address: Address, pk: Option<H256>) {
     let mut lock = CURRENT_OTX_POOL_SERVICE_PROCESS.lock().unwrap();
     if let Some(child) = lock.as_mut() {
         child.kill().unwrap();
     }
 
-    env::set_var("PRIVKEY", pk.to_string());
     env::set_var("DEFAUT_ADDRESS", address.to_string());
+    if let Some(pk) = pk {
+        env::set_var("PRIVKEY", pk.to_string());
+    }
 
     let service = run_command_spawn(
         "cargo",
