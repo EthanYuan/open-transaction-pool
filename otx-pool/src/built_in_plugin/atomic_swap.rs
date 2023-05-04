@@ -207,7 +207,9 @@ impl AtomicSwap {
 }
 
 fn on_new_open_tx(context: Context, otx: OpenTransaction) {
-    log::info!("on_new_open_tx, index otxs count: {:?}", context.otxs.len());
+    if !otx.get_pending_signature_locks().is_empty() {
+        return;
+    }
     if let Ok(aggregate_count) = otx.get_aggregate_count() {
         log::info!("aggregate count: {:?}", aggregate_count);
         if aggregate_count > 1 {
@@ -292,6 +294,7 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
         }
     } else {
         context.otxs.insert(otx_hash.clone(), otx);
+        log::info!("on_new_open_tx, index otxs count: {:?}", context.otxs.len());
         context
             .orders
             .entry(order_key)

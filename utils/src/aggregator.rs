@@ -215,6 +215,10 @@ impl SignInfo {
         &self.secp_address
     }
 
+    pub fn lock_script(&self) -> Script {
+        self.secp_address.payload().into()
+    }
+
     pub fn privkey(&self) -> &H256 {
         &self.pk
     }

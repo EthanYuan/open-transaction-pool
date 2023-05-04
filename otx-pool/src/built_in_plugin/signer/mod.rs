@@ -214,30 +214,52 @@ impl Signer {
 }
 
 fn on_new_open_tx(context: Arc<Context>, otx: OpenTransaction) {
-    log::info!("on_new_open_tx, index otxs count: {:?}", context.otxs.len());
-    if let Ok(aggregate_count) = otx.get_aggregate_count() {
-        log::info!("aggregate count: {:?}", aggregate_count);
-        if aggregate_count == 1 {
-            return;
-        }
+    let lock_scripts = otx.get_pending_signature_locks();
+    if lock_scripts.is_empty() {
+        return;
     }
-    let otx_hash = otx.get_tx_hash().expect("get tx hash");
-    context.otxs.insert(otx_hash, otx.clone());
 
+    // index otx
+    let otx_hash = otx.get_tx_hash().expect("get tx hash");
+    context.otxs.insert(otx_hash.clone(), otx.clone());
+    log::info!("on_new_open_tx, index otxs count: {:?}", context.otxs.len());
+
+    // hosted private key
+    let signer = SignInfo::new(
+        context.sign_info.secp_address(),
+        context.sign_info.privkey(),
+        context.ckb_config.clone(),
+    );
+
+    // index pending signature otx
+    // when the hosted private key cannot be signed
+    if lock_scripts
+        .iter()
+        .any(|(_, script)| script != &signer.lock_script())
+    {
+        lock_scripts.into_iter().for_each(|(_, script)| {
+            context
+                .indexed_otxs_by_lock
+                .entry(script.into())
+                .or_insert_with(HashSet::new)
+                .insert(otx_hash.clone());
+        });
+        return;
+    }
+
+    // signing with a hosted private key
     let ckb_tx = if let Ok(tx) = otx.try_into() {
         tx
     } else {
         log::error!("open tx converts to Ckb tx failed.");
         return;
     };
-
-    // sign
-    let signer = SignInfo::new(
-        context.sign_info.secp_address(),
-        context.sign_info.privkey(),
-        context.ckb_config.clone(),
-    );
-    let signed_ckb_tx = signer.sign_ckb_tx(ckb_tx).unwrap();
+    let signed_ckb_tx = if let Ok(signed_ckb_tx) = signer.sign_ckb_tx(ckb_tx) {
+        signed_ckb_tx
+    } else {
+        log::error!("sign open tx failed.");
+        return;
+    };
 
     // send_ckb
     let committer = Committer::new(context.ckb_config.get_ckb_uri());

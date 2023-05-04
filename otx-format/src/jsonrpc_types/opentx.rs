@@ -322,7 +322,7 @@ impl OpenTransaction {
         Ok(())
     }
 
-    pub fn get_pending_signature_scripts(&self) -> Vec<(usize, PackedScript)> {
+    pub fn get_pending_signature_locks(&self) -> Vec<(usize, PackedScript)> {
         self.witnesses
             .0
             .iter()
