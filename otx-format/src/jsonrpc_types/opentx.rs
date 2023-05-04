@@ -82,6 +82,14 @@ impl OtxMapVec {
     pub fn push(&mut self, map: OtxMap) {
         self.0.push(map)
     }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 impl IntoIterator for OtxMapVec {
@@ -296,14 +304,36 @@ impl OpenTransaction {
         })
     }
 
-    pub fn add_pending_signature_script(&mut self, script: PackedScript) {
+    pub fn add_pending_signature_script(
+        &mut self,
+        index: usize,
+        script: PackedScript,
+    ) -> Result<(), OtxFormatError> {
         let witness = OtxKeyPair::new(
             OTX_SIGNING_WITNESS_SIGHASH_ALL_SCRIPT.into(),
             None,
             JsonBytes::from_bytes(script.as_bytes()),
         );
+        if self.witnesses.len() != index {
+            return Err(OtxFormatError::WitnessIndexError(index));
+        }
         let witness: OtxMap = vec![witness].into();
         self.witnesses.push(witness);
+        Ok(())
+    }
+
+    pub fn get_pending_signature_scripts(&self) -> Vec<(usize, PackedScript)> {
+        self.witnesses
+            .0
+            .iter()
+            .enumerate()
+            .filter_map(|(index, witness)| {
+                witness
+                    .get_value(OTX_SIGNING_WITNESS_SIGHASH_ALL_SCRIPT.into(), None)
+                    .and_then(|value: JsonBytes| PackedScript::from_slice(value.as_bytes()).ok())
+                    .map(|script| (index, script))
+            })
+            .collect()
     }
 }
 
@@ -441,6 +471,13 @@ impl OtxMap {
 
     pub fn push(&mut self, key_pair: OtxKeyPair) {
         self.0.push(key_pair)
+    }
+
+    pub fn get_value(&self, key_type: Uint32, key_data: Option<JsonBytes>) -> Option<JsonBytes> {
+        self.0
+            .iter()
+            .find(|k| k.key_type == key_type && k.key_data == key_data)
+            .map(|k| k.value_data.clone())
     }
 }
 
