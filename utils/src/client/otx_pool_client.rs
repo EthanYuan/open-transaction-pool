@@ -33,4 +33,12 @@ impl OtxPoolRpcClient {
     pub fn get_pending_sign_otxs(&self, address: String) -> Result<Vec<OpenTransaction>> {
         request(&self.client, "get_pending_sign_otxs", vec![address])
     }
+
+    pub fn send_signed_otx(&self, otx: OpenTransaction) -> Result<()> {
+        request(&self.client, "send_signed_otx", vec![otx])
+    }
+
+    pub fn submit_sent_tx_hash(&self, hash: H256) -> Result<()> {
+        request(&self.client, "submit_sent_tx_hash", vec![hash])
+    }
 }

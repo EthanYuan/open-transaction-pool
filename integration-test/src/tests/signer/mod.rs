@@ -1,17 +1,20 @@
-use crate::const_definition::{MERCURY_URI, OTX_POOL_URI};
+use crate::const_definition::{CKB_URI, MERCURY_URI, OTX_POOL_URI};
 use crate::help::start_otx_pool;
 use crate::tests::payment::dust_collector::build_pay_ckb_otx;
 use crate::utils::client::mercury_client::MercuryRpcClient;
-use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
+use crate::utils::instruction::ckb::{aggregate_transactions_into_blocks, send_transaction_to_ckb};
 use crate::utils::instruction::mercury::{prepare_ckb_capacity, prepare_udt_1};
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
+use otx_format::types::OpenTxStatus;
+use utils::aggregator::SignInfo;
 use utils::client::otx_pool_client::OtxPoolRpcClient;
 
 use ckb_jsonrpc_types::JsonBytes;
-use core_rpc_types::{GetBalancePayload, JsonItem};
 use ckb_types::prelude::Entity;
+use core_rpc_types::{GetBalancePayload, JsonItem};
+use utils::config::CkbConfig;
 
 use std::collections::HashSet;
 use std::thread::sleep;
@@ -51,7 +54,7 @@ inventory::submit!(IntegrationTest {
 });
 fn test_plugin_rpc_get_pending_sign_otxs_with_one_otx() {
     // run otx pool
-    let (dust_collector_address, _pk) = generate_rand_secp_address_pk_pair();
+    let (dust_collector_address, pk) = generate_rand_secp_address_pk_pair();
     prepare_ckb_capacity(&dust_collector_address, 200_0000_0000u64).unwrap();
     prepare_udt_1(200u128, &dust_collector_address).unwrap();
     start_otx_pool(dust_collector_address.clone(), None);
@@ -83,7 +86,7 @@ fn test_plugin_rpc_get_pending_sign_otxs_with_one_otx() {
         .submit_otx(JsonBytes::from_bytes(bob_otx.as_bytes()))
         .unwrap();
 
-    // query otxs after a few secs
+    // query otx after a few secs
     sleep(Duration::from_secs(12));
     aggregate_transactions_into_blocks().unwrap();
 
@@ -91,4 +94,35 @@ fn test_plugin_rpc_get_pending_sign_otxs_with_one_otx() {
         .get_pending_sign_otxs(dust_collector_address.to_string())
         .unwrap();
     assert_eq!(otxs.len(), 1);
+
+    // sign
+    let ckb_tx = if let Ok(tx) = otxs[0].clone().try_into() {
+        tx
+    } else {
+        log::error!("open tx converts to Ckb tx failed.");
+        return;
+    };
+    let sign_info = SignInfo::new(
+        &dust_collector_address,
+        &pk,
+        CkbConfig::new("ckb_dev", CKB_URI),
+    );
+    let tx_view = sign_info.sign_ckb_tx(ckb_tx).unwrap();
+    let tx_hash = send_transaction_to_ckb(tx_view.inner).unwrap();
+    let ret = service_client.submit_sent_tx_hash(tx_hash.clone());
+    println!("ret: {:?}", ret);
+    assert!(ret.is_ok());
+
+    // query otx after a few secs
+    sleep(Duration::from_secs(12));
+    let otxs = service_client
+        .get_pending_sign_otxs(dust_collector_address.to_string())
+        .unwrap();
+    assert_eq!(otxs.len(), 0);
+
+    let status = service_client
+        .query_otx_status_by_id(tx_hash)
+        .unwrap()
+        .unwrap();
+    assert!(matches!(status, OpenTxStatus::Committed(_)));
 }

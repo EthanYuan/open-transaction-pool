@@ -1,3 +1,4 @@
+use ckb_types::H256;
 use otx_format::error::{OtxError, OtxFormatError};
 
 use anyhow::Result;
@@ -48,6 +49,9 @@ pub enum OtxPoolError {
 
     #[display(fmt = "RPC parameter parsing error: {}", _0)]
     RpcParamParseError(String),
+
+    #[display(fmt = "RPC parameter parsing error: {}", _0)]
+    TxNotFound(H256),
 }
 
 impl OtxError for OtxPoolError {
@@ -55,6 +59,7 @@ impl OtxError for OtxPoolError {
         match self {
             OtxPoolError::OtxAlreadyExists => -13100,
             OtxPoolError::RpcParamParseError(_) => -13101,
+            OtxPoolError::TxNotFound(_) => -13102,
         }
     }
 
