@@ -16,7 +16,7 @@ pub enum MessageFromHost {
     NewInterval(u64),
     OtxPoolStart,
     OtxPoolStop,
-    CommitOtx(Vec<H256>),
+    CommitOtx((H256, Vec<H256>)),
 
     // Request
     GetPluginInfo,

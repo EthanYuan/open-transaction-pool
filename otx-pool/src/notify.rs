@@ -44,8 +44,8 @@ pub struct NotifyController {
     stop: StopHandler<()>,
     new_open_tx_register: NotifyRegister<OpenTransaction>,
     new_open_tx_notifier: Sender<OpenTransaction>,
-    commit_open_tx_register: NotifyRegister<Vec<H256>>,
-    commit_open_tx_notifier: Sender<Vec<H256>>,
+    commit_open_tx_register: NotifyRegister<(H256, Vec<H256>)>,
+    commit_open_tx_notifier: Sender<(H256, Vec<H256>)>,
     interval_register: NotifyRegister<u64>,
     interval_notifier: Sender<u64>,
     start_register: NotifyRegister<()>,
@@ -63,7 +63,7 @@ impl Drop for NotifyController {
 
 pub struct NotifyService {
     new_open_tx_subscribers: HashMap<String, Sender<OpenTransaction>>,
-    commit_open_tx_subscribers: HashMap<String, Sender<Vec<H256>>>,
+    commit_open_tx_subscribers: HashMap<String, Sender<(H256, Vec<H256>)>>,
     interval_subscribers: HashMap<String, Sender<u64>>,
     start_subscribers: HashMap<String, Sender<()>>,
     stop_subscribers: HashMap<String, Sender<()>>,
@@ -169,7 +169,10 @@ impl NotifyService {
         }
     }
 
-    fn handle_register_commit_open_tx(&mut self, msg: Request<String, Receiver<Vec<H256>>>) {
+    fn handle_register_commit_open_tx(
+        &mut self,
+        msg: Request<String, Receiver<(H256, Vec<H256>)>>,
+    ) {
         let Request {
             responder,
             arguments: name,
@@ -180,11 +183,11 @@ impl NotifyService {
         let _ = responder.send(receiver);
     }
 
-    async fn handle_notify_commit_open_tx(&mut self, otx_hashes: Vec<H256>) {
-        log::trace!("event commit open tx {:?}", otx_hashes);
+    async fn handle_notify_commit_open_tx(&mut self, otxs: (H256, Vec<H256>)) {
+        log::trace!("event commit open tx {:?}", otxs);
         // notify all subscribers
         for subscriber in self.commit_open_tx_subscribers.values() {
-            let _ = subscriber.send(otx_hashes.clone()).await;
+            let _ = subscriber.send(otxs.clone()).await;
         }
     }
 
@@ -260,16 +263,19 @@ impl NotifyController {
         });
     }
 
-    pub async fn subscribe_commit_open_tx<S: ToString>(&self, name: S) -> Receiver<Vec<H256>> {
+    pub async fn subscribe_commit_open_tx<S: ToString>(
+        &self,
+        name: S,
+    ) -> Receiver<(H256, Vec<H256>)> {
         Request::call(&self.commit_open_tx_register, name.to_string())
             .await
             .expect("Subscribe commit open tx should be OK")
     }
 
-    pub fn notify_commit_open_tx(&self, otx_hashes: Vec<H256>) {
+    pub fn notify_commit_open_tx(&self, tx_hash: H256, otx_hashes: Vec<H256>) {
         let commit_open_tx_notifier = self.commit_open_tx_notifier.clone();
         self.handle.spawn(async move {
-            let _ = commit_open_tx_notifier.send(otx_hashes).await;
+            let _ = commit_open_tx_notifier.send((tx_hash, otx_hashes)).await;
         });
     }
 

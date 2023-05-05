@@ -166,8 +166,8 @@ impl DustCollector {
                                             otx.get_tx_hash().expect("get tx hash"));
                                         on_new_open_tx(context.clone(), otx);
                                     }
-                                    (_, MessageFromHost::CommitOtx(otx_hashes)) => {
-                                        on_commit_open_tx(context.clone(), otx_hashes);
+                                    (_, MessageFromHost::CommitOtx((tx_hash, otx_hashes))) => {
+                                        on_commit_open_tx(context.clone(), tx_hash, otx_hashes);
                                     }
                                     _ => unreachable!(),
                                 }
@@ -222,7 +222,7 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
     log::info!("on_new_open_tx, index otxs count: {:?}", context.otxs.len());
 }
 
-fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
+fn on_commit_open_tx(context: Context, _tx_hash: H256, otx_hashes: Vec<H256>) {
     log::info!(
         "{} on commit open tx remove committed otx: {:?}",
         context.plugin_name,

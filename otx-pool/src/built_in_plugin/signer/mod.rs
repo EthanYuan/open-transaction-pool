@@ -193,8 +193,8 @@ impl Signer {
                                             otx.get_tx_hash().expect("get tx hash"));
                                         on_new_open_tx(context.clone(), otx);
                                     }
-                                    (_, MessageFromHost::CommitOtx(otx_hashes)) => {
-                                        on_commit_open_tx(context.clone(), otx_hashes);
+                                    (_, MessageFromHost::CommitOtx((tx_hash, otx_hashes))) => {
+                                        on_commit_open_tx(context.clone(), tx_hash, otx_hashes);
                                     }
                                     _ => unreachable!(),
                                 }
@@ -229,10 +229,7 @@ fn on_new_open_tx(context: Arc<Context>, otx: OpenTransaction) {
         return;
     }
 
-    // index otx
     let otx_hash = otx.get_tx_hash().expect("get tx hash");
-    context.otxs.insert(otx_hash.clone(), otx.clone());
-    log::info!("on_new_open_tx, index otxs count: {:?}", context.otxs.len());
 
     // index pending signature otx
     // when the hosted private key cannot be signed
@@ -241,6 +238,11 @@ fn on_new_open_tx(context: Arc<Context>, otx: OpenTransaction) {
             .iter()
             .any(|(_, script)| script != &context.sign_info.clone().unwrap().lock_script())
     {
+        // index otx
+        context.otxs.insert(otx_hash.clone(), otx);
+        log::info!("on_new_open_tx, index otxs count: {:?}", context.otxs.len());
+
+        // index lock scripts
         lock_scripts.into_iter().for_each(|(_, script)| {
             context
                 .indexed_otxs_by_lock
@@ -278,21 +280,18 @@ fn on_new_open_tx(context: Arc<Context>, otx: OpenTransaction) {
 
     // call host service to notify the host that the final tx has been sent
     let message = MessageFromPlugin::SentToCkb(tx_hash);
-    if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
-        context.otxs.clear();
-    }
+    Request::call(&context.service_handler, message);
 }
 
-fn on_commit_open_tx(context: Arc<Context>, otx_hashes: Vec<H256>) {
+fn on_commit_open_tx(context: Arc<Context>, tx_hash: H256, _otx_hashes: Vec<H256>) {
     log::info!(
-        "{} on commit open tx remove committed otx: {:?}",
+        "{} on commit open tx remove committed tx: {:?}",
         context.plugin_name,
-        otx_hashes
-            .iter()
-            .map(|hash| hash.to_string())
-            .collect::<Vec<String>>()
+        tx_hash
     );
-    otx_hashes.iter().for_each(|otx_hash| {
-        context.otxs.remove(otx_hash);
-    })
+    context.indexed_otxs_by_lock.retain(|_, hashes| {
+        hashes.remove(&tx_hash);
+        !hashes.is_empty()
+    });
+    context.otxs.remove(&tx_hash);
 }

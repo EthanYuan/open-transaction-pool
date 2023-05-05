@@ -20,8 +20,6 @@ use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
 
-pub const EVERY_INTERVALS: usize = 10;
-
 #[derive(Clone)]
 struct Context {
     plugin_name: String,
@@ -167,8 +165,7 @@ impl AtomicSwap {
                         match msg {
                             Ok(msg) => {
                                 match msg {
-                                    (_, MessageFromHost::NewInterval(elapsed)) => {
-                                        on_new_intervel(context.clone(), elapsed);
+                                    (_, MessageFromHost::NewInterval(_)) => {
                                     }
                                     (_, MessageFromHost::NewOtx(otx)) => {
                                         log::info!("{} receivers msg NewOtx hash: {:?}",
@@ -176,8 +173,8 @@ impl AtomicSwap {
                                             otx.get_tx_hash().expect("get otx tx hash").to_string());
                                         on_new_open_tx(context.clone(), otx);
                                     }
-                                    (_, MessageFromHost::CommitOtx(otx_hashes)) => {
-                                        on_commit_open_tx(context.clone(), otx_hashes);
+                                    (_, MessageFromHost::CommitOtx((tx_hash, otx_hashes))) => {
+                                        on_commit_open_tx(context.clone(), tx_hash, otx_hashes);
                                     }
                                     _ => unreachable!(),
                                 }
@@ -284,13 +281,7 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
                 vec![pair_tx_hash.to_owned(), otx_hash],
                 tx_hash,
             ));
-            if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
-                context.otxs.remove(pair_tx_hash);
-                context.orders.retain(|_, hashes| {
-                    hashes.remove(pair_tx_hash);
-                    !hashes.is_empty()
-                });
-            }
+            Request::call(&context.service_handler, message);
         }
     } else {
         context.otxs.insert(otx_hash.clone(), otx);
@@ -303,7 +294,7 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
     }
 }
 
-fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
+fn on_commit_open_tx(context: Context, _tx_hash: H256, otx_hashes: Vec<H256>) {
     log::info!(
         "{} on commit open tx remove committed otx: {:?}",
         context.plugin_name,
@@ -314,17 +305,9 @@ fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
     );
     otx_hashes.iter().for_each(|otx_hash| {
         context.otxs.remove(otx_hash);
+        context.orders.retain(|_, hashes| {
+            hashes.remove(otx_hash);
+            !hashes.is_empty()
+        });
     })
-}
-
-fn on_new_intervel(context: Context, elapsed: u64) {
-    if elapsed % EVERY_INTERVALS as u64 != 0 || context.otxs.len() <= 1 {
-        return;
-    }
-
-    log::info!(
-        "on new {} intervals otx set len: {:?}",
-        EVERY_INTERVALS,
-        context.otxs.len()
-    );
 }

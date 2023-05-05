@@ -164,7 +164,7 @@ impl HostServiceProvider {
             &final_otx_hash,
             OpenTxStatus::Committed(final_otx_hash.clone()),
         );
-        notify_ctrl.notify_commit_open_tx(otx_hashes.clone());
+        notify_ctrl.notify_commit_open_tx(final_otx_hash.clone(), otx_hashes.clone());
         otx_pool.insert_sent_tx(final_otx_hash, otx_hashes);
     }
 
@@ -186,7 +186,7 @@ impl HostServiceProvider {
         for otx_hash in otx_hashes.iter() {
             otx_pool.update_otx_status(otx_hash, OpenTxStatus::Committed(tx_hash.clone()));
         }
-        notify_ctrl.notify_commit_open_tx(otx_hashes.clone());
+        notify_ctrl.notify_commit_open_tx(tx_hash.clone(), otx_hashes.clone());
         otx_pool.insert_sent_tx(tx_hash, otx_hashes);
     }
 }
