@@ -44,7 +44,7 @@ fn test_swap_udt_to_udt() {
     // run otx pool
     let (address, pk) = generate_rand_secp_address_pk_pair();
     prepare_ckb_capacity(&address, 200_0000_0000u64).unwrap();
-    start_otx_pool(address, pk);
+    start_otx_pool(address, Some(pk));
 
     // alice build otxs
     // pay 10 UDT-1, get 10 UDT-2, pay fee 1 CKB

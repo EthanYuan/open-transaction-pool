@@ -4,4 +4,5 @@ mod signer;
 
 pub use atomic_swap::AtomicSwap;
 pub use dust_collector::DustCollector;
+pub use signer::rpc::SignerRpc;
 pub use signer::Signer;

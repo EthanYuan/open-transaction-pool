@@ -25,6 +25,9 @@ pub enum OtxFormatError {
 
     #[display(fmt = "locate input cell failed: {}", _0)]
     LocateInputFailed(String),
+
+    #[display(fmt = "witness index error: {}", _0)]
+    WitnessIndexError(usize),
 }
 
 impl OtxError for OtxFormatError {
@@ -35,6 +38,7 @@ impl OtxError for OtxFormatError {
             OtxFormatError::OtxMapParseMissingField(_) => -13012,
             OtxFormatError::OtxMapParseFailed(_) => -13013,
             OtxFormatError::LocateInputFailed(_) => -13014,
+            OtxFormatError::WitnessIndexError(_) => -13015,
         }
     }
 

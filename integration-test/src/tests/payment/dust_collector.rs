@@ -30,7 +30,7 @@ fn test_payment_dust_collect_ckb() {
     let (dust_collector_address, pk) = generate_rand_secp_address_pk_pair();
     prepare_ckb_capacity(&dust_collector_address, 200_0000_0000u64).unwrap();
     prepare_udt_1(200u128, &dust_collector_address).unwrap();
-    start_otx_pool(dust_collector_address.clone(), pk);
+    start_otx_pool(dust_collector_address.clone(), Some(pk));
 
     // check dust collector assets
     let payload = GetBalancePayload {
@@ -107,7 +107,7 @@ fn test_payment_dust_collect_ckb() {
     assert_eq!(200u128, response.balances[1].free.into());
 }
 
-fn build_pay_ckb_otx(
+pub(crate) fn build_pay_ckb_otx(
     payer: &str,
     prepare_capacity: usize,
     remain_capacity: usize,

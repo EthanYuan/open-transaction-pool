@@ -1,3 +1,5 @@
+pub mod rpc;
+
 use crate::plugin::host_service::ServiceHandler;
 use crate::plugin::plugin_proxy::{MsgHandler, PluginState, RequestHandler};
 use crate::plugin::Plugin;
@@ -8,12 +10,14 @@ use utils::aggregator::{Committer, SignInfo};
 use utils::config::{built_in_plugins::SignerConfig, CkbConfig, ScriptConfig};
 
 use anyhow::{anyhow, Result};
-use ckb_sdk_open_tx::types::Address;
+use ckb_jsonrpc_types::Script;
+use ckb_sdk::Address;
 use ckb_types::core::service::Request;
-use ckb_types::H256;
+use ckb_types::{packed, H256};
 use crossbeam_channel::{bounded, select, unbounded};
 use dashmap::DashMap;
 
+use std::collections::HashSet;
 use std::env;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -23,8 +27,9 @@ use std::thread::JoinHandle;
 #[derive(Clone)]
 struct Context {
     plugin_name: String,
-    otxs: Arc<DashMap<H256, OpenTransaction>>,
-    sign_info: SignInfo,
+    otxs: DashMap<H256, OpenTransaction>,
+    indexed_otxs_by_lock: DashMap<Script, HashSet<H256>>,
+    sign_info: Option<SignInfo>,
     ckb_config: CkbConfig,
     _script_config: ScriptConfig,
     service_handler: ServiceHandler,
@@ -33,14 +38,15 @@ struct Context {
 impl Context {
     fn new(
         plugin_name: &str,
-        sign_info: SignInfo,
+        sign_info: Option<SignInfo>,
         ckb_config: CkbConfig,
         script_config: ScriptConfig,
         service_handler: ServiceHandler,
     ) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
-            otxs: Arc::new(DashMap::new()),
+            otxs: DashMap::new(),
+            indexed_otxs_by_lock: DashMap::new(),
             sign_info,
             ckb_config,
             _script_config: script_config,
@@ -52,6 +58,7 @@ impl Context {
 pub struct Signer {
     state: PluginState,
     info: PluginInfo,
+    context: Arc<Context>,
 
     /// Send request to plugin thread, and expect a response.
     request_handler: RequestHandler,
@@ -62,7 +69,7 @@ pub struct Signer {
     _thread: JoinHandle<()>,
 }
 
-impl Plugin for Signer {
+impl Plugin for Arc<Signer> {
     fn get_name(&self) -> String {
         self.info.name.clone()
     }
@@ -98,21 +105,33 @@ impl Signer {
             "This plugin indexes OTXs that are waiting to be signed and enables them to be signed using a hosted private key.",
             "1.0",
         );
-        let key = env::var(config.get_env_key_name())?.parse::<H256>()?;
-        let address = env::var(config.get_env_default_address())?
-            .parse::<Address>()
-            .map_err(|e| anyhow!(e))?;
 
-        let (msg_handler, request_handler, thread) = Signer::start_process(Context::new(
+        let address = env::var(config.get_env_default_address());
+        let key = env::var(config.get_env_key_name());
+        let sign_info = if address.is_ok() && key.is_ok() {
+            Some(SignInfo::new(
+                &address?
+                    .parse::<ckb_sdk_open_tx::Address>()
+                    .map_err(|e| anyhow!(e))?,
+                &key?.parse::<H256>()?,
+                ckb_config.clone(),
+            ))
+        } else {
+            None
+        };
+
+        let context = Arc::new(Context::new(
             name,
-            SignInfo::new(&address, &key, ckb_config.clone()),
+            sign_info,
             ckb_config,
             script_config,
             service_handler,
-        ))?;
+        ));
+        let (msg_handler, request_handler, thread) = Signer::start_process(context.clone())?;
         Ok(Signer {
             state,
             info,
+            context,
             msg_handler,
             request_handler,
             _thread: thread,
@@ -121,7 +140,22 @@ impl Signer {
 }
 
 impl Signer {
-    fn start_process(context: Context) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>)> {
+    fn get_index_sign_otxs(&self, address: Address) -> Vec<OpenTransaction> {
+        let script: packed::Script = (&address).into();
+        if let Some(otx_hashes) = self.context.indexed_otxs_by_lock.get(&script.into()) {
+            otx_hashes
+                .iter()
+                .filter_map(|hash| self.context.otxs.get(hash))
+                .map(|otx| otx.value().clone())
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+
+    fn start_process(
+        context: Arc<Context>,
+    ) -> Result<(MsgHandler, RequestHandler, JoinHandle<()>)> {
         // the host request channel receives request from host to plugin
         let (host_request_sender, host_request_receiver) = bounded(1);
         // the channel sends notifications or responses from the host to plugin
@@ -159,8 +193,11 @@ impl Signer {
                                             otx.get_tx_hash().expect("get tx hash"));
                                         on_new_open_tx(context.clone(), otx);
                                     }
-                                    (_, MessageFromHost::CommitOtx(otx_hashes)) => {
-                                        on_commit_open_tx(context.clone(), otx_hashes);
+                                    (_, MessageFromHost::CommitOtx((tx_hash, otx_hashes))) => {
+                                        on_commit_open_tx(context.clone(), tx_hash, otx_hashes);
+                                    }
+                                    (_, MessageFromHost::SendTx(otx)) => {
+                                        on_send_tx(context.clone(), otx);
                                     }
                                     _ => unreachable!(),
                                 }
@@ -189,31 +226,50 @@ impl Signer {
     }
 }
 
-fn on_new_open_tx(context: Context, otx: OpenTransaction) {
-    log::info!("on_new_open_tx, index otxs count: {:?}", context.otxs.len());
-    if let Ok(aggregate_count) = otx.get_aggregate_count() {
-        log::info!("aggregate count: {:?}", aggregate_count);
-        if aggregate_count == 1 {
-            return;
-        }
+fn on_new_open_tx(context: Arc<Context>, otx: OpenTransaction) {
+    let lock_scripts = otx.get_pending_signature_locks();
+    if lock_scripts.is_empty() {
+        return;
     }
-    let otx_hash = otx.get_tx_hash().expect("get tx hash");
-    context.otxs.insert(otx_hash, otx.clone());
 
+    let otx_hash = otx.get_tx_hash().expect("get tx hash");
+
+    // index pending signature otx
+    // when the hosted private key cannot be signed
+    if context.sign_info.is_none()
+        || lock_scripts
+            .iter()
+            .any(|(_, script)| script != &context.sign_info.clone().unwrap().lock_script())
+    {
+        // index otx
+        context.otxs.insert(otx_hash.clone(), otx);
+        log::info!("on_new_open_tx, index otxs count: {:?}", context.otxs.len());
+
+        // index lock scripts
+        lock_scripts.into_iter().for_each(|(_, script)| {
+            context
+                .indexed_otxs_by_lock
+                .entry(script.into())
+                .or_insert_with(HashSet::new)
+                .insert(otx_hash.clone());
+        });
+        return;
+    }
+
+    // signing with a hosted private key
     let ckb_tx = if let Ok(tx) = otx.try_into() {
         tx
     } else {
         log::error!("open tx converts to Ckb tx failed.");
         return;
     };
-
-    // sign
-    let signer = SignInfo::new(
-        context.sign_info.secp_address(),
-        context.sign_info.privkey(),
-        context.ckb_config.clone(),
-    );
-    let signed_ckb_tx = signer.sign_ckb_tx(ckb_tx).unwrap();
+    let signed_ckb_tx =
+        if let Ok(signed_ckb_tx) = context.sign_info.clone().unwrap().sign_ckb_tx(ckb_tx) {
+            signed_ckb_tx
+        } else {
+            log::error!("sign open tx failed.");
+            return;
+        };
 
     // send_ckb
     let committer = Committer::new(context.ckb_config.get_ckb_uri());
@@ -227,21 +283,41 @@ fn on_new_open_tx(context: Context, otx: OpenTransaction) {
 
     // call host service to notify the host that the final tx has been sent
     let message = MessageFromPlugin::SentToCkb(tx_hash);
-    if let Some(MessageFromHost::Ok) = Request::call(&context.service_handler, message) {
-        context.otxs.clear();
-    }
+    Request::call(&context.service_handler, message);
 }
 
-fn on_commit_open_tx(context: Context, otx_hashes: Vec<H256>) {
+fn on_commit_open_tx(context: Arc<Context>, tx_hash: H256, _otx_hashes: Vec<H256>) {
     log::info!(
-        "{} on commit open tx remove committed otx: {:?}",
+        "{} on commit open tx remove committed tx: {:?}",
         context.plugin_name,
-        otx_hashes
-            .iter()
-            .map(|hash| hash.to_string())
-            .collect::<Vec<String>>()
+        tx_hash
     );
-    otx_hashes.iter().for_each(|otx_hash| {
-        context.otxs.remove(otx_hash);
-    })
+    context.indexed_otxs_by_lock.retain(|_, hashes| {
+        hashes.remove(&tx_hash);
+        !hashes.is_empty()
+    });
+    context.otxs.remove(&tx_hash);
+}
+
+fn on_send_tx(context: Arc<Context>, otx: OpenTransaction) {
+    let ckb_tx = if let Ok(tx) = otx.try_into() {
+        tx
+    } else {
+        log::error!("open tx converts to Ckb tx failed.");
+        return;
+    };
+
+    // send_ckb
+    let committer = Committer::new(context.ckb_config.get_ckb_uri());
+    let tx_hash = if let Ok(tx_hash) = committer.send_tx(ckb_tx) {
+        tx_hash
+    } else {
+        log::error!("failed to send final tx.");
+        return;
+    };
+    log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
+
+    // call host service to notify the host that the final tx has been sent
+    let message = MessageFromPlugin::SentToCkb(tx_hash);
+    Request::call(&context.service_handler, message);
 }
