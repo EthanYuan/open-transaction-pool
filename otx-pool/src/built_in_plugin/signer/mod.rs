@@ -196,6 +196,9 @@ impl Signer {
                                     (_, MessageFromHost::CommitOtx((tx_hash, otx_hashes))) => {
                                         on_commit_open_tx(context.clone(), tx_hash, otx_hashes);
                                     }
+                                    (_, MessageFromHost::SendTx(otx)) => {
+                                        on_send_tx(context.clone(), otx);
+                                    }
                                     _ => unreachable!(),
                                 }
                                 Ok(false)
@@ -294,4 +297,27 @@ fn on_commit_open_tx(context: Arc<Context>, tx_hash: H256, _otx_hashes: Vec<H256
         !hashes.is_empty()
     });
     context.otxs.remove(&tx_hash);
+}
+
+fn on_send_tx(context: Arc<Context>, otx: OpenTransaction) {
+    let ckb_tx = if let Ok(tx) = otx.try_into() {
+        tx
+    } else {
+        log::error!("open tx converts to Ckb tx failed.");
+        return;
+    };
+
+    // send_ckb
+    let committer = Committer::new(context.ckb_config.get_ckb_uri());
+    let tx_hash = if let Ok(tx_hash) = committer.send_tx(ckb_tx) {
+        tx_hash
+    } else {
+        log::error!("failed to send final tx.");
+        return;
+    };
+    log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
+
+    // call host service to notify the host that the final tx has been sent
+    let message = MessageFromPlugin::SentToCkb(tx_hash);
+    Request::call(&context.service_handler, message);
 }

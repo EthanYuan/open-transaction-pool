@@ -2,11 +2,12 @@ use crate::const_definition::{CKB_URI, MERCURY_URI, OTX_POOL_URI};
 use crate::help::start_otx_pool;
 use crate::tests::payment::dust_collector::build_pay_ckb_otx;
 use crate::utils::client::mercury_client::MercuryRpcClient;
-use crate::utils::instruction::ckb::{aggregate_transactions_into_blocks, send_transaction_to_ckb};
+use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
 use crate::utils::instruction::mercury::{prepare_ckb_capacity, prepare_udt_1};
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
+use otx_format::jsonrpc_types::tx_view::tx_view_to_basic_otx;
 use otx_format::types::OpenTxStatus;
 use utils::aggregator::SignInfo;
 use utils::client::otx_pool_client::OtxPoolRpcClient;
@@ -108,8 +109,10 @@ fn test_plugin_rpc_get_pending_sign_otxs_with_one_otx() {
         CkbConfig::new("ckb_dev", CKB_URI),
     );
     let tx_view = sign_info.sign_ckb_tx(ckb_tx).unwrap();
-    let tx_hash = send_transaction_to_ckb(tx_view.inner).unwrap();
-    let ret = service_client.submit_sent_tx_hash(tx_hash.clone());
+    let otx = tx_view_to_basic_otx(tx_view).unwrap();
+
+    // send signed tx to otx pool
+    let ret = service_client.send_signed_otx(otx.clone());
     println!("ret: {:?}", ret);
     assert!(ret.is_ok());
 
@@ -121,7 +124,7 @@ fn test_plugin_rpc_get_pending_sign_otxs_with_one_otx() {
     assert_eq!(otxs.len(), 0);
 
     let status = service_client
-        .query_otx_status_by_id(tx_hash)
+        .query_otx_status_by_id(otx.get_tx_hash().unwrap())
         .unwrap()
         .unwrap();
     assert!(matches!(status, OpenTxStatus::Committed(_)));
