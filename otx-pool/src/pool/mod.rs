@@ -1,3 +1,5 @@
+mod verifier;
+
 use crate::error::InnerResult;
 use crate::notify::NotifyController;
 
