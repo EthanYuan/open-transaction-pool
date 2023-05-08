@@ -1,7 +1,7 @@
-use otx_format::jsonrpc_types::OpenTransaction;
+use crate::jsonrpc_types::OpenTransaction;
 
 use anyhow::Result;
-use ckb_jsonrpc_types::{BlockNumber, CellDep, CellOutput, OutPoint, Script, TransactionView};
+use ckb_jsonrpc_types::Script;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
@@ -18,6 +18,7 @@ pub struct ScriptGroup {
     pub output_indices: Vec<usize>,
 }
 
+#[derive(Default)]
 pub struct TransactionStats {
     total_cycles: u64,
     verified_groups: Vec<ScriptGroup>,
@@ -25,6 +26,18 @@ pub struct TransactionStats {
 }
 
 impl TransactionStats {
+    pub fn new(
+        total_cycles: u64,
+        verified_groups: Vec<ScriptGroup>,
+        failed_groups: Vec<ScriptGroup>,
+    ) -> Self {
+        Self {
+            total_cycles,
+            verified_groups,
+            failed_groups,
+        }
+    }
+
     pub fn success_group_count(&self) -> usize {
         self.verified_groups.len()
     }
@@ -52,9 +65,8 @@ impl TransactionStats {
     }
 }
 
-pub fn evaluate_transaction(
-    tx: &OpenTransaction,
-    max_cycles: Option<u64>,
-) -> Result<TransactionStats> {
-    todo!()
+impl OpenTransaction {
+    pub fn verify(&self, _max_cycles: Option<u64>) -> Result<TransactionStats> {
+        todo!("verify transaction")
+    }
 }
