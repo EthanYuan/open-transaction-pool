@@ -18,7 +18,7 @@ utils = { path = "./utils" }
 
 atomic-swap = { path = "plugins-built-in/atomic-swap" }
 dust-collector = { path = "plugins-built-in/dust-collector"}
-
+signer = { path = "plugins-built-in/signer" }
 
 [workspace]
 members = [
@@ -29,4 +29,6 @@ members = [
 
     "plugins-built-in/atomic-swap",
     "plugins-built-in/dust-collector",
+    "plugins-built-in/signer",
+
 ]
