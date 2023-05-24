@@ -1,17 +1,17 @@
-use super::plugin_proxy::MsgHandler;
-use super::plugin_proxy::{PluginProxy, PluginState};
+use super::plugin_proxy::{PluginMeta, PluginProxy};
 use crate::notify::{NotifyController, RuntimeHandle};
 use crate::plugin::host_service::{HostServiceProvider, ServiceHandler};
 use crate::plugin::Plugin;
 
 use ckb_async_runtime::Handle;
-use otx_plugin_protocol::{MessageFromHost, PluginInfo};
-use tokio::task::JoinHandle;
+use otx_plugin_protocol::PluginInfo;
+use tokio::task::{block_in_place, JoinHandle};
 
 use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 pub const PLUGINS_DIRNAME: &str = "plugins";
 pub const INACTIVE_DIRNAME: &str = "plugins_inactive";
@@ -21,10 +21,10 @@ pub struct PluginManager {
     inactive_plugin_dir: PathBuf,
 
     // information about all plugins, including inactive ones
-    plugin_configs: HashMap<String, (PluginState, PluginInfo)>,
+    plugin_configs: HashMap<String, (PluginMeta, PluginInfo)>,
 
     // proxies for activated plugin processes
-    _plugins: HashMap<String, Box<dyn Plugin>>,
+    plugins: HashMap<String, Arc<Mutex<Box<dyn Plugin + Send>>>>,
 
     service_provider: ServiceHandler,
     _event_thread: Option<JoinHandle<()>>,
@@ -32,25 +32,26 @@ pub struct PluginManager {
 
 impl PluginManager {
     pub fn new(host_dir: &Path, service_provider: ServiceHandler) -> Self {
-        let plugin_configs: HashMap<String, (PluginState, PluginInfo)> = HashMap::new();
-        let plugins: HashMap<String, Box<dyn Plugin>> = HashMap::new();
+        let plugin_configs: HashMap<String, (PluginMeta, PluginInfo)> = HashMap::new();
+        let plugins: HashMap<String, Arc<Mutex<Box<dyn Plugin + Send>>>> = HashMap::new();
 
         PluginManager {
             _plugin_dir: host_dir.join(PLUGINS_DIRNAME),
             inactive_plugin_dir: host_dir.join(INACTIVE_DIRNAME),
             plugin_configs,
-            _plugins: plugins,
+            plugins,
             service_provider,
             _event_thread: None,
         }
     }
 
-    pub fn register_built_in_plugins(&mut self, plugin: Box<dyn Plugin>) {
+    pub fn register_built_in_plugins(&mut self, plugin: Box<dyn Plugin + Send>) {
         let plugin_info = plugin.get_info();
-        let plugin_state = plugin.get_state();
+        let plugin_state = plugin.get_meta();
         self.plugin_configs
             .insert(plugin.get_name(), (plugin_state, plugin_info));
-        self._plugins.insert(plugin.get_name(), plugin);
+        self.plugins
+            .insert(plugin.get_name(), Arc::new(Mutex::new(plugin)));
     }
 
     pub fn load_third_party_plugins(
@@ -74,8 +75,10 @@ impl PluginManager {
                     plugin_info,
                     service_provider.handler(),
                 )?;
-                self._plugins
-                    .insert(plugin_name.to_owned(), Box::new(plugin_proxy));
+                self.plugins.insert(
+                    plugin_name.to_owned(),
+                    Arc::new(Mutex::new(Box::new(plugin_proxy))),
+                );
             }
         }
 
@@ -83,10 +86,10 @@ impl PluginManager {
     }
 
     pub fn subscribe_events(&mut self, notify_ctrl: &NotifyController, runtime_handle: &Handle) {
-        let plugin_msg_handlers: Vec<(String, MsgHandler)> = self
-            ._plugins
+        let plugins: Vec<(String, Arc<Mutex<Box<dyn Plugin + Send>>>)> = self
+            .plugins
             .iter()
-            .map(|(name, p)| (name.to_owned(), p.msg_handler()))
+            .map(|(name, p)| (name.to_owned(), p.clone()))
             .collect();
 
         let mut interval_event_receiver =
@@ -96,30 +99,33 @@ impl PluginManager {
         let mut commit_otx_event_receiver =
             runtime_handle.block_on(notify_ctrl.subscribe_commit_open_tx("plugin manager"));
         let event_listening_thread = runtime_handle.spawn(async move {
-                loop {
-                    tokio::select! {
-                        Some(elapsed) = interval_event_receiver.recv() => {
-                            plugin_msg_handlers.iter().for_each(|(_, msg_handler)| {
-                                let _ = msg_handler.send((0, MessageFromHost::NewInterval(elapsed)));
-                            })
-                        }
-                        Some(open_tx) = new_otx_event_receiver.recv() => {
-                            plugin_msg_handlers.iter().for_each(|(_, msg_handler)| {
-                                let _ = msg_handler.send((0, MessageFromHost::NewOtx(open_tx.clone())));
-                            })
-                        }
-                        Some(otx_hash) = commit_otx_event_receiver.recv() => {
-                            plugin_msg_handlers.iter().for_each(|(_, msg_handler)| {
-                                let _ = msg_handler.send((0, MessageFromHost::CommitOtx(otx_hash.clone())));
-                            })
-                        }
+            loop {
+                tokio::select! {
+                    Some(elapsed) = interval_event_receiver.recv() => {
+                        plugins.iter().for_each(| (_, plugin) | {
+                            let plugin = plugin.lock().expect("plugin lock should not fail");
+                            block_in_place(|| plugin.on_new_intervel(elapsed));
+                        })
+                    }
+                    Some(open_tx) = new_otx_event_receiver.recv() => {
+                        plugins.iter().for_each(|(_, plugin) | {
+                            let plugin = plugin.lock().expect("plugin lock should not fail");
+                            block_in_place(|| plugin.on_new_otx(open_tx.clone()));
+                        })
+                    }
+                    Some(otx_hash) = commit_otx_event_receiver.recv() => {
+                        plugins.iter().for_each(|(_, plugin) | {
+                            let plugin = plugin.lock().expect("plugin lock should not fail");
+                            block_in_place(|| plugin.on_commit_otx(otx_hash.clone()));
+                        })
                     }
                 }
-            });
+            }
+        });
         self._event_thread = Some(event_listening_thread);
     }
 
-    pub fn plugin_configs(&self) -> &HashMap<String, (PluginState, PluginInfo)> {
+    pub fn plugin_configs(&self) -> &HashMap<String, (PluginMeta, PluginInfo)> {
         &self.plugin_configs
     }
 
@@ -127,7 +133,7 @@ impl PluginManager {
         self.service_provider.clone()
     }
 
-    fn load_plugin_configs(&self) -> Result<HashMap<String, (PluginState, PluginInfo)>, io::Error> {
+    fn load_plugin_configs(&self) -> Result<HashMap<String, (PluginMeta, PluginInfo)>, io::Error> {
         if !self._plugin_dir.exists() {
             fs::create_dir_all(&self._plugin_dir)?;
         }
@@ -143,7 +149,7 @@ impl PluginManager {
             for entry in fs::read_dir(dir)? {
                 let path = entry?.path();
                 if path.is_file() {
-                    let plugin_state = PluginState::new(path.clone(), *is_active, false);
+                    let plugin_state = PluginMeta::new(path.clone(), *is_active, false);
                     match PluginProxy::load_plugin_info(path.clone()) {
                         Ok(plugin_info) => {
                             log::info!("Loaded plugin: {}", plugin_info.name);

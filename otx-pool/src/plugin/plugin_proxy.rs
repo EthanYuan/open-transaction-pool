@@ -16,7 +16,7 @@ pub type RequestHandler = Sender<Request<(u64, MessageFromHost), (u64, MessageFr
 pub type MsgHandler = Sender<(u64, MessageFromHost)>;
 
 #[derive(Clone, Debug)]
-pub struct PluginState {
+pub struct PluginMeta {
     /// The installation path of the plug-in, the built-in plugin binary_path is default value.
     pub binary_path: PathBuf,
     /// Activation falg.
@@ -25,9 +25,9 @@ pub struct PluginState {
     pub is_built_in: bool,
 }
 
-impl PluginState {
-    pub fn new(binary_path: PathBuf, is_active: bool, is_built_in: bool) -> PluginState {
-        PluginState {
+impl PluginMeta {
+    pub fn new(binary_path: PathBuf, is_active: bool, is_built_in: bool) -> PluginMeta {
+        PluginMeta {
             binary_path,
             is_active,
             is_built_in,
@@ -42,7 +42,7 @@ pub struct PluginProcess {
 }
 
 pub struct PluginProxy {
-    state: PluginState,
+    state: PluginMeta,
     info: PluginInfo,
     _process: PluginProcess,
 
@@ -58,24 +58,24 @@ impl Plugin for PluginProxy {
         self.info.name.clone()
     }
 
-    fn msg_handler(&self) -> MsgHandler {
-        self.msg_handler.clone()
-    }
-
-    fn request_handler(&self) -> RequestHandler {
-        self.request_handler.clone()
-    }
-
     fn get_info(&self) -> PluginInfo {
         self.info.clone()
     }
 
-    fn get_state(&self) -> PluginState {
+    fn get_meta(&self) -> PluginMeta {
         self.state.clone()
     }
 }
 
 impl PluginProxy {
+    pub fn msg_handler(&self) -> MsgHandler {
+        self.msg_handler.clone()
+    }
+
+    pub fn request_handler(&self) -> RequestHandler {
+        self.request_handler.clone()
+    }
+
     /// This function will create a temporary plugin process to fetch plugin information.
     pub fn load_plugin_info(binary_path: PathBuf) -> Result<PluginInfo, String> {
         let mut child = Command::new(&binary_path)
@@ -123,7 +123,7 @@ impl PluginProxy {
 
     pub fn start_process(
         runtime: RuntimeHandle,
-        plugin_state: PluginState,
+        plugin_state: PluginMeta,
         plugin_info: PluginInfo,
         service_handler: ServiceHandler,
     ) -> Result<PluginProxy, String> {

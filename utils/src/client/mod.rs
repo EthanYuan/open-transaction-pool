@@ -41,7 +41,6 @@ pub fn request<T: Serialize, U: DeserializeOwned>(
 ) -> Result<U> {
     let request = build_request(method, params)?;
     let response = client.rpc_exec(&request)?;
-    println!("{:?}", response);
     handle_response(response)
 }
 
