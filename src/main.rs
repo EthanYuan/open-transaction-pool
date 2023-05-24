@@ -1,9 +1,6 @@
+use atomic_swap::AtomicSwap;
 use dust_collector::DustCollector;
-use otx_pool::{
-    built_in_plugin::{AtomicSwap, Signer},
-    cli::print_logo,
-    OtxPoolService,
-};
+use otx_pool::{built_in_plugin::Signer, cli::print_logo, OtxPoolService};
 use utils::config::{parse, AppConfig, ConfigFile};
 
 use anyhow::{anyhow, Result};

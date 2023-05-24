@@ -55,6 +55,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "atomic-swap"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ckb-jsonrpc-types",
+ "ckb-sdk 2.3.0",
+ "ckb-sdk 2.3.1",
+ "ckb-stop-handler",
+ "ckb-types",
+ "dashmap",
+ "derive_more",
+ "log",
+ "otx-format",
+ "otx-plugin-protocol",
+ "utils",
+]
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1370,6 +1388,7 @@ name = "open-transaction-pool"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "atomic-swap",
  "clap",
  "ctrlc",
  "dust-collector",

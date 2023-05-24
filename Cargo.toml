@@ -13,9 +13,12 @@ ctrlc = "3.2.3"
 env_logger = "0.9.3"
 log = "0.4.17"
 
-dust-collector = { path = "plugins-built-in/dust-collector"}
 otx-pool = { path = "./otx-pool" }
 utils = { path = "./utils" }
+
+atomic-swap = { path = "plugins-built-in/atomic-swap" }
+dust-collector = { path = "plugins-built-in/dust-collector"}
+
 
 [workspace]
 members = [
@@ -24,5 +27,6 @@ members = [
     "otx-pool",
     "utils",
 
+    "plugins-built-in/atomic-swap",
     "plugins-built-in/dust-collector",
 ]
