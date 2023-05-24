@@ -1,8 +1,9 @@
-use super::Plugin;
 use crate::notify::RuntimeHandle;
-use crate::plugin::host_service::ServiceHandler;
 
-use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, MessageType, PluginInfo};
+use otx_plugin_protocol::{
+    HostServiceHandler, MessageFromHost, MessageFromPlugin, MessageType, Plugin, PluginInfo,
+    PluginMeta,
+};
 
 use ckb_types::core::service::Request;
 use crossbeam_channel::{bounded, select, unbounded, Sender};
@@ -14,26 +15,6 @@ use std::process::{Child, ChildStdin, Command, Stdio};
 
 pub type RequestHandler = Sender<Request<(u64, MessageFromHost), (u64, MessageFromPlugin)>>;
 pub type MsgHandler = Sender<(u64, MessageFromHost)>;
-
-#[derive(Clone, Debug)]
-pub struct PluginMeta {
-    /// The installation path of the plug-in, the built-in plugin binary_path is default value.
-    pub binary_path: PathBuf,
-    /// Activation falg.
-    pub is_active: bool,
-    /// Built-in flag.
-    pub is_built_in: bool,
-}
-
-impl PluginMeta {
-    pub fn new(binary_path: PathBuf, is_active: bool, is_built_in: bool) -> PluginMeta {
-        PluginMeta {
-            binary_path,
-            is_active,
-            is_built_in,
-        }
-    }
-}
 
 pub struct PluginProcess {
     _plugin_process: Child,
@@ -125,7 +106,7 @@ impl PluginProxy {
         runtime: RuntimeHandle,
         plugin_state: PluginMeta,
         plugin_info: PluginInfo,
-        service_handler: ServiceHandler,
+        service_handler: HostServiceHandler,
     ) -> Result<PluginProxy, String> {
         let mut child = Command::new(plugin_state.binary_path.clone())
             .stdin(Stdio::piped())

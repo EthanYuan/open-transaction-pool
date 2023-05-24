@@ -1,10 +1,9 @@
-use super::plugin_proxy::{PluginMeta, PluginProxy};
 use crate::notify::{NotifyController, RuntimeHandle};
-use crate::plugin::host_service::{HostServiceProvider, ServiceHandler};
-use crate::plugin::Plugin;
+use crate::plugin::host_service::HostServiceProvider;
+use crate::plugin::plugin_proxy::PluginProxy;
 
 use ckb_async_runtime::Handle;
-use otx_plugin_protocol::PluginInfo;
+use otx_plugin_protocol::{HostServiceHandler, Plugin, PluginInfo, PluginMeta};
 use tokio::task::{block_in_place, JoinHandle};
 
 use std::collections::HashMap;
@@ -28,12 +27,12 @@ pub struct PluginManager {
     // proxies for activated plugin processes
     plugins: HashMap<String, Arc<Mutex<Box<dyn Plugin + Send>>>>,
 
-    service_provider: ServiceHandler,
+    service_provider: HostServiceHandler,
     _event_thread: Option<JoinHandle<()>>,
 }
 
 impl PluginManager {
-    pub fn new(host_dir: &Path, service_provider: ServiceHandler) -> Self {
+    pub fn new(host_dir: &Path, service_provider: HostServiceHandler) -> Self {
         let plugin_configs: HashMap<String, (PluginMeta, PluginInfo)> = HashMap::new();
         let plugins: HashMap<String, Arc<Mutex<Box<dyn Plugin + Send>>>> = HashMap::new();
 
@@ -131,7 +130,7 @@ impl PluginManager {
         &self.plugin_configs
     }
 
-    pub fn service_handler(&self) -> ServiceHandler {
+    pub fn service_handler(&self) -> HostServiceHandler {
         self.service_provider.clone()
     }
 

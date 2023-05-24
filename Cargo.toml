@@ -13,6 +13,7 @@ ctrlc = "3.2.3"
 env_logger = "0.9.3"
 log = "0.4.17"
 
+dust-collector = { path = "plugins-built-in/dust-collector"}
 otx-pool = { path = "./otx-pool" }
 utils = { path = "./utils" }
 
@@ -22,4 +23,6 @@ members = [
     "otx-plugin-protocol",
     "otx-pool",
     "utils",
+
+    "plugins-built-in/dust-collector",
 ]

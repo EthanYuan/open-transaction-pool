@@ -3,8 +3,7 @@ pub mod manager;
 pub mod plugin_proxy;
 
 use otx_format::jsonrpc_types::OpenTransaction;
-use otx_plugin_protocol::PluginInfo;
-use plugin_proxy::PluginMeta;
+use otx_plugin_protocol::{PluginInfo, PluginMeta};
 
 use ckb_types::H256;
 

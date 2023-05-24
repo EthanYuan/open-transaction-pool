@@ -1,9 +1,7 @@
-use crate::plugin::host_service::ServiceHandler;
-use crate::plugin::plugin_proxy::PluginMeta;
-use crate::plugin::Plugin;
-
 use otx_format::jsonrpc_types::OpenTransaction;
-use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
+use otx_plugin_protocol::{
+    HostServiceHandler, MessageFromHost, MessageFromPlugin, Plugin, PluginInfo, PluginMeta,
+};
 use utils::aggregator::{OtxAggregator, OutputAmount};
 use utils::config::built_in_plugins::DustCollectorConfig;
 use utils::config::{CkbConfig, ScriptConfig};
@@ -32,7 +30,7 @@ struct Context {
     default_address: Address,
     ckb_config: CkbConfig,
     script_config: ScriptConfig,
-    service_handler: ServiceHandler,
+    service_handler: HostServiceHandler,
 }
 
 impl Context {
@@ -41,7 +39,7 @@ impl Context {
         default_address: Address,
         ckb_config: CkbConfig,
         script_config: ScriptConfig,
-        service_handler: ServiceHandler,
+        service_handler: HostServiceHandler,
     ) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
@@ -62,7 +60,7 @@ pub struct DustCollector {
 
 impl DustCollector {
     pub fn new(
-        service_handler: ServiceHandler,
+        service_handler: HostServiceHandler,
         config: DustCollectorConfig,
         ckb_config: CkbConfig,
         script_config: ScriptConfig,

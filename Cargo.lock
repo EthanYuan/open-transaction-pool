@@ -651,6 +651,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "dust-collector"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ckb-sdk 2.3.0",
+ "ckb-sdk 2.3.1",
+ "ckb-stop-handler",
+ "ckb-types",
+ "dashmap",
+ "derive_more",
+ "log",
+ "otx-format",
+ "otx-plugin-protocol",
+ "utils",
+]
+
+[[package]]
 name = "encoding_rs"
 version = "0.8.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1355,6 +1372,7 @@ dependencies = [
  "anyhow",
  "clap",
  "ctrlc",
+ "dust-collector",
  "env_logger",
  "log",
  "otx-pool",
@@ -1431,6 +1449,7 @@ name = "otx-plugin-protocol"
 version = "0.1.0"
 dependencies = [
  "ckb-types",
+ "crossbeam-channel",
  "log",
  "otx-format",
  "serde",
@@ -1454,6 +1473,7 @@ dependencies = [
  "crossbeam-channel",
  "dashmap",
  "derive_more",
+ "dust-collector",
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",

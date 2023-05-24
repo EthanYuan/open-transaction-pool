@@ -1,7 +1,48 @@
 use otx_format::jsonrpc_types::OpenTransaction;
 
+use ckb_types::core::service::Request;
 use ckb_types::H256;
+use crossbeam_channel::Sender;
 use serde_derive::{Deserialize, Serialize};
+
+use std::path::PathBuf;
+
+pub trait Plugin: Send {
+    fn get_name(&self) -> String;
+    fn get_meta(&self) -> PluginMeta;
+    fn get_info(&self) -> PluginInfo;
+    fn on_new_otx(&self, _otx: OpenTransaction) {
+        // This is a default implementation that does nothing.
+    }
+    fn on_new_intervel(&self, _interval: u64) {
+        // This is a default implementation that does nothing.
+    }
+    fn on_commit_otx(&self, _otxs: Vec<H256>) {
+        // This is a default implementation that does nothing.
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct PluginMeta {
+    /// The installation path of the plug-in, the built-in plugin binary_path is default value.
+    pub binary_path: PathBuf,
+    /// Activation falg.
+    pub is_active: bool,
+    /// Built-in flag.
+    pub is_built_in: bool,
+}
+
+impl PluginMeta {
+    pub fn new(binary_path: PathBuf, is_active: bool, is_built_in: bool) -> PluginMeta {
+        PluginMeta {
+            binary_path,
+            is_active,
+            is_built_in,
+        }
+    }
+}
+
+pub type HostServiceHandler = Sender<Request<MessageFromPlugin, MessageFromHost>>;
 
 pub enum MessageType {
     Request,

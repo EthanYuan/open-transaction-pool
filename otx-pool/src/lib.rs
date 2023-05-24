@@ -7,9 +7,9 @@ pub mod pool;
 pub mod rpc;
 
 use notify::{NotifyController, NotifyService};
-use plugin::host_service::{HostServiceProvider, ServiceHandler};
+use otx_plugin_protocol::{HostServiceHandler, Plugin, PluginInfo, PluginMeta};
+use plugin::host_service::HostServiceProvider;
 use plugin::manager::PluginManager;
-use plugin::Plugin;
 use pool::OtxPool;
 use rpc::{OtxPoolRpc, OtxPoolRpcImpl};
 use utils::config::NetworkConfig;
@@ -91,19 +91,13 @@ impl OtxPoolService {
             .map_err(|e| anyhow!(e))
     }
 
-    pub fn get_host_service_handler(&self) -> ServiceHandler {
+    pub fn get_host_service_handler(&self) -> HostServiceHandler {
         self.host_service_provider.handler()
     }
 
     pub fn get_plugin_configs(
         &self,
-    ) -> &std::collections::HashMap<
-        String,
-        (
-            plugin::plugin_proxy::PluginMeta,
-            otx_plugin_protocol::PluginInfo,
-        ),
-    > {
+    ) -> &std::collections::HashMap<String, (PluginMeta, PluginInfo)> {
         self.plugin_manager.plugin_configs()
     }
 

@@ -1,10 +1,7 @@
-use crate::built_in_plugin::dust_collector::MIN_PAYMENT;
-use crate::plugin::host_service::ServiceHandler;
-use crate::plugin::plugin_proxy::PluginMeta;
-use crate::plugin::Plugin;
-
 use otx_format::jsonrpc_types::OpenTransaction;
-use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
+use otx_plugin_protocol::{
+    HostServiceHandler, MessageFromHost, MessageFromPlugin, Plugin, PluginInfo, PluginMeta,
+};
 use utils::aggregator::{Committer, OtxAggregator};
 use utils::config::{CkbConfig, ScriptConfig};
 
@@ -18,13 +15,14 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 pub const EVERY_INTERVALS: usize = 10;
+pub const MIN_PAYMENT: usize = 1_0000_0000;
 
 #[derive(Clone)]
 struct Context {
     plugin_name: String,
     ckb_config: CkbConfig,
     script_config: ScriptConfig,
-    service_handler: ServiceHandler,
+    service_handler: HostServiceHandler,
 
     otxs: Arc<DashMap<H256, OpenTransaction>>,
     orders: Arc<DashMap<OrderKey, HashSet<H256>>>,
@@ -35,7 +33,7 @@ impl Context {
         plugin_name: &str,
         ckb_config: CkbConfig,
         script_config: ScriptConfig,
-        service_handler: ServiceHandler,
+        service_handler: HostServiceHandler,
     ) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
@@ -75,7 +73,7 @@ pub struct AtomicSwap {
 
 impl AtomicSwap {
     pub fn new(
-        service_handler: ServiceHandler,
+        service_handler: HostServiceHandler,
         ckb_config: CkbConfig,
         script_config: ScriptConfig,
     ) -> Result<AtomicSwap, String> {

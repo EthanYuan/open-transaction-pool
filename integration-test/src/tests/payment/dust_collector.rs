@@ -7,9 +7,9 @@ use crate::utils::instruction::mercury::{prepare_ckb_capacity, prepare_udt_1};
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
+use dust_collector::DEFAULT_FEE;
 use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::types::{packed, OpenTxStatus};
-use otx_pool::built_in_plugin::dust_collector::DEFAULT_FEE;
 use utils::client::otx_pool_client::OtxPoolRpcClient;
 
 use anyhow::Result;

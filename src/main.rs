@@ -1,5 +1,6 @@
+use dust_collector::DustCollector;
 use otx_pool::{
-    built_in_plugin::{AtomicSwap, DustCollector, Signer},
+    built_in_plugin::{AtomicSwap, Signer},
     cli::print_logo,
     OtxPoolService,
 };

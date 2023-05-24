@@ -1,9 +1,7 @@
-use crate::plugin::host_service::ServiceHandler;
-use crate::plugin::plugin_proxy::PluginMeta;
-use crate::plugin::Plugin;
-
 use otx_format::jsonrpc_types::OpenTransaction;
-use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin, PluginInfo};
+use otx_plugin_protocol::{
+    HostServiceHandler, MessageFromHost, MessageFromPlugin, Plugin, PluginInfo, PluginMeta,
+};
 use utils::aggregator::{Committer, SignInfo};
 use utils::config::{built_in_plugins::SignerConfig, CkbConfig, ScriptConfig};
 
@@ -24,7 +22,7 @@ struct Context {
     sign_info: SignInfo,
     ckb_config: CkbConfig,
     _script_config: ScriptConfig,
-    service_handler: ServiceHandler,
+    service_handler: HostServiceHandler,
 }
 
 impl Context {
@@ -33,7 +31,7 @@ impl Context {
         sign_info: SignInfo,
         ckb_config: CkbConfig,
         script_config: ScriptConfig,
-        service_handler: ServiceHandler,
+        service_handler: HostServiceHandler,
     ) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
@@ -54,7 +52,7 @@ pub struct Signer {
 
 impl Signer {
     pub fn new(
-        service_handler: ServiceHandler,
+        service_handler: HostServiceHandler,
         config: SignerConfig,
         ckb_config: CkbConfig,
         script_config: ScriptConfig,
