@@ -394,7 +394,7 @@ dependencies = [
  "lazy_static",
  "log",
  "lru",
- "parking_lot",
+ "parking_lot 0.12.1",
  "reqwest",
  "secp256k1 0.24.3",
  "serde",
@@ -430,7 +430,7 @@ dependencies = [
  "lazy_static",
  "log",
  "lru",
- "parking_lot",
+ "parking_lot 0.12.1",
  "reqwest",
  "secp256k1 0.24.3",
  "serde",
@@ -457,7 +457,7 @@ checksum = "6110662e025f5097517cb2314b786c4859df90b60302f9a75e3d40efb9e5ae29"
 dependencies = [
  "ckb-channel",
  "ckb-logger",
- "parking_lot",
+ "parking_lot 0.12.1",
  "tokio",
 ]
 
@@ -597,7 +597,7 @@ dependencies = [
  "hex",
  "jsonrpsee-core",
  "lazy_static",
- "parking_lot",
+ "parking_lot 0.12.1",
  "protocol",
  "serde",
 ]
@@ -675,7 +675,7 @@ dependencies = [
  "hashbrown",
  "lock_api",
  "once_cell",
- "parking_lot_core",
+ "parking_lot_core 0.9.7",
 ]
 
 [[package]]
@@ -1215,6 +1215,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "jsonrpc-http-server"
+version = "18.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1dea6e07251d9ce6a552abfb5d7ad6bc290a4596c8dcc3d795fae2bbdc1f3ff"
+dependencies = [
+ "futures",
+ "hyper",
+ "jsonrpc-core",
+ "jsonrpc-server-utils",
+ "log",
+ "net2",
+ "parking_lot 0.11.2",
+ "unicase",
+]
+
+[[package]]
 name = "jsonrpc-server-utils"
 version = "18.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1394,6 +1410,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "net2"
+version = "0.2.38"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74d0df99cfcd2530b2e694f6e17e7f37b8e26bb23983ac530c0c97408837c631"
+dependencies = [
+ "cfg-if 0.1.10",
+ "libc",
+ "winapi",
+]
+
+[[package]]
 name = "num_cpus"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1550,6 +1577,7 @@ dependencies = [
  "derive_more",
  "jsonrpc-core",
  "jsonrpc-derive",
+ "jsonrpc-http-server",
  "jsonrpc-server-utils",
  "log",
  "molecule",
@@ -1563,12 +1591,37 @@ dependencies = [
 
 [[package]]
 name = "parking_lot"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d17b78036a60663b797adeaee46f5c9dfebb86948d1255007a1d6be0271ff99"
+dependencies = [
+ "instant",
+ "lock_api",
+ "parking_lot_core 0.8.6",
+]
+
+[[package]]
+name = "parking_lot"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3742b2c103b9f06bc9fff0a37ff4912935851bee6d36f3c02bcc755bcfec228f"
 dependencies = [
  "lock_api",
- "parking_lot_core",
+ "parking_lot_core 0.9.7",
+]
+
+[[package]]
+name = "parking_lot_core"
+version = "0.8.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60a2cfe6f0ad2bfc16aefa463b497d5c7a5ecd44a23efa72aa342d90177356dc"
+dependencies = [
+ "cfg-if 1.0.0",
+ "instant",
+ "libc",
+ "redox_syscall",
+ "smallvec",
+ "winapi",
 ]
 
 [[package]]
@@ -2168,7 +2221,7 @@ dependencies = [
  "memchr",
  "mio",
  "num_cpus",
- "parking_lot",
+ "parking_lot 0.12.1",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2",

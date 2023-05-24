@@ -16,6 +16,8 @@ use std::sync::{Arc, Mutex};
 pub const PLUGINS_DIRNAME: &str = "plugins";
 pub const INACTIVE_DIRNAME: &str = "plugins_inactive";
 
+type PluginList = Vec<(String, Arc<Mutex<Box<dyn Plugin + Send>>>)>;
+
 pub struct PluginManager {
     _plugin_dir: PathBuf,
     inactive_plugin_dir: PathBuf,
@@ -86,7 +88,7 @@ impl PluginManager {
     }
 
     pub fn subscribe_events(&mut self, notify_ctrl: &NotifyController, runtime_handle: &Handle) {
-        let plugins: Vec<(String, Arc<Mutex<Box<dyn Plugin + Send>>>)> = self
+        let plugins: PluginList = self
             .plugins
             .iter()
             .map(|(name, p)| (name.to_owned(), p.clone()))

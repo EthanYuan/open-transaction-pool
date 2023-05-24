@@ -21,6 +21,7 @@ derive_more = "0.99"
 log = "0.4.17"
 jsonrpc-core = "18.0"
 jsonrpc-derive = "18.0"
+jsonrpc-http-server = "18.0"
 jsonrpc-server-utils = "18.0"
 molecule = "=0.7.3"
 serde = { version = "1.0", features = ["derive"] }
