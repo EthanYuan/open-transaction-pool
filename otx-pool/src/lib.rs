@@ -1,14 +1,14 @@
-pub mod cli;
 pub mod error;
+pub mod logo;
 pub mod notify;
-pub mod plugin;
+pub mod plugin_extension;
 pub mod pool;
 pub mod rpc;
 
 use notify::{NotifyController, NotifyService};
 use otx_plugin_protocol::{HostServiceHandler, Plugin, PluginInfo, PluginMeta};
-use plugin::host_service::HostServiceProvider;
-use plugin::manager::PluginManager;
+use plugin_extension::host_service::HostServiceProvider;
+use plugin_extension::manager::PluginManager;
 use pool::OtxPool;
 use rpc::{OtxPoolRpc, OtxPoolRpcImpl};
 use utils::config::NetworkConfig;

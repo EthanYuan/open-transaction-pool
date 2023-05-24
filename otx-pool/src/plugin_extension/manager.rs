@@ -1,6 +1,6 @@
 use crate::notify::{NotifyController, RuntimeHandle};
-use crate::plugin::host_service::HostServiceProvider;
-use crate::plugin::plugin_proxy::PluginProxy;
+use crate::plugin_extension::host_service::HostServiceProvider;
+use crate::plugin_extension::plugin_proxy::PluginProxy;
 
 use ckb_async_runtime::Handle;
 use otx_plugin_protocol::{HostServiceHandler, Plugin, PluginInfo, PluginMeta};
