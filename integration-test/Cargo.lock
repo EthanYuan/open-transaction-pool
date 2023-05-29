@@ -1619,6 +1619,7 @@ dependencies = [
  "jsonrpc-core",
  "otx-format",
  "reqwest",
+ "secp256k1 0.24.3",
  "serde",
  "serde_json",
 ]

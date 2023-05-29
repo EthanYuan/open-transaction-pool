@@ -1,12 +1,13 @@
 mod const_definition;
 mod help;
-mod tests;
+mod tests_omni_lock;
+mod tests_otx_lock;
 mod utils;
 
 use help::{setup, teardown};
 
 use clap::Parser;
-use tests::IntegrationTest;
+use tests_omni_lock::IntegrationTest;
 
 use std::panic;
 use std::time::Instant;

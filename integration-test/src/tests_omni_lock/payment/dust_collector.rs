@@ -1,6 +1,6 @@
 use crate::const_definition::{CKB_URI, MERCURY_URI, OTX_POOL_URI, SCRIPT_CONFIG};
 use crate::help::start_otx_pool;
-use crate::tests::helper::{_bob_build_signed_otx, build_pay_ckb_signed_otx};
+use crate::tests_omni_lock::helper::{_bob_build_signed_otx, build_pay_ckb_signed_otx};
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
 use crate::utils::instruction::mercury::{prepare_ckb_capacity, prepare_udt_1};

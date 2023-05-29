@@ -14,6 +14,7 @@ env_logger = "0.9.3"
 log = "0.4.17"
 
 otx-pool = { path = "./otx-pool" }
+otx-sdk = { path = "./otx-sdk" }
 utils = { path = "./utils" }
 
 atomic-swap = { path = "plugins-built-in/atomic-swap" }

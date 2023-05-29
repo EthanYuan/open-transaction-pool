@@ -1395,6 +1395,7 @@ dependencies = [
  "env_logger",
  "log",
  "otx-pool",
+ "otx-sdk",
  "signer",
  "utils",
 ]
@@ -1517,6 +1518,7 @@ dependencies = [
  "jsonrpc-core",
  "otx-format",
  "reqwest",
+ "secp256k1",
  "serde",
  "serde_json",
 ]
