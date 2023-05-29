@@ -7,7 +7,7 @@ use crate::IntegrationTest;
 use otx_format::jsonrpc_types::tx_view::tx_view_to_basic_otx;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::OpenTxStatus;
-use utils::client::otx_pool_client::OtxPoolRpcClient;
+use otx_sdk::client::OtxPoolRpcClient;
 
 use ckb_types::H256;
 

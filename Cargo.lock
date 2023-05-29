@@ -1509,6 +1509,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "otx-sdk"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ckb-types",
+ "jsonrpc-core",
+ "otx-format",
+ "reqwest",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "parking_lot"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

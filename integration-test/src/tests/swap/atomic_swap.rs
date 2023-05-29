@@ -15,8 +15,8 @@ use crate::IntegrationTest;
 use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::OpenTxStatus;
+use otx_sdk::client::OtxPoolRpcClient;
 use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
-use utils::client::otx_pool_client::OtxPoolRpcClient;
 use utils::config::CkbConfig;
 use utils::wallet::Wallet;
 

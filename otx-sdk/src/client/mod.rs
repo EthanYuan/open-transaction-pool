@@ -1,5 +1,6 @@
-pub mod ckb_cli_client;
-pub mod ckb_client;
+mod otx_pool_client;
+
+pub use otx_pool_client::OtxPoolRpcClient;
 
 use anyhow::{anyhow, Result};
 use jsonrpc_core::types::{

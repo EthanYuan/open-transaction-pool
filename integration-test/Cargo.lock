@@ -1168,6 +1168,7 @@ dependencies = [
  "once_cell",
  "otx-format",
  "otx-pool",
+ "otx-sdk",
  "secp256k1 0.24.3",
  "serde",
  "serde_json",
@@ -1607,6 +1608,19 @@ dependencies = [
  "serde_json",
  "tokio",
  "utils",
+]
+
+[[package]]
+name = "otx-sdk"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ckb-types",
+ "jsonrpc-core",
+ "otx-format",
+ "reqwest",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

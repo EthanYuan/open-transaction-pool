@@ -10,7 +10,7 @@ use crate::IntegrationTest;
 use dust_collector::DEFAULT_FEE;
 use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::types::{packed, OpenTxStatus};
-use utils::client::otx_pool_client::OtxPoolRpcClient;
+use otx_sdk::client::OtxPoolRpcClient;
 
 use anyhow::Result;
 use core_rpc_types::{GetBalancePayload, JsonItem};
