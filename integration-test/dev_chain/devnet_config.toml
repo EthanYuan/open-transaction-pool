@@ -37,7 +37,7 @@ cell_dep = '''
     "dep_type": "dep_group",
     "out_point": {
         "index": "0x0",
-        "tx_hash": "0x9c6cff38bf3dbfe28d57035973f0dd1ab60bddac46549e5fc50d2a46e7c0c5f5"
+        "tx_hash": "0xb866d719dc3b3ca682a533f7ff94a34d93a070bf2ae57bd84a19e90b293bfff6"
     }
 }
 '''
@@ -57,7 +57,7 @@ cell_dep = '''
     "dep_type": "code",
     "out_point": {
         "index": "0x2",
-        "tx_hash": "0x8592d17f7d574cf51b744d66fe9e14a09b915ecaf7ff40450d270c8b2a7a1372"
+        "tx_hash": "0x64c1c9a8aa269d9bfb7ea4493cdf395cfd63c998ea4631d1b628840ff3110a07"
     }
 }
 '''
@@ -77,7 +77,7 @@ cell_dep = '''
     "dep_type": "code",
     "out_point": {
         "index": "0x7",
-        "tx_hash": "0x8592d17f7d574cf51b744d66fe9e14a09b915ecaf7ff40450d270c8b2a7a1372"
+        "tx_hash": "0x64c1c9a8aa269d9bfb7ea4493cdf395cfd63c998ea4631d1b628840ff3110a07"
     }
 }
 '''
@@ -97,7 +97,7 @@ cell_dep = '''
     "dep_type": "dep_group",
     "out_point": {
         "index": "0x2",
-        "tx_hash": "0x9c6cff38bf3dbfe28d57035973f0dd1ab60bddac46549e5fc50d2a46e7c0c5f5"
+        "tx_hash": "0xb866d719dc3b3ca682a533f7ff94a34d93a070bf2ae57bd84a19e90b293bfff6"
     }
 }
 '''
@@ -117,7 +117,7 @@ cell_dep = '''
     "dep_type": "dep_group",
     "out_point": {
         "index": "0x3",
-        "tx_hash": "0x9c6cff38bf3dbfe28d57035973f0dd1ab60bddac46549e5fc50d2a46e7c0c5f5"
+        "tx_hash": "0xb866d719dc3b3ca682a533f7ff94a34d93a070bf2ae57bd84a19e90b293bfff6"
     }
 }
 '''
@@ -137,7 +137,7 @@ cell_dep = '''
     "dep_type": "code",
     "out_point": {
         "index": "0x8",
-        "tx_hash": "0x8592d17f7d574cf51b744d66fe9e14a09b915ecaf7ff40450d270c8b2a7a1372"
+        "tx_hash": "0x64c1c9a8aa269d9bfb7ea4493cdf395cfd63c998ea4631d1b628840ff3110a07"
     }
 }
 '''
@@ -156,7 +156,7 @@ cell_dep = '''
     "dep_type": "code",
     "out_point": {
         "index": "0x9",
-        "tx_hash": "0x8592d17f7d574cf51b744d66fe9e14a09b915ecaf7ff40450d270c8b2a7a1372"
+        "tx_hash": "0x64c1c9a8aa269d9bfb7ea4493cdf395cfd63c998ea4631d1b628840ff3110a07"
     }
 }
 '''
@@ -175,7 +175,26 @@ cell_dep = '''
     "dep_type": "code",
     "out_point": {
         "index": "0xa",
-        "tx_hash": "0x8592d17f7d574cf51b744d66fe9e14a09b915ecaf7ff40450d270c8b2a7a1372"
+        "tx_hash": "0x64c1c9a8aa269d9bfb7ea4493cdf395cfd63c998ea4631d1b628840ff3110a07"
+    }
+}
+'''
+
+[[scripts]]
+script_name = "otx"
+script = '''
+{
+    "args": "0x",
+    "code_hash": "0xddefa1e2cede14bd25f92143f7f4ca3af6fa5ac1969c53cb3c3914c9f1cded96",
+    "hash_type": "type"
+}
+'''
+cell_dep = '''
+{
+    "dep_type": "dep_group",
+    "out_point": {
+        "index": "0x4",
+        "tx_hash": "0xb866d719dc3b3ca682a533f7ff94a34d93a070bf2ae57bd84a19e90b293bfff6"
     }
 }
 '''
