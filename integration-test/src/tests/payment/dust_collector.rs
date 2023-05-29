@@ -13,8 +13,6 @@ use otx_format::types::{packed, OpenTxStatus};
 use utils::client::otx_pool_client::OtxPoolRpcClient;
 
 use anyhow::Result;
-use ckb_jsonrpc_types::JsonBytes;
-use ckb_types::prelude::Entity;
 use core_rpc_types::{GetBalancePayload, JsonItem};
 
 use std::collections::HashSet;
@@ -52,12 +50,8 @@ fn test_payment_dust_collect_ckb() {
 
     // submit otxs
     let service_client = OtxPoolRpcClient::new(OTX_POOL_URI.to_string());
-    let alice_otx_id = service_client
-        .submit_otx(JsonBytes::from_bytes(alice_otx.as_bytes()))
-        .unwrap();
-    let bob_otx_id = service_client
-        .submit_otx(JsonBytes::from_bytes(bob_otx.as_bytes()))
-        .unwrap();
+    let alice_otx_id = service_client.submit_otx(alice_otx.into()).unwrap();
+    let bob_otx_id = service_client.submit_otx(bob_otx.into()).unwrap();
 
     // query otxs immediately
     let alice_otx_status = service_client

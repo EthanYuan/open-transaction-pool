@@ -1,9 +1,8 @@
 use super::{request, RpcClient};
 
-use otx_format::types::OpenTxStatus;
+use otx_format::{jsonrpc_types::OpenTransaction, types::OpenTxStatus};
 
 use anyhow::Result;
-use ckb_jsonrpc_types::JsonBytes;
 use ckb_types::H256;
 
 pub struct OtxPoolRpcClient {
@@ -16,7 +15,7 @@ impl OtxPoolRpcClient {
         OtxPoolRpcClient { client }
     }
 
-    pub fn submit_otx(&self, otx: JsonBytes) -> Result<H256> {
+    pub fn submit_otx(&self, otx: OpenTransaction) -> Result<H256> {
         request(&self.client, "submit_otx", vec![otx])
     }
 

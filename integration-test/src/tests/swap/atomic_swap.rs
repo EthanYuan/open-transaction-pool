@@ -13,14 +13,14 @@ use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
 use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
-use otx_format::types::{packed, OpenTxStatus};
+use otx_format::jsonrpc_types::OpenTransaction;
+use otx_format::types::OpenTxStatus;
 use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
 use utils::client::otx_pool_client::OtxPoolRpcClient;
 use utils::config::CkbConfig;
 use utils::wallet::Wallet;
 
 use anyhow::Result;
-use ckb_jsonrpc_types::JsonBytes;
 use ckb_sdk::Address;
 use ckb_types::prelude::Entity;
 use ckb_types::{
@@ -80,9 +80,7 @@ fn test_swap_udt_to_udt() {
 
     // submit alice otxs
     let service_client = OtxPoolRpcClient::new(OTX_POOL_URI.to_string());
-    let alice_otx_id = service_client
-        .submit_otx(JsonBytes::from_bytes(alice_otx.as_bytes()))
-        .unwrap();
+    let alice_otx_id = service_client.submit_otx(alice_otx).unwrap();
 
     // query alice otxs
     let alice_otx_with_status = service_client
@@ -92,9 +90,7 @@ fn test_swap_udt_to_udt() {
     assert_eq!(alice_otx_with_status, OpenTxStatus::Pending);
 
     // submit bob otxs
-    let bob_otx_id = service_client
-        .submit_otx(JsonBytes::from_bytes(bob_otx.as_bytes()))
-        .unwrap();
+    let bob_otx_id = service_client.submit_otx(bob_otx).unwrap();
 
     sleep(Duration::from_secs(5));
     aggregate_transactions_into_blocks().unwrap();
@@ -177,7 +173,7 @@ fn build_signed_otx(
     remain_udt_1: u128,
     remain_udt_2: u128,
     remain_capacity: usize,
-) -> Result<(packed::OpenTransaction, Wallet)> {
+) -> Result<(OpenTransaction, Wallet)> {
     // 1. init wallet
     let wallet = Wallet::new(
         secp_address,
@@ -320,5 +316,5 @@ fn build_signed_otx(
     )
     .unwrap();
 
-    Ok((otx.into(), wallet))
+    Ok((otx, wallet))
 }
