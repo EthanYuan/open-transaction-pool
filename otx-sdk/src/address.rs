@@ -1,11 +1,18 @@
 use utils::config::ScriptInfo;
 
 use anyhow::Result;
-use ckb_sdk_otx::Address;
+use ckb_sdk_otx::{Address, AddressPayload};
+use ckb_types::core::ScriptHashType;
 
 pub fn build_otx_address_from_secp_address(
-    _secp_address: &Address,
-    _otx_script_info: &ScriptInfo,
+    secp_address: &Address,
+    otx_script_info: &ScriptInfo,
 ) -> Result<Address> {
-    todo!()
+    let address_payload = AddressPayload::new_full(
+        ScriptHashType::try_from(otx_script_info.script.hash_type())?,
+        otx_script_info.script.code_hash(),
+        secp_address.payload().args(),
+    );
+    let address = Address::new(secp_address.network(), address_payload, true);
+    Ok(address)
 }
