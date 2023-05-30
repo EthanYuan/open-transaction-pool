@@ -1,7 +1,7 @@
 use crate::instruction::command::run_command_output;
 
 use anyhow::Result;
-use ckb_sdk::Address;
+use ckb_sdk_otx::Address;
 use ckb_types::H256;
 
 use std::str::FromStr;

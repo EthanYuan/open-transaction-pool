@@ -5,11 +5,11 @@ use crate::config::{CkbConfig, ScriptConfig};
 use anyhow::{anyhow, Result};
 use ckb_jsonrpc_types as json_types;
 use ckb_jsonrpc_types::TransactionView;
-use ckb_sdk::{
+use ckb_sdk_otx::{
     constants::SIGHASH_TYPE_HASH, rpc::CkbRpcClient, traits::DefaultTransactionDependencyProvider,
     unlock::opentx::assembler::assemble_new_tx, unlock::OmniUnlockMode, Address, HumanCapacity,
 };
-use ckb_sdk::{
+use ckb_sdk_otx::{
     traits::SecpCkbRawKeySigner, tx_builder::unlock_tx, unlock::ScriptUnlocker,
     unlock::SecpSighashUnlocker, ScriptGroup, ScriptId,
 };

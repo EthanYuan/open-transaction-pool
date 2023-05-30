@@ -1615,6 +1615,7 @@ name = "otx-sdk"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ckb-sdk 2.3.0",
  "ckb-types",
  "jsonrpc-core",
  "otx-format",
@@ -1622,6 +1623,7 @@ dependencies = [
  "secp256k1 0.24.3",
  "serde",
  "serde_json",
+ "utils",
 ]
 
 [[package]]

@@ -21,7 +21,7 @@ use utils::config::CkbConfig;
 use utils::wallet::Wallet;
 
 use anyhow::Result;
-use ckb_sdk::Address;
+use ckb_sdk_otx::Address;
 use ckb_types::prelude::Entity;
 use ckb_types::{
     bytes::Bytes,

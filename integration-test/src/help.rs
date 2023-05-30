@@ -17,7 +17,7 @@ use common::lazy::{
 };
 
 use anyhow::Result;
-use ckb_sdk::Address;
+use ckb_sdk_otx::Address;
 use ckb_types::H256;
 
 use std::env;

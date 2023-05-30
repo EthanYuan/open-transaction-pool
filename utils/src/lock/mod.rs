@@ -3,7 +3,7 @@ pub mod omni;
 
 use anyhow::Result;
 use ckb_hash::blake2b_256;
-use ckb_sdk::Address;
+use ckb_sdk_otx::Address;
 use ckb_types::{core::ScriptHashType, packed, prelude::*, H160, H256};
 
 use rand::Rng;

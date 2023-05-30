@@ -5,7 +5,7 @@ use anyhow::{anyhow, Result};
 use ckb_crypto::secp::Pubkey;
 use ckb_hash::blake2b_256;
 use ckb_jsonrpc_types as json_types;
-use ckb_sdk::{
+use ckb_sdk_otx::{
     constants::SIGHASH_TYPE_HASH,
     rpc::CkbRpcClient,
     traits::{

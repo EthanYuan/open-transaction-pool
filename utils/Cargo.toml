@@ -10,7 +10,7 @@ anyhow = "1.0"
 ckb-crypto = "0.105"
 ckb-hash = "0.105"
 ckb-jsonrpc-types = "0.105"
-ckb-sdk = { git = "https://github.com/EthanYuan/ckb-sdk-rust.git", branch = "opentx_sign_tx_ethan"}
+ckb-sdk-otx = { git = "https://github.com/EthanYuan/ckb-sdk-rust.git", branch = "opentx_sign_tx_ethan", package = "ckb-sdk"}
 ckb-types = "0.105"
 faster-hex = "0.6"
 log = "0.4"

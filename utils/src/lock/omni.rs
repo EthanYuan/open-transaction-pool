@@ -1,6 +1,6 @@
 use anyhow::Result;
 use ckb_jsonrpc_types as json_types;
-use ckb_sdk::{rpc::CkbRpcClient, unlock::OmniLockConfig, Address, ScriptId};
+use ckb_sdk_otx::{rpc::CkbRpcClient, unlock::OmniLockConfig, Address, ScriptId};
 use ckb_types::{
     packed::{Byte32, CellDep, OutPoint, Script},
     prelude::*,

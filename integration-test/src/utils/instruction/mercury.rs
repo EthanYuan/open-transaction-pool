@@ -13,7 +13,7 @@ use utils::lock::get_udt_hash_by_owner;
 
 use anyhow::Result;
 use ckb_jsonrpc_types::OutPoint;
-use ckb_sdk::Address;
+use ckb_sdk_otx::Address;
 use ckb_types::H256;
 
 use core_rpc_types::{

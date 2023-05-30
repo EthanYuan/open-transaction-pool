@@ -2,7 +2,7 @@ use crate::config::{CkbConfig, ScriptConfig};
 
 use anyhow::Result;
 use ckb_jsonrpc_types as json_types;
-use ckb_sdk::{
+use ckb_sdk_otx::{
     rpc::CkbRpcClient, traits::DefaultCellDepResolver, Address, HumanCapacity, ScriptId,
 };
 use ckb_types::{

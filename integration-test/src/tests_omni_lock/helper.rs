@@ -11,7 +11,7 @@ use utils::lock::omni::{MultiSigArgs, TxInfo};
 use utils::wallet::{GenOpenTxArgs, Wallet};
 
 use anyhow::Result;
-use ckb_sdk::{unlock::IdentityFlag, HumanCapacity};
+use ckb_sdk_otx::{unlock::IdentityFlag, HumanCapacity};
 use ckb_types::{
     bytes::Bytes,
     core::{capacity_bytes, Capacity, ScriptHashType},
