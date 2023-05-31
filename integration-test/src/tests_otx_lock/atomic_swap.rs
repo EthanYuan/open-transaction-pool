@@ -1,8 +1,8 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::const_definition::{
-    MERCURY_URI, OTX_POOL_URI, SCRIPT_CONFIG, UDT_1_HASH, UDT_1_HOLDER_SECP_ADDRESS, UDT_2_HASH,
-    UDT_2_HOLDER_SECP_ADDRESS,
+    CKB_URI, MERCURY_URI, OTX_POOL_URI, SCRIPT_CONFIG, UDT_1_HASH, UDT_1_HOLDER_SECP_ADDRESS,
+    UDT_2_HASH, UDT_2_HOLDER_SECP_ADDRESS,
 };
 use crate::help::start_otx_pool;
 use crate::utils::client::mercury_client::MercuryRpcClient;
@@ -11,15 +11,6 @@ use crate::utils::instruction::ckb::dump_data;
 use crate::utils::instruction::mercury::{prepare_ckb_capacity, prepare_udt_1, prepare_udt_2};
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
-
-use config::ScriptInfo;
-use otx_format::jsonrpc_types::OpenTransaction;
-use otx_format::types::OpenTxStatus;
-use otx_sdk::address::build_otx_address_from_secp_address;
-use otx_sdk::build_tx::build_otx;
-use otx_sdk::client::OtxPoolRpcClient;
-use otx_sdk::signer::{SighashMode, Signer};
-use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
 
 use anyhow::{Ok, Result};
 use ckb_sdk_otx::Address;
@@ -31,7 +22,15 @@ use ckb_types::{
     prelude::*,
     H256,
 };
+use config::{CkbConfig, ScriptInfo};
 use core_rpc_types::{AssetInfo, GetBalancePayload, JsonItem};
+use otx_format::jsonrpc_types::OpenTransaction;
+use otx_format::types::OpenTxStatus;
+use otx_sdk::address::build_otx_address_from_secp_address;
+use otx_sdk::build_tx::build_otx;
+use otx_sdk::client::OtxPoolRpcClient;
+use otx_sdk::signer::{SighashMode, Signer};
+use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
 
 use std::collections::HashSet;
 use std::thread::sleep;
@@ -184,6 +183,13 @@ fn build_signed_otx(
     remain_capacity: usize,
     otx_script_info: &ScriptInfo,
 ) -> Result<OpenTransaction> {
+    // get otx lock script info
+    let script_config = SCRIPT_CONFIG.get().unwrap().clone();
+    let xudt_script_code_hash = script_config.get_xudt_rce_code_hash();
+
+    // get ckb config
+    let ckb_config = CkbConfig::new("ckb_dev", CKB_URI);
+
     // 1. init address
     let otx_script: Script = (otx_address).into();
 
@@ -199,7 +205,7 @@ fn build_signed_otx(
     let mercury_client = MercuryRpcClient::new(MERCURY_URI.to_string());
     let balance = mercury_client.get_balance(balance_payload).unwrap();
     assert_eq!(balance.balances.len(), 2);
-    assert_eq!(balance.balances[0].occupied, 144_0000_0000u128.into());
+    assert_eq!(balance.balances[0].occupied, 142_0000_0000u128.into());
     assert_eq!(balance.balances[1].free, prepare_udt_1_amount.into());
 
     // 3. transfer udt-2 to omni address
@@ -214,7 +220,7 @@ fn build_signed_otx(
     let mercury_client = MercuryRpcClient::new(MERCURY_URI.to_string());
     let balance = mercury_client.get_balance(balance_payload).unwrap();
     assert_eq!(balance.balances.len(), 2);
-    assert_eq!(balance.balances[0].occupied, 144_0000_0000u128.into());
+    assert_eq!(balance.balances[0].occupied, 142_0000_0000u128.into());
     assert_eq!(balance.balances[1].free, prepare_udt_2_amount.into());
 
     // 4. transfer capacity to omni address
@@ -231,23 +237,14 @@ fn build_signed_otx(
     assert_eq!(balance.balances.len(), 1);
     assert_eq!(
         balance.balances[0].free,
-        (prepare_capacity as u128 - 63_0000_0000u128).into()
+        (prepare_capacity as u128 - 61_0000_0000u128).into()
     );
-    assert_eq!(balance.balances[0].occupied, 63_0000_0000u128.into());
+    assert_eq!(balance.balances[0].occupied, 61_0000_0000u128.into());
 
     // 5. generate open transaction, pay UDT-1, get UDT-2, pay fee
     let xudt_1_issuer_script: Script = UDT_1_HOLDER_SECP_ADDRESS.get().unwrap().into();
     let xudt_1_type_script = Script::new_builder()
-        .code_hash(
-            Byte32::from_slice(
-                SCRIPT_CONFIG
-                    .get()
-                    .unwrap()
-                    .get_xudt_rce_code_hash()
-                    .as_bytes(),
-            )
-            .unwrap(),
-        )
+        .code_hash(Byte32::from_slice(xudt_script_code_hash.as_bytes()).unwrap())
         .hash_type(ScriptHashType::Type.into())
         .args(xudt_1_issuer_script.calc_script_hash().raw_data().pack())
         .build();
@@ -260,16 +257,7 @@ fn build_signed_otx(
 
     let xudt_2_issuer_script: Script = UDT_2_HOLDER_SECP_ADDRESS.get().unwrap().into();
     let xudt_2_type_script = Script::new_builder()
-        .code_hash(
-            Byte32::from_slice(
-                SCRIPT_CONFIG
-                    .get()
-                    .unwrap()
-                    .get_xudt_rce_code_hash()
-                    .as_bytes(),
-            )
-            .unwrap(),
-        )
+        .code_hash(Byte32::from_slice(xudt_script_code_hash.as_bytes()).unwrap())
         .hash_type(ScriptHashType::Type.into())
         .args(xudt_2_issuer_script.calc_script_hash().raw_data().pack())
         .build();
@@ -280,7 +268,7 @@ fn build_signed_otx(
         .build();
     let xudt_2_data = Bytes::from(remain_udt_2.to_le_bytes().to_vec());
 
-    let omni_output = CellOutput::new_builder()
+    let capacity_output = CellOutput::new_builder()
         .capacity((remain_capacity as u64).pack())
         .lock(otx_script)
         .build();
@@ -288,9 +276,11 @@ fn build_signed_otx(
 
     let open_tx = build_otx(
         vec![out_point_1, out_point_2, out_point_3],
-        vec![xudt_1_output, xudt_2_output, omni_output],
+        vec![xudt_1_output, xudt_2_output, capacity_output],
         vec![xudt_1_data.pack(), xudt_2_data.pack(), data.pack()],
         vec![otx_script_info.to_owned()],
+        script_config,
+        ckb_config,
     )
     .unwrap();
     let file = format!("./free-space/swap_{}_otx_unsigned.json", payer);

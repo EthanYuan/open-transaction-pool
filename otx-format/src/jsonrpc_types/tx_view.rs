@@ -18,7 +18,6 @@ use ckb_jsonrpc_types::{Uint128, Uint64};
 use ckb_sdk::CkbRpcClient;
 use ckb_types::packed::{self, Transaction};
 use ckb_types::prelude::*;
-use ckb_types::H256;
 
 use std::collections::HashMap;
 use std::convert::Into;
