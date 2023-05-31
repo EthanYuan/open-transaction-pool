@@ -8,7 +8,7 @@ use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
 use dust_collector::DEFAULT_FEE;
-use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
+use otx_format::jsonrpc_types::OtxBuilder;
 use otx_format::types::{packed, OpenTxStatus};
 use otx_sdk::client::OtxPoolRpcClient;
 
@@ -110,27 +110,16 @@ fn build_pay_ckb_otx(
     let tx_info =
         build_pay_ckb_signed_otx(payer, prepare_capacity, remain_capacity, open_capacity).unwrap();
     let tx_view = tx_info.tx;
-    let otx = tx_view_to_otx(
-        tx_view,
-        SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash(),
-        SCRIPT_CONFIG.get().unwrap().get_sudt_code_hash(),
-        1,
-        CKB_URI,
-    )
-    .unwrap();
+    let otx_builder = OtxBuilder::new(SCRIPT_CONFIG.get().unwrap().to_owned());
+    let otx = otx_builder.tx_view_to_otx(tx_view, 1, CKB_URI).unwrap();
     Ok(otx.into())
 }
 
 fn _bob_build_otx() -> Result<packed::OpenTransaction> {
     let tx_info = _bob_build_signed_otx().unwrap();
     let tx_view = tx_info.tx;
-    let otx = tx_view_to_otx(
-        tx_view,
-        SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash(),
-        SCRIPT_CONFIG.get().unwrap().get_sudt_code_hash(),
-        1,
-        CKB_URI,
-    )
-    .unwrap();
+
+    let otx_builder = OtxBuilder::new(SCRIPT_CONFIG.get().unwrap().to_owned());
+    let otx = otx_builder.tx_view_to_otx(tx_view, 1, CKB_URI).unwrap();
     Ok(otx.into())
 }

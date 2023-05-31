@@ -75,205 +75,210 @@ pub struct OtxBuilder {
     script_config: ScriptConfig,
 }
 
-impl OtxBuilder {}
-
-pub fn tx_view_to_otx(
-    tx_view: TransactionView,
-    xudt_code_hash: H256,
-    sudt_code_hash: H256,
-    aggregate_count: u32,
-    ckb_uri: &str,
-) -> Result<OpenTransaction, OtxFormatError> {
-    let mut ckb_rpc_client = CkbRpcClient::new(ckb_uri);
-
-    let mut input_ckb_capacity: u64 = 0;
-    let mut output_ckb_capacity: u64 = 0;
-    let mut xudt_input_map: HashMap<Script, u128> = HashMap::new();
-    let mut xudt_output_map: HashMap<Script, u128> = HashMap::new();
-    let mut sudt_input_map: HashMap<Script, u128> = HashMap::new();
-    let mut sudt_output_map: HashMap<Script, u128> = HashMap::new();
-    let core_tx_view = Transaction::from(tx_view.inner.clone()).into_view();
-
-    let mut meta = vec![
-        OtxKeyPair::new(
-            OTX_META_VERSION.into(),
-            None,
-            JsonBytes::from_bytes(tx_view.inner.version.pack().as_bytes()),
-        ),
-        OtxKeyPair::new(
-            OTX_VERSIONING_META_OPEN_TX_VERSION.into(),
-            None,
-            JsonBytes::from_bytes(Uint32::from(1).pack().as_bytes()),
-        ),
-        OtxKeyPair::new(
-            OTX_IDENTIFYING_META_TX_HASH.into(),
-            None,
-            core_tx_view.hash().as_bytes().pack().into(),
-        ),
-        OtxKeyPair::new(
-            OTX_IDENTIFYING_META_TX_WITNESS_HASH.into(),
-            None,
-            core_tx_view.witness_hash().as_bytes().pack().into(),
-        ),
-        OtxKeyPair::new(
-            OTX_IDENTIFYING_META_AGGREGATE_COUNT.into(),
-            None,
-            JsonBytes::from_bytes(Uint32::from(aggregate_count).pack().as_bytes()),
-        ),
-    ];
-
-    let cell_deps: Vec<OtxMap> = tx_view
-        .inner
-        .cell_deps
-        .into_iter()
-        .map(Into::into)
-        .collect();
-
-    let header_deps: Vec<OtxMap> = tx_view
-        .inner
-        .header_deps
-        .into_iter()
-        .map(Into::into)
-        .collect();
-
-    let mut inputs = vec![];
-    for input in tx_view.inner.inputs.into_iter() {
-        let out_point = input.clone().previous_output;
-        let mut otx_map: OtxMap = input.into();
-        let cell_with_status = ckb_rpc_client
-            .get_live_cell(out_point, true)
-            .map_err(|err| OtxFormatError::LocateInputFailed(err.to_string()))?;
-        if cell_with_status.cell.is_none() {
-            return Err(OtxFormatError::LocateInputFailed(
-                "does not exist".to_string(),
-            ));
-        }
-        if cell_with_status.status != "live" {
-            return Err(OtxFormatError::LocateInputFailed(cell_with_status.status));
-        }
-        let cell = cell_with_status.cell.unwrap();
-        let input_capacity = OtxKeyPair::new(
-            OTX_LOCATING_INPUT_CAPACITY.into(),
-            Some(packed::Byte::default().as_bytes().pack().into()),
-            JsonBytes::from_bytes(cell.output.capacity.pack().as_bytes()),
-        );
-        otx_map.push(input_capacity);
-        input_ckb_capacity += <Uint64 as Into<u64>>::into(cell.output.capacity);
-        inputs.push(otx_map);
-
-        if let Some(type_) = cell.output.type_.clone() {
-            if type_.code_hash == xudt_code_hash {
-                if let Some(data) = cell.data {
-                    if let Some(amount) = decode_udt_amount(data.content.as_bytes()) {
-                        *xudt_input_map.entry(type_).or_insert(0) += amount;
-                    }
-                }
-            } else if type_.code_hash == sudt_code_hash {
-                if let Some(data) = cell.data {
-                    if let Some(amount) = decode_udt_amount(data.content.as_bytes()) {
-                        *sudt_input_map.entry(type_).or_insert(0) += amount;
-                    }
-                }
-            }
-        }
+impl OtxBuilder {
+    pub fn new(script_config: ScriptConfig) -> Self {
+        Self { script_config }
     }
 
-    let witnesses: Vec<OtxMap> = tx_view
-        .inner
-        .witnesses
-        .into_iter()
-        .map(Into::into)
-        .collect();
+    pub fn tx_view_to_otx(
+        &self,
+        tx_view: TransactionView,
+        aggregate_count: u32,
+        ckb_uri: &str,
+    ) -> Result<OpenTransaction, OtxFormatError> {
+        let mut ckb_rpc_client = CkbRpcClient::new(ckb_uri);
+        let xudt_code_hash = self.script_config.get_xudt_rce_code_hash();
+        let sudt_code_hash = self.script_config.get_sudt_code_hash();
 
-    let outputs_iter = tx_view
-        .inner
-        .outputs
-        .into_iter()
-        .zip(tx_view.inner.outputs_data.into_iter());
-    let outputs: Vec<OtxMap> = outputs_iter
-        .map(|output| {
-            output_ckb_capacity += <Uint64 as Into<u64>>::into(output.0.capacity);
-            if let Some(type_) = output.0.type_.clone() {
+        let mut input_ckb_capacity: u64 = 0;
+        let mut output_ckb_capacity: u64 = 0;
+        let mut xudt_input_map: HashMap<Script, u128> = HashMap::new();
+        let mut xudt_output_map: HashMap<Script, u128> = HashMap::new();
+        let mut sudt_input_map: HashMap<Script, u128> = HashMap::new();
+        let mut sudt_output_map: HashMap<Script, u128> = HashMap::new();
+        let core_tx_view = Transaction::from(tx_view.inner.clone()).into_view();
+
+        let mut meta = vec![
+            OtxKeyPair::new(
+                OTX_META_VERSION.into(),
+                None,
+                JsonBytes::from_bytes(tx_view.inner.version.pack().as_bytes()),
+            ),
+            OtxKeyPair::new(
+                OTX_VERSIONING_META_OPEN_TX_VERSION.into(),
+                None,
+                JsonBytes::from_bytes(Uint32::from(1).pack().as_bytes()),
+            ),
+            OtxKeyPair::new(
+                OTX_IDENTIFYING_META_TX_HASH.into(),
+                None,
+                core_tx_view.hash().as_bytes().pack().into(),
+            ),
+            OtxKeyPair::new(
+                OTX_IDENTIFYING_META_TX_WITNESS_HASH.into(),
+                None,
+                core_tx_view.witness_hash().as_bytes().pack().into(),
+            ),
+            OtxKeyPair::new(
+                OTX_IDENTIFYING_META_AGGREGATE_COUNT.into(),
+                None,
+                JsonBytes::from_bytes(Uint32::from(aggregate_count).pack().as_bytes()),
+            ),
+        ];
+
+        let cell_deps: Vec<OtxMap> = tx_view
+            .inner
+            .cell_deps
+            .into_iter()
+            .map(Into::into)
+            .collect();
+
+        let header_deps: Vec<OtxMap> = tx_view
+            .inner
+            .header_deps
+            .into_iter()
+            .map(Into::into)
+            .collect();
+
+        let mut inputs = vec![];
+        for input in tx_view.inner.inputs.into_iter() {
+            let out_point = input.clone().previous_output;
+            let mut otx_map: OtxMap = input.into();
+            let cell_with_status = ckb_rpc_client
+                .get_live_cell(out_point, true)
+                .map_err(|err| OtxFormatError::LocateInputFailed(err.to_string()))?;
+            if cell_with_status.cell.is_none() {
+                return Err(OtxFormatError::LocateInputFailed(
+                    "does not exist".to_string(),
+                ));
+            }
+            if cell_with_status.status != "live" {
+                return Err(OtxFormatError::LocateInputFailed(cell_with_status.status));
+            }
+            let cell = cell_with_status.cell.unwrap();
+            let input_capacity = OtxKeyPair::new(
+                OTX_LOCATING_INPUT_CAPACITY.into(),
+                Some(packed::Byte::default().as_bytes().pack().into()),
+                JsonBytes::from_bytes(cell.output.capacity.pack().as_bytes()),
+            );
+            otx_map.push(input_capacity);
+            input_ckb_capacity += <Uint64 as Into<u64>>::into(cell.output.capacity);
+            inputs.push(otx_map);
+
+            if let Some(type_) = cell.output.type_.clone() {
                 if type_.code_hash == xudt_code_hash {
-                    if let Some(amount) = decode_udt_amount(output.1.as_bytes()) {
-                        *xudt_output_map.entry(type_).or_insert(0) += amount;
+                    if let Some(data) = cell.data {
+                        if let Some(amount) = decode_udt_amount(data.content.as_bytes()) {
+                            *xudt_input_map.entry(type_).or_insert(0) += amount;
+                        }
                     }
                 } else if type_.code_hash == sudt_code_hash {
-                    if let Some(amount) = decode_udt_amount(output.1.as_bytes()) {
-                        *sudt_output_map.entry(type_).or_insert(0) += amount;
+                    if let Some(data) = cell.data {
+                        if let Some(amount) = decode_udt_amount(data.content.as_bytes()) {
+                            *sudt_input_map.entry(type_).or_insert(0) += amount;
+                        }
                     }
                 }
             }
-            output.into()
-        })
-        .collect();
+        }
 
-    meta.push(OtxKeyPair::new(
-        OTX_ACCOUNTING_META_INPUT_CKB.into(),
-        None,
-        JsonBytes::from_bytes(Uint64::from(input_ckb_capacity).pack().as_bytes()),
-    ));
-    meta.push(OtxKeyPair::new(
-        OTX_ACCOUNTING_META_OUTPUT_CKB.into(),
-        None,
-        JsonBytes::from_bytes(Uint64::from(output_ckb_capacity).pack().as_bytes()),
-    ));
-    xudt_input_map
-        .into_iter()
-        .for_each(|(type_, input_xudt_amount)| {
-            meta.push(OtxKeyPair::new(
-                OTX_ACCOUNTING_META_INPUT_XUDT.into(),
-                {
-                    let script: packed::Script = type_.into();
-                    Some(JsonBytes::from_bytes(script.as_bytes()))
-                },
-                JsonBytes::from_bytes(Uint128::from(input_xudt_amount).pack().as_bytes()),
-            ));
-        });
-    xudt_output_map
-        .into_iter()
-        .for_each(|(type_, output_xudt_amount)| {
-            meta.push(OtxKeyPair::new(
-                OTX_ACCOUNTING_META_OUTPUT_XUDT.into(),
-                {
-                    let script: packed::Script = type_.into();
-                    Some(JsonBytes::from_bytes(script.as_bytes()))
-                },
-                JsonBytes::from_bytes(Uint128::from(output_xudt_amount).pack().as_bytes()),
-            ));
-        });
-    sudt_input_map
-        .into_iter()
-        .for_each(|(type_, input_xudt_amount)| {
-            meta.push(OtxKeyPair::new(
-                OTX_ACCOUNTING_META_INPUT_SUDT.into(),
-                {
-                    let script: packed::Script = type_.into();
-                    Some(JsonBytes::from_bytes(script.as_bytes()))
-                },
-                JsonBytes::from_bytes(Uint128::from(input_xudt_amount).pack().as_bytes()),
-            ));
-        });
-    sudt_output_map
-        .into_iter()
-        .for_each(|(type_, output_xudt_amount)| {
-            meta.push(OtxKeyPair::new(
-                OTX_ACCOUNTING_META_OUTPUT_SUDT.into(),
-                {
-                    let script: packed::Script = type_.into();
-                    Some(JsonBytes::from_bytes(script.as_bytes()))
-                },
-                JsonBytes::from_bytes(Uint128::from(output_xudt_amount).pack().as_bytes()),
-            ));
-        });
-    Ok(OpenTransaction::new(
-        meta.into(),
-        cell_deps.into(),
-        header_deps.into(),
-        inputs.into(),
-        witnesses.into(),
-        outputs.into(),
-    ))
+        let witnesses: Vec<OtxMap> = tx_view
+            .inner
+            .witnesses
+            .into_iter()
+            .map(Into::into)
+            .collect();
+
+        let outputs_iter = tx_view
+            .inner
+            .outputs
+            .into_iter()
+            .zip(tx_view.inner.outputs_data.into_iter());
+        let outputs: Vec<OtxMap> = outputs_iter
+            .map(|output| {
+                output_ckb_capacity += <Uint64 as Into<u64>>::into(output.0.capacity);
+                if let Some(type_) = output.0.type_.clone() {
+                    if type_.code_hash == xudt_code_hash {
+                        if let Some(amount) = decode_udt_amount(output.1.as_bytes()) {
+                            *xudt_output_map.entry(type_).or_insert(0) += amount;
+                        }
+                    } else if type_.code_hash == sudt_code_hash {
+                        if let Some(amount) = decode_udt_amount(output.1.as_bytes()) {
+                            *sudt_output_map.entry(type_).or_insert(0) += amount;
+                        }
+                    }
+                }
+                output.into()
+            })
+            .collect();
+
+        meta.push(OtxKeyPair::new(
+            OTX_ACCOUNTING_META_INPUT_CKB.into(),
+            None,
+            JsonBytes::from_bytes(Uint64::from(input_ckb_capacity).pack().as_bytes()),
+        ));
+        meta.push(OtxKeyPair::new(
+            OTX_ACCOUNTING_META_OUTPUT_CKB.into(),
+            None,
+            JsonBytes::from_bytes(Uint64::from(output_ckb_capacity).pack().as_bytes()),
+        ));
+        xudt_input_map
+            .into_iter()
+            .for_each(|(type_, input_xudt_amount)| {
+                meta.push(OtxKeyPair::new(
+                    OTX_ACCOUNTING_META_INPUT_XUDT.into(),
+                    {
+                        let script: packed::Script = type_.into();
+                        Some(JsonBytes::from_bytes(script.as_bytes()))
+                    },
+                    JsonBytes::from_bytes(Uint128::from(input_xudt_amount).pack().as_bytes()),
+                ));
+            });
+        xudt_output_map
+            .into_iter()
+            .for_each(|(type_, output_xudt_amount)| {
+                meta.push(OtxKeyPair::new(
+                    OTX_ACCOUNTING_META_OUTPUT_XUDT.into(),
+                    {
+                        let script: packed::Script = type_.into();
+                        Some(JsonBytes::from_bytes(script.as_bytes()))
+                    },
+                    JsonBytes::from_bytes(Uint128::from(output_xudt_amount).pack().as_bytes()),
+                ));
+            });
+        sudt_input_map
+            .into_iter()
+            .for_each(|(type_, input_xudt_amount)| {
+                meta.push(OtxKeyPair::new(
+                    OTX_ACCOUNTING_META_INPUT_SUDT.into(),
+                    {
+                        let script: packed::Script = type_.into();
+                        Some(JsonBytes::from_bytes(script.as_bytes()))
+                    },
+                    JsonBytes::from_bytes(Uint128::from(input_xudt_amount).pack().as_bytes()),
+                ));
+            });
+        sudt_output_map
+            .into_iter()
+            .for_each(|(type_, output_xudt_amount)| {
+                meta.push(OtxKeyPair::new(
+                    OTX_ACCOUNTING_META_OUTPUT_SUDT.into(),
+                    {
+                        let script: packed::Script = type_.into();
+                        Some(JsonBytes::from_bytes(script.as_bytes()))
+                    },
+                    JsonBytes::from_bytes(Uint128::from(output_xudt_amount).pack().as_bytes()),
+                ));
+            });
+        Ok(OpenTransaction::new(
+            meta.into(),
+            cell_deps.into(),
+            header_deps.into(),
+            inputs.into(),
+            witnesses.into(),
+            outputs.into(),
+        ))
+    }
 }
 
 fn decode_udt_amount(data: &[u8]) -> Option<u128> {
