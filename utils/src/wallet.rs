@@ -1,5 +1,6 @@
 use super::lock::omni::{build_cell_dep, MultiSigArgs, TxInfo};
-use crate::config::{CkbConfig, ScriptConfig};
+
+use config::{CkbConfig, ScriptConfig};
 
 use anyhow::{anyhow, Result};
 use ckb_crypto::secp::Pubkey;

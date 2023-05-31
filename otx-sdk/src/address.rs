@@ -1,4 +1,4 @@
-use utils::config::ScriptInfo;
+use config::ScriptInfo;
 
 use anyhow::Result;
 use ckb_sdk_otx::{Address, AddressPayload};

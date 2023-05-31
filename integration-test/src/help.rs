@@ -6,9 +6,9 @@ use crate::const_definition::CURRENT_OTX_POOL_SERVICE_PROCESS;
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::{ckb::generate_blocks, ckb::unlock_frozen_capacity_in_genesis};
 
+use config::{parse, AppConfig, ConfigFile};
 use otx_sdk::client::OtxPoolRpcClient;
 use utils::client::ckb_client::CkbRpcClient;
-use utils::config::{parse, AppConfig, ConfigFile};
 use utils::instruction::command::run_command_spawn;
 
 use common::lazy::{

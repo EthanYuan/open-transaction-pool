@@ -5,13 +5,13 @@ pub mod plugin_extension;
 pub mod pool;
 pub mod rpc;
 
+use config::NetworkConfig;
 use notify::{NotifyController, NotifyService};
 use otx_plugin_protocol::{HostServiceHandler, Plugin, PluginInfo, PluginMeta};
 use plugin_extension::host_service::HostServiceProvider;
 use plugin_extension::manager::PluginManager;
 use pool::OtxPool;
 use rpc::{OtxPoolRpc, OtxPoolRpcImpl};
-use utils::config::NetworkConfig;
 
 use anyhow::{anyhow, Result};
 use ckb_async_runtime::{new_global_runtime, Handle, Runtime};

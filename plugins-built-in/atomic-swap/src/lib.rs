@@ -1,9 +1,9 @@
+use config::{CkbConfig, ScriptConfig};
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{
     HostServiceHandler, MessageFromHost, MessageFromPlugin, Plugin, PluginInfo, PluginMeta,
 };
 use utils::aggregator::{Committer, OtxAggregator};
-use utils::config::{CkbConfig, ScriptConfig};
 
 use ckb_jsonrpc_types::Script;
 use ckb_types::core::service::Request;

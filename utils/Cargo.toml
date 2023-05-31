@@ -24,3 +24,4 @@ serde_json = "1.0"
 toml = "0.5"
 
 otx-format = { path = "../otx-format" }
+config = { path = "../util/config" }

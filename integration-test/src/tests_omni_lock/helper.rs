@@ -5,8 +5,8 @@ use crate::utils::instruction::ckb::dump_data;
 use crate::utils::instruction::mercury::prepare_udt_1;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 
+use config::CkbConfig;
 use utils::client::ckb_cli_client::{ckb_cli_get_capacity, ckb_cli_transfer_ckb};
-use utils::config::CkbConfig;
 use utils::lock::omni::{MultiSigArgs, TxInfo};
 use utils::wallet::{GenOpenTxArgs, Wallet};
 

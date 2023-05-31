@@ -1,10 +1,10 @@
+use config::built_in_plugins::DustCollectorConfig;
+use config::{CkbConfig, ScriptConfig};
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{
     HostServiceHandler, MessageFromHost, MessageFromPlugin, Plugin, PluginInfo, PluginMeta,
 };
 use utils::aggregator::{OtxAggregator, OutputAmount};
-use utils::config::built_in_plugins::DustCollectorConfig;
-use utils::config::{CkbConfig, ScriptConfig};
 
 use anyhow::{anyhow, Result};
 use ckb_sdk::rpc::ckb_indexer::{Order, ScriptType, SearchKey};

@@ -1,4 +1,4 @@
-use crate::config::{CkbConfig, ScriptConfig};
+use config::{CkbConfig, ScriptConfig};
 
 use anyhow::Result;
 use ckb_jsonrpc_types as json_types;

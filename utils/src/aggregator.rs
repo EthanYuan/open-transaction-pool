@@ -1,6 +1,7 @@
 use super::build_tx::TxBuilder;
 use super::lock::omni::{build_cell_dep, TxInfo};
-use crate::config::{CkbConfig, ScriptConfig};
+
+use config::{CkbConfig, ScriptConfig};
 
 use anyhow::{anyhow, Result};
 use ckb_jsonrpc_types as json_types;

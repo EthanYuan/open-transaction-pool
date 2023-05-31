@@ -12,6 +12,7 @@ use crate::utils::instruction::mercury::{prepare_ckb_capacity, prepare_udt_1, pr
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
+use config::ScriptInfo;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::OpenTxStatus;
 use otx_sdk::address::build_otx_address_from_secp_address;
@@ -19,7 +20,6 @@ use otx_sdk::build_tx::build_otx;
 use otx_sdk::client::OtxPoolRpcClient;
 use otx_sdk::signer::{SighashMode, Signer};
 use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
-use utils::config::ScriptInfo;
 
 use anyhow::{Ok, Result};
 use ckb_sdk_otx::Address;
@@ -290,13 +290,16 @@ fn build_signed_otx(
         vec![out_point_1, out_point_2, out_point_3],
         vec![xudt_1_output, xudt_2_output, omni_output],
         vec![xudt_1_data.pack(), xudt_2_data.pack(), data.pack()],
-        otx_script_info,
+        vec![otx_script_info.to_owned()],
     )
     .unwrap();
     let file = format!("./free-space/swap_{}_otx_unsigned.json", payer);
     dump_data(&open_tx, &file).unwrap();
 
-    let signer = Signer::new(vec![(secp_addr.to_owned(), pk.to_owned())]);
+    let signer = Signer::new(
+        vec![(secp_addr.to_owned(), pk.to_owned())],
+        otx_script_info.to_owned(),
+    );
     let open_tx = signer
         .partial_sign(open_tx, SighashMode::SingleAnyoneCanPay)
         .unwrap();

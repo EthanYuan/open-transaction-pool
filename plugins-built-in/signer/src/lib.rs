@@ -1,9 +1,9 @@
+use config::{built_in_plugins::SignerConfig, CkbConfig, ScriptConfig};
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{
     HostServiceHandler, MessageFromHost, MessageFromPlugin, Plugin, PluginInfo, PluginMeta,
 };
 use utils::aggregator::{Committer, SignInfo};
-use utils::config::{built_in_plugins::SignerConfig, CkbConfig, ScriptConfig};
 
 use anyhow::{anyhow, Result};
 use ckb_sdk_open_tx::types::Address;

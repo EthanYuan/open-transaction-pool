@@ -12,12 +12,12 @@ use crate::utils::instruction::mercury::{prepare_ckb_capacity, prepare_udt_1, pr
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
+use config::CkbConfig;
 use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::OpenTxStatus;
 use otx_sdk::client::OtxPoolRpcClient;
 use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
-use utils::config::CkbConfig;
 use utils::wallet::Wallet;
 
 use anyhow::Result;

@@ -10,11 +10,12 @@ use crate::constant::extra_keys::{
 };
 use crate::error::OtxFormatError;
 use crate::jsonrpc_types::{OpenTransaction, OtxKeyPair, OtxMap};
+use config::ScriptConfig;
 
 use anyhow::Result;
 use ckb_jsonrpc_types::{JsonBytes, Script, TransactionView, Uint32};
 use ckb_jsonrpc_types::{Uint128, Uint64};
-use ckb_sdk::{CkbRpcClient, IndexerRpcClient};
+use ckb_sdk::CkbRpcClient;
 use ckb_types::packed::{self, Transaction};
 use ckb_types::prelude::*;
 use ckb_types::H256;
@@ -70,6 +71,12 @@ pub fn tx_view_to_basic_otx(tx_view: TransactionView) -> Result<OpenTransaction,
     ))
 }
 
+pub struct OtxBuilder {
+    script_config: ScriptConfig,
+}
+
+impl OtxBuilder {}
+
 pub fn tx_view_to_otx(
     tx_view: TransactionView,
     xudt_code_hash: H256,
@@ -78,7 +85,6 @@ pub fn tx_view_to_otx(
     ckb_uri: &str,
 ) -> Result<OpenTransaction, OtxFormatError> {
     let mut ckb_rpc_client = CkbRpcClient::new(ckb_uri);
-    let _indexer_rpc_client = IndexerRpcClient::new(ckb_uri);
 
     let mut input_ckb_capacity: u64 = 0;
     let mut output_ckb_capacity: u64 = 0;
