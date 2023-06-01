@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
+ckb-crypto = "0.105"
+ckb-hash = "0.105"
 ckb-sdk-otx = { git = "https://github.com/EthanYuan/ckb-sdk-rust.git", branch = "opentx_sign_tx_ethan", package = "ckb-sdk" }
 ckb-types = "0.105"
 jsonrpc-core = "18.0"

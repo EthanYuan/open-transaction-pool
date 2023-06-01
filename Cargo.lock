@@ -1531,6 +1531,8 @@ name = "otx-sdk"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ckb-crypto",
+ "ckb-hash",
  "ckb-sdk 2.3.1",
  "ckb-types",
  "config",

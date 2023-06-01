@@ -296,6 +296,7 @@ fn get_value_by_first_element(
     let found_key = map.keys().find(|(element, _)| *element == first_element);
     found_key.and_then(|key| map.get(key))
 }
+
 fn pop_entry_by_first_element(
     map: &mut HashMap<(u32, Option<JsonBytes>), JsonBytes>,
     first_element: u32,

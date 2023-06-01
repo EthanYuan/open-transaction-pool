@@ -174,7 +174,7 @@ fn test_otx_swap_udt_to_udt() {
 fn build_signed_otx(
     payer: &str,
     otx_address: &Address,
-    (secp_addr, pk): (&Address, &H256),
+    (_secp_addr, pk): (&Address, &H256),
     prepare_udt_1_amount: u128,
     prepare_udt_2_amount: u128,
     prepare_capacity: usize,
@@ -279,19 +279,16 @@ fn build_signed_otx(
         vec![xudt_1_output, xudt_2_output, capacity_output],
         vec![xudt_1_data.pack(), xudt_2_data.pack(), data.pack()],
         vec![otx_script_info.to_owned()],
-        script_config,
-        ckb_config,
+        script_config.to_owned(),
+        ckb_config.to_owned(),
     )
     .unwrap();
     let file = format!("./free-space/swap_{}_otx_unsigned.json", payer);
     dump_data(&open_tx, &file).unwrap();
 
-    let signer = Signer::new(
-        vec![(secp_addr.to_owned(), pk.to_owned())],
-        otx_script_info.to_owned(),
-    );
+    let signer = Signer::new(pk.to_owned(), script_config, ckb_config);
     let open_tx = signer
-        .partial_sign(open_tx, SighashMode::SingleAnyoneCanPay)
+        .partial_sign(open_tx, SighashMode::SingleAnyoneCanPay, vec![0, 1, 2])
         .unwrap();
     dump_data(
         &open_tx,
