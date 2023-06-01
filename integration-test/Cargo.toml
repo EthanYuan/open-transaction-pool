@@ -27,6 +27,8 @@ otx-format = { path = "../otx-format" }
 otx-pool = { path = "../otx-pool"}
 utils = { path = "../utils" }
 
+dust-collector = { path = "../plugins-built-in/dust-collector" }
+
 common = { git = "https://github.com/EthanYuan/mercury.git", branch = "dev-0.4-omni-otx" }
 core-rpc-types = { git = "https://github.com/EthanYuan/mercury.git", branch = "dev-0.4-omni-otx" }
 

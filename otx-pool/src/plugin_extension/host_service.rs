@@ -4,7 +4,7 @@ use crate::pool::OtxPool;
 use ckb_types::prelude::Entity;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::{packed, OpenTxStatus};
-use otx_plugin_protocol::{MessageFromHost, MessageFromPlugin};
+use otx_plugin_protocol::{HostServiceHandler, MessageFromHost, MessageFromPlugin};
 
 use anyhow::{anyhow, Result};
 use ckb_jsonrpc_types::JsonBytes;
@@ -15,11 +15,9 @@ use crossbeam_channel::{bounded, select, Sender};
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 
-pub type ServiceHandler = Sender<Request<MessageFromPlugin, MessageFromHost>>;
-
 #[derive(Debug)]
 pub struct HostServiceProvider {
-    handler: ServiceHandler,
+    handler: HostServiceHandler,
     stop_handler: Sender<()>,
     _thread: Option<JoinHandle<()>>,
 }
@@ -106,7 +104,7 @@ impl HostServiceProvider {
         })
     }
 
-    pub fn handler(&self) -> ServiceHandler {
+    pub fn handler(&self) -> HostServiceHandler {
         self.handler.clone()
     }
 

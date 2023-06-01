@@ -47,6 +47,8 @@ fn test_service_rpc_submit_otx() {
     let status = service_client.query_otx_status_by_id(id).unwrap().unwrap();
     assert_eq!(status, OpenTxStatus::Pending);
 
-    let ret = service_client.query_otx_status_by_id(H256::default()).unwrap();
+    let ret = service_client
+        .query_otx_status_by_id(H256::default())
+        .unwrap();
     assert!(ret.is_none());
 }
