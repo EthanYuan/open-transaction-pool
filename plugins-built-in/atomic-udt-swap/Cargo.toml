@@ -1,0 +1,20 @@
+[package]
+name = "atomic-udt-swap"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0"
+ckb-jsonrpc-types = "0.105"
+ckb-stop-handler = "0.105"
+ckb-types = "0.105"
+dashmap = "5.4.0"
+derive_more = "0.99"
+log = "0.4.17"
+
+config = { path = "../../util/config" }
+otx-format = { path = "../../otx-format" }
+otx-plugin-protocol = { path = "../../otx-plugin-protocol" }
+otx-sdk = { path = "../../otx-sdk" }

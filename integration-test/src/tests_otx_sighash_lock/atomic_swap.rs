@@ -48,7 +48,7 @@ fn test_otx_swap_udt_to_udt() {
 
     // get otx lock script info
     let script_config = SCRIPT_CONFIG.get().unwrap().clone();
-    let otx_lock_script_info = script_config.get_script_info("otx").unwrap();
+    let otx_lock_script_info = script_config.get_script_info("otx-sighash-lock").unwrap();
 
     // alice build otxs
     // pay 10 UDT-1, get 10 UDT-2, pay fee 1 CKB
@@ -193,7 +193,7 @@ fn build_signed_otx(
     // 1. init address
     let otx_script: Script = (otx_address).into();
 
-    // 2. transfer udt-1 to omni address
+    // 2. transfer udt-1 to otx-sighash-lock address
     let tx_hash = prepare_udt_1(prepare_udt_1_amount, otx_address).unwrap();
     let out_point_1 = OutPoint::new(Byte32::from_slice(tx_hash.as_bytes())?, 0u32);
     let balance_payload = GetBalancePayload {
@@ -206,9 +206,10 @@ fn build_signed_otx(
     let balance = mercury_client.get_balance(balance_payload).unwrap();
     assert_eq!(balance.balances.len(), 2);
     assert_eq!(balance.balances[0].occupied, 142_0000_0000u128.into());
+    assert_eq!(balance.balances[0].free, 0_0000_0000u128.into());
     assert_eq!(balance.balances[1].free, prepare_udt_1_amount.into());
 
-    // 3. transfer udt-2 to omni address
+    // 3. transfer udt-2 to otx-sighash-lock address
     let tx_hash = prepare_udt_2(prepare_udt_2_amount, otx_address).unwrap();
     let out_point_2 = OutPoint::new(Byte32::from_slice(tx_hash.as_bytes())?, 0u32);
     let balance_payload = GetBalancePayload {
@@ -221,9 +222,10 @@ fn build_signed_otx(
     let balance = mercury_client.get_balance(balance_payload).unwrap();
     assert_eq!(balance.balances.len(), 2);
     assert_eq!(balance.balances[0].occupied, 142_0000_0000u128.into());
+    assert_eq!(balance.balances[0].free, 0_0000_0000u128.into());
     assert_eq!(balance.balances[1].free, prepare_udt_2_amount.into());
 
-    // 4. transfer capacity to omni address
+    // 4. transfer capacity to otx-sighash-lock address
     let tx_hash = ckb_cli_transfer_ckb(otx_address, prepare_capacity / 1_0000_0000).unwrap();
     aggregate_transactions_into_blocks().unwrap();
     let out_point_3 = OutPoint::new(Byte32::from_slice(tx_hash.as_bytes())?, 0u32);
@@ -249,7 +251,7 @@ fn build_signed_otx(
         .args(xudt_1_issuer_script.calc_script_hash().raw_data().pack())
         .build();
     let xudt_1_output = CellOutput::new_builder()
-        .capacity(capacity_bytes!(144).pack())
+        .capacity(capacity_bytes!(142).pack())
         .lock(otx_script.clone())
         .type_(Some(xudt_1_type_script).pack())
         .build();
@@ -262,7 +264,7 @@ fn build_signed_otx(
         .args(xudt_2_issuer_script.calc_script_hash().raw_data().pack())
         .build();
     let xudt_2_output = CellOutput::new_builder()
-        .capacity(capacity_bytes!(144).pack())
+        .capacity(capacity_bytes!(142).pack())
         .lock(otx_script.clone())
         .type_(Some(xudt_2_type_script).pack())
         .build();

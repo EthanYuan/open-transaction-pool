@@ -181,7 +181,7 @@ cell_dep = '''
 '''
 
 [[scripts]]
-script_name = "otx"
+script_name = "otx-sighash-lock"
 script = '''
 {
     "args": "0x",

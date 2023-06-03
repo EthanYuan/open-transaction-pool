@@ -1,4 +1,5 @@
 use atomic_swap::AtomicSwap;
+use atomic_udt_swap::AtomicUdtSwap;
 use config::{parse, AppConfig, ConfigFile};
 use dust_collector::DustCollector;
 use otx_pool::{logo::print_logo, OtxPoolService};
@@ -41,6 +42,17 @@ fn main() -> Result<()> {
     let config = read_cli_args()?;
 
     let mut otx_pool_service = OtxPoolService::new(config.get_network_config())?;
+
+    // add plugin AtomicUdtSwap
+    if config.get_atomic_swap_config().is_enabled() {
+        let atomic_swap = AtomicUdtSwap::new(
+            otx_pool_service.get_host_service_handler(),
+            config.get_ckb_config(),
+            config.get_script_config(),
+        )
+        .map_err(|err| anyhow!(err))?;
+        otx_pool_service.add_plugin(Box::new(atomic_swap));
+    }
 
     // add plugin DustCollector
     if config.get_dust_collector_config().is_enabled() {

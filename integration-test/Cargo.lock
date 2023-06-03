@@ -1633,6 +1633,7 @@ dependencies = [
  "anyhow",
  "ckb-crypto",
  "ckb-hash",
+ "ckb-jsonrpc-types",
  "ckb-sdk 2.3.1",
  "ckb-types",
  "config",
