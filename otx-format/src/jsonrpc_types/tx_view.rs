@@ -297,16 +297,6 @@ impl OtxBuilder {
         for otx in otxs {
             let tx: TransactionView = otx.try_into()?;
             let tx = Transaction::from(tx.inner.clone()).into_view();
-
-            // dump data
-            let timestamp = std::time::SystemTime::now()
-                .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                .expect("Failed to obtain timestamp")
-                .as_nanos();
-            let file_name = format!("{}.json", timestamp);
-            let tx_view: ckb_jsonrpc_types::TransactionView = tx.clone().into();
-            dump_data(&tx_view, &file_name).unwrap();
-
             txs.push(tx);
         }
 
@@ -325,10 +315,6 @@ impl OtxBuilder {
             .cell_deps(cell_deps)
             .header_deps(header_deps)
             .build();
-
-        // dump data
-        let tx_view: ckb_jsonrpc_types::TransactionView = tx.clone().into();
-        dump_data(&tx_view, "tx.json").unwrap();
 
         self.tx_view_to_otx(tx.into(), aggregate_count as u32)
     }

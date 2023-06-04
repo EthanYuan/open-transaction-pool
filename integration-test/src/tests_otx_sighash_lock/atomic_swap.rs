@@ -49,6 +49,7 @@ fn test_otx_swap_udt_to_udt() {
     // get otx lock script info
     let script_config = SCRIPT_CONFIG.get().unwrap().clone();
     let otx_lock_script_info = script_config.get_script_info("otx-sighash-lock").unwrap();
+    let udt_type_script_info = script_config.get_script_info("xudt_rce").unwrap();
 
     // alice build otxs
     // pay 10 UDT-1, get 10 UDT-2, pay fee 1 CKB
@@ -65,7 +66,10 @@ fn test_otx_swap_udt_to_udt() {
         2,
         15,
         200_0000_0000,
-        &otx_lock_script_info,
+        vec![
+            otx_lock_script_info.to_owned(),
+            udt_type_script_info.to_owned(),
+        ],
     )
     .unwrap();
 
@@ -84,7 +88,10 @@ fn test_otx_swap_udt_to_udt() {
         20,
         90,
         200_0000_0000,
-        &otx_lock_script_info,
+        vec![
+            otx_lock_script_info.to_owned(),
+            udt_type_script_info.to_owned(),
+        ],
     )
     .unwrap();
 
@@ -181,7 +188,7 @@ fn build_signed_otx(
     remain_udt_1: u128,
     remain_udt_2: u128,
     remain_capacity: usize,
-    otx_script_info: &ScriptInfo,
+    script_infos: Vec<ScriptInfo>,
 ) -> Result<OpenTransaction> {
     // get otx lock script info
     let script_config = SCRIPT_CONFIG.get().unwrap().clone();
@@ -280,7 +287,7 @@ fn build_signed_otx(
         vec![out_point_1, out_point_2, out_point_3],
         vec![xudt_1_output, xudt_2_output, capacity_output],
         vec![xudt_1_data.pack(), xudt_2_data.pack(), data.pack()],
-        vec![otx_script_info.to_owned()],
+        script_infos,
         script_config.to_owned(),
         ckb_config.to_owned(),
     )

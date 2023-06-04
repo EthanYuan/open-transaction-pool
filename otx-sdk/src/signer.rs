@@ -106,7 +106,10 @@ impl Signer {
         let output_len = output.as_slice().len() as u64;
 
         // output data
-        let output_data = tx.outputs_data().get(index).unwrap();
+        let output_data = tx
+            .outputs_data()
+            .get(index)
+            .ok_or_else(|| anyhow!("output data index out of range"))?;
         let output_data_len = output_data.as_slice().len() as u64;
 
         // witness

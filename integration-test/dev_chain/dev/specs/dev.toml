@@ -63,7 +63,7 @@ file = { file = "cells/secp256k1_blake2b_sighash_all_dual" }
 create_type_id = true
 capacity = 100_777_0000_0000
 [[genesis.system_cells]]
-file = { file = "cells/otx-lock" }
+file = { file = "cells/otx-sighash-lock" }
 create_type_id = true
 capacity = 100_888_0000_0000
 
@@ -98,11 +98,11 @@ files = [
   { file = "cells/ckb-cheque-script" },
 ]
 [[genesis.dep_groups]]
-name = "otx-lock"
+name = "otx-sighash-lock"
 files = [
   { bundled = "specs/cells/secp256k1_data" },
   { file = "cells/secp256k1_blake2b_sighash_all_dual" },
-  { file = "cells/otx-lock" },
+  { file = "cells/otx-sighash-lock" },
 ]
 
 # For first 11 block
