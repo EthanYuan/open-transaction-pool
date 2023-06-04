@@ -301,8 +301,11 @@ fn build_signed_otx(
     )
     .unwrap();
 
-    let otx_builder = OtxBuilder::new(SCRIPT_CONFIG.get().unwrap().to_owned());
-    let otx = otx_builder.tx_view_to_otx(open_tx.tx, 1, CKB_URI).unwrap();
+    let otx_builder = OtxBuilder::new(
+        SCRIPT_CONFIG.get().unwrap().to_owned(),
+        CkbConfig::new("ckb_dev", CKB_URI),
+    );
+    let otx = otx_builder.tx_view_to_otx(open_tx.tx, 1).unwrap();
 
     dump_data(
         &otx,

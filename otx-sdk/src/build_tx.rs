@@ -37,15 +37,11 @@ pub fn build_otx(
         .cell_deps(cell_deps)
         .build()
         .into();
-    let otx_builder = OtxBuilder::new(script_config);
+    let otx_builder = OtxBuilder::new(script_config, ckb_config);
     let otx = otx_builder
-        .tx_view_to_otx(tx, 1, ckb_config.get_ckb_uri())
+        .tx_view_to_otx(tx, 1)
         .map_err(|err| anyhow!(err.to_string()))?;
     Ok(otx)
-}
-
-pub fn merge_otxs(_otxs: Vec<OpenTransaction>) -> Result<OpenTransaction> {
-    todo!()
 }
 
 pub fn dump_data<T>(data: &T, file_name: &str) -> Result<()>

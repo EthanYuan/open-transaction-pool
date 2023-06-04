@@ -74,13 +74,14 @@ impl Signer {
         let mut tx: TransactionView = otx
             .try_into()
             .map_err(|_| anyhow!("otx convert to ckb tx"))?;
+
         indexs.sort_unstable();
         for index in indexs {
             tx = self.sign_tx_single_anyone_can_pay(tx, index)?;
         }
-        let otx_builder = OtxBuilder::new(self.script_config.to_owned());
+        let otx_builder = OtxBuilder::new(self.script_config.to_owned(), self.ckb_config.clone());
         let otx = otx_builder
-            .tx_view_to_otx(tx.into(), aggregate_count, self.ckb_config.get_ckb_uri())
+            .tx_view_to_otx(tx.into(), aggregate_count)
             .map_err(|err| anyhow!(err.to_string()))?;
         Ok(otx)
     }
@@ -104,6 +105,10 @@ impl Signer {
             .ok_or_else(|| anyhow!("output index out of range"))?;
         let output_len = output.as_slice().len() as u64;
 
+        // output data
+        let output_data = tx.outputs_data().get(index).unwrap();
+        let output_data_len = output_data.as_slice().len() as u64;
+
         // witness
         let witness = WitnessArgs::default();
         let zero_lock: Bytes = {
@@ -125,6 +130,8 @@ impl Signer {
         blake2b.update(input.as_slice());
         blake2b.update(&output_len.to_le_bytes());
         blake2b.update(output.as_slice());
+        blake2b.update(&output_data_len.to_le_bytes());
+        blake2b.update(output_data.as_slice());
         blake2b.update(&witness_len.to_le_bytes());
         blake2b.update(&witness_for_digest.as_bytes());
         blake2b.finalize(&mut message);

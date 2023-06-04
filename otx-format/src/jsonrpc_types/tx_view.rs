@@ -11,16 +11,18 @@ use crate::constant::extra_keys::{
 use crate::error::OtxFormatError;
 use crate::jsonrpc_types::otx_map::{OtxKeyPair, OtxMap};
 use crate::jsonrpc_types::OpenTransaction;
-use config::ScriptConfig;
+use config::{CkbConfig, ScriptConfig};
 
 use anyhow::Result;
 use ckb_jsonrpc_types::{JsonBytes, Script, TransactionView, Uint32};
 use ckb_jsonrpc_types::{Uint128, Uint64};
 use ckb_sdk::CkbRpcClient;
+use ckb_types::core;
 use ckb_types::packed::{self, Transaction};
 use ckb_types::prelude::*;
+use serde::Serialize;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::Into;
 
 pub fn tx_view_to_basic_otx(tx_view: TransactionView) -> Result<OpenTransaction, OtxFormatError> {
@@ -73,20 +75,23 @@ pub fn tx_view_to_basic_otx(tx_view: TransactionView) -> Result<OpenTransaction,
 
 pub struct OtxBuilder {
     script_config: ScriptConfig,
+    ckb_config: CkbConfig,
 }
 
 impl OtxBuilder {
-    pub fn new(script_config: ScriptConfig) -> Self {
-        Self { script_config }
+    pub fn new(script_config: ScriptConfig, ckb_config: CkbConfig) -> Self {
+        Self {
+            script_config,
+            ckb_config,
+        }
     }
 
     pub fn tx_view_to_otx(
         &self,
         tx_view: TransactionView,
         aggregate_count: u32,
-        ckb_uri: &str,
     ) -> Result<OpenTransaction, OtxFormatError> {
-        let mut ckb_rpc_client = CkbRpcClient::new(ckb_uri);
+        let mut ckb_rpc_client = CkbRpcClient::new(self.ckb_config.get_ckb_uri());
         let xudt_code_hash = self.script_config.get_xudt_rce_code_hash();
         let sudt_code_hash = self.script_config.get_sudt_code_hash();
 
@@ -279,6 +284,54 @@ impl OtxBuilder {
             outputs.into(),
         ))
     }
+
+    pub fn merge_otxs_single_acp(
+        &self,
+        mut otxs: Vec<OpenTransaction>,
+    ) -> Result<OpenTransaction, OtxFormatError> {
+        if otxs.len() == 1 {
+            return Ok(otxs.remove(0));
+        }
+        let mut txs = vec![];
+        let aggregate_count = otxs.len();
+        for otx in otxs {
+            let tx: TransactionView = otx.try_into()?;
+            let tx = Transaction::from(tx.inner.clone()).into_view();
+
+            // dump data
+            let timestamp = std::time::SystemTime::now()
+                .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                .expect("Failed to obtain timestamp")
+                .as_nanos();
+            let file_name = format!("{}.json", timestamp);
+            let tx_view: ckb_jsonrpc_types::TransactionView = tx.clone().into();
+            dump_data(&tx_view, &file_name).unwrap();
+
+            txs.push(tx);
+        }
+
+        let mut builder = core::TransactionView::new_advanced_builder();
+        let mut cell_deps = HashSet::new();
+        let mut header_deps = HashSet::new();
+        for tx in txs.iter() {
+            cell_deps.extend(tx.cell_deps());
+            header_deps.extend(tx.header_deps());
+            builder = builder.inputs(tx.inputs());
+            builder = builder.outputs(tx.outputs());
+            builder = builder.outputs_data(tx.outputs_data());
+            builder = builder.witnesses(tx.witnesses());
+        }
+        let tx = builder
+            .cell_deps(cell_deps)
+            .header_deps(header_deps)
+            .build();
+
+        // dump data
+        let tx_view: ckb_jsonrpc_types::TransactionView = tx.clone().into();
+        dump_data(&tx_view, "tx.json").unwrap();
+
+        self.tx_view_to_otx(tx.into(), aggregate_count as u32)
+    }
 }
 
 fn decode_udt_amount(data: &[u8]) -> Option<u128> {
@@ -293,4 +346,12 @@ fn to_fixed_array<const LEN: usize>(input: &[u8]) -> [u8; LEN] {
     let mut list = [0; LEN];
     list.copy_from_slice(input);
     list
+}
+
+pub fn dump_data<T>(data: &T, file_name: &str) -> Result<()>
+where
+    T: ?Sized + Serialize,
+{
+    let json_string = serde_json::to_string_pretty(data)?;
+    std::fs::write(file_name, json_string).map_err(Into::into)
 }

@@ -45,13 +45,13 @@ fn main() -> Result<()> {
 
     // add plugin AtomicUdtSwap
     if config.get_atomic_swap_config().is_enabled() {
-        let atomic_swap = AtomicUdtSwap::new(
+        let atomic_udt_swap = AtomicUdtSwap::new(
             otx_pool_service.get_host_service_handler(),
             config.get_ckb_config(),
             config.get_script_config(),
         )
         .map_err(|err| anyhow!(err))?;
-        otx_pool_service.add_plugin(Box::new(atomic_swap));
+        otx_pool_service.add_plugin(Box::new(atomic_udt_swap));
     }
 
     // add plugin DustCollector

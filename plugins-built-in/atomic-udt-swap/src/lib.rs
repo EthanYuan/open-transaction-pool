@@ -1,9 +1,9 @@
 use config::{CkbConfig, ScriptConfig};
-use otx_format::jsonrpc_types::OpenTransaction;
+use otx_format::jsonrpc_types::{OpenTransaction, OtxBuilder};
 use otx_plugin_protocol::{
     HostServiceHandler, MessageFromHost, MessageFromPlugin, Plugin, PluginInfo, PluginMeta,
 };
-use otx_sdk::build_tx::{merge_otxs, send_tx};
+use otx_sdk::build_tx::send_tx;
 
 use ckb_jsonrpc_types::Script;
 use ckb_types::core::service::Request;
@@ -21,7 +21,7 @@ pub const MIN_PAYMENT: usize = 1_0000_0000;
 struct Context {
     plugin_name: String,
     ckb_config: CkbConfig,
-    _script_config: ScriptConfig,
+    script_config: ScriptConfig,
     service_handler: HostServiceHandler,
 
     otxs: Arc<DashMap<H256, OpenTransaction>>,
@@ -38,7 +38,7 @@ impl Context {
         Context {
             plugin_name: plugin_name.to_owned(),
             ckb_config,
-            _script_config: script_config,
+            script_config,
             service_handler,
             otxs: Arc::new(DashMap::new()),
             orders: Arc::new(DashMap::new()),
@@ -77,7 +77,7 @@ impl AtomicUdtSwap {
         ckb_config: CkbConfig,
         script_config: ScriptConfig,
     ) -> Result<AtomicUdtSwap, String> {
-        let name = "atomic swap";
+        let name = "atomic udt swap";
         let state = PluginMeta::new(PathBuf::default(), true, true);
         let info = PluginInfo::new(
             name,
@@ -152,8 +152,12 @@ impl Plugin for AtomicUdtSwap {
                 let pair_otx = self.context.otxs.get(pair_tx_hash).unwrap().value().clone();
 
                 // merge_otx
+                let builder = OtxBuilder::new(
+                    self.context.script_config.clone(),
+                    self.context.ckb_config.clone(),
+                );
                 let otx_list = vec![otx, pair_otx];
-                let merged_otx = if let Ok(merged_otx) = merge_otxs(otx_list) {
+                let merged_otx = if let Ok(merged_otx) = builder.merge_otxs_single_acp(otx_list) {
                     log::debug!("otxs merge successfully.");
                     merged_otx
                 } else {
