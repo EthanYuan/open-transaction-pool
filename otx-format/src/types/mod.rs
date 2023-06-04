@@ -1,8 +1,10 @@
 pub use crate::generated::packed;
 use crate::jsonrpc_types::OpenTransaction;
 
-use ckb_jsonrpc_types::{Deserialize, Serialize};
+use ckb_jsonrpc_types::{Deserialize, Script, Serialize};
 use ckb_types::H256;
+
+use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OpenTxStatus {
@@ -30,6 +32,13 @@ impl OpenTxWithStatus {
             status: OpenTxStatus::Pending,
         }
     }
+}
+
+#[derive(Debug)]
+pub struct PaymentAmount {
+    pub capacity: i128,
+    pub x_udt_amount: HashMap<Script, i128>,
+    pub s_udt_amount: HashMap<Script, i128>,
 }
 
 #[cfg(test)]

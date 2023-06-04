@@ -9,7 +9,8 @@ use crate::constant::extra_keys::{
     OTX_LOCATING_INPUT_CAPACITY, OTX_VERSIONING_META_OPEN_TX_VERSION,
 };
 use crate::error::OtxFormatError;
-use crate::jsonrpc_types::{OpenTransaction, OtxKeyPair, OtxMap};
+use crate::jsonrpc_types::otx_map::{OtxKeyPair, OtxMap};
+use crate::jsonrpc_types::OpenTransaction;
 use config::ScriptConfig;
 
 use anyhow::Result;
