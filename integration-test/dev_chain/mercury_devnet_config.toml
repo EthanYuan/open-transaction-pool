@@ -63,7 +63,7 @@ cell_dep = '''
     "dep_type": "dep_group",
     "out_point": {
         "index": "0x0",
-        "tx_hash": "0xa53d5f12ff77b7912297d40d2144b2ea3e72500bddc3bfb2a6586fd4512282c0"
+        "tx_hash": "0x8d47e8719ae7a7c27785babd837d17454a48e6f353ddfe4bdfe30ccf33aacca5"
     }
 }
 '''
@@ -83,7 +83,7 @@ cell_dep = '''
     "dep_type": "code",
     "out_point": {
         "index": "0x2",
-        "tx_hash": "0x1052895ff01f1fd81da60f184b7d24db4191e75d93fbbcd4c5893279b5003979"
+        "tx_hash": "0x44f65509633382e29cdb15a7790881bdf7cd91ae955432e29c3c01fd7a57678b"
     }
 }
 '''
@@ -103,7 +103,7 @@ cell_dep = '''
     "dep_type": "code",
     "out_point": {
         "index": "0xa",
-        "tx_hash": "0x1052895ff01f1fd81da60f184b7d24db4191e75d93fbbcd4c5893279b5003979"
+        "tx_hash": "0x44f65509633382e29cdb15a7790881bdf7cd91ae955432e29c3c01fd7a57678b"
     }
 }
 '''
@@ -123,7 +123,7 @@ cell_dep = '''
     "dep_type": "dep_group",
     "out_point": {
         "index": "0x2",
-        "tx_hash": "0xa53d5f12ff77b7912297d40d2144b2ea3e72500bddc3bfb2a6586fd4512282c0"
+        "tx_hash": "0x8d47e8719ae7a7c27785babd837d17454a48e6f353ddfe4bdfe30ccf33aacca5"
     }
 }
 '''
@@ -143,7 +143,7 @@ cell_dep = '''
     "dep_type": "dep_group",
     "out_point": {
         "index": "0x3",
-        "tx_hash": "0xa53d5f12ff77b7912297d40d2144b2ea3e72500bddc3bfb2a6586fd4512282c0"
+        "tx_hash": "0x8d47e8719ae7a7c27785babd837d17454a48e6f353ddfe4bdfe30ccf33aacca5"
     }
 }
 '''
@@ -163,7 +163,7 @@ cell_dep = '''
     "dep_type": "code",
     "out_point": {
         "index": "0x8",
-        "tx_hash": "0x1052895ff01f1fd81da60f184b7d24db4191e75d93fbbcd4c5893279b5003979"
+        "tx_hash": "0x44f65509633382e29cdb15a7790881bdf7cd91ae955432e29c3c01fd7a57678b"
     }
 }
 '''
@@ -182,7 +182,7 @@ cell_dep = '''
     "dep_type": "code",
     "out_point": {
         "index": "0x9",
-        "tx_hash": "0x1052895ff01f1fd81da60f184b7d24db4191e75d93fbbcd4c5893279b5003979"
+        "tx_hash": "0x44f65509633382e29cdb15a7790881bdf7cd91ae955432e29c3c01fd7a57678b"
     }
 }
 '''
@@ -201,7 +201,7 @@ cell_dep = '''
     "dep_type": "code",
     "out_point": {
         "index": "0xa",
-        "tx_hash": "0x1052895ff01f1fd81da60f184b7d24db4191e75d93fbbcd4c5893279b5003979"
+        "tx_hash": "0x44f65509633382e29cdb15a7790881bdf7cd91ae955432e29c3c01fd7a57678b"
     }
 }
 '''
