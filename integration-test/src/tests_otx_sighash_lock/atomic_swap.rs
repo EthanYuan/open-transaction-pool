@@ -12,6 +12,17 @@ use crate::utils::instruction::mercury::{prepare_ckb_capacity, prepare_udt_1, pr
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
+use config::{CkbConfig, ScriptInfo};
+use otx_format::jsonrpc_types::OpenTransaction;
+use otx_format::types::OpenTxStatus;
+use otx_sdk::address::build_otx_address_from_secp_address;
+use otx_sdk::build_tx::OtxBuilder;
+use otx_sdk::client::OtxPoolRpcClient;
+use otx_sdk::signer::{SighashMode, Signer};
+use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
+
+use core_rpc_types::{AssetInfo, GetBalancePayload, JsonItem};
+
 use anyhow::{Ok, Result};
 use ckb_sdk_otx::Address;
 use ckb_types::prelude::Entity;
@@ -22,15 +33,6 @@ use ckb_types::{
     prelude::*,
     H256,
 };
-use config::{CkbConfig, ScriptInfo};
-use core_rpc_types::{AssetInfo, GetBalancePayload, JsonItem};
-use otx_format::jsonrpc_types::OpenTransaction;
-use otx_format::types::OpenTxStatus;
-use otx_sdk::address::build_otx_address_from_secp_address;
-use otx_sdk::build_tx::OtxBuilder;
-use otx_sdk::client::OtxPoolRpcClient;
-use otx_sdk::signer::{SighashMode, Signer};
-use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
 
 use std::collections::HashSet;
 use std::thread::sleep;
