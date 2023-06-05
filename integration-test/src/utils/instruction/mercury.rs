@@ -33,7 +33,7 @@ pub fn issue_udt_1() -> Result<()> {
         prepare_secp_address_with_ckb_capacity(5000_0000_0000_0000)?;
     let udt_hash = get_udt_hash_by_owner(
         &owner_address,
-        SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash(),
+        SCRIPT_CONFIG.get().unwrap().get_sudt_code_hash(),
     )?;
     let _tx_hash = issue_udt_with_acp(&owner_address, &owner_address_pk, 20_000_000_000u128)?;
     let acp_address = build_acp_address(
@@ -66,7 +66,7 @@ pub fn issue_udt_2() -> Result<()> {
         prepare_secp_address_with_ckb_capacity(5000_0000_0000_0000)?;
     let udt_hash = get_udt_hash_by_owner(
         &owner_address,
-        SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash(),
+        SCRIPT_CONFIG.get().unwrap().get_sudt_code_hash(),
     )?;
     let _tx_hash = issue_udt_with_acp(&owner_address, &owner_address_pk, 20_000_000_000u128)?;
     let acp_address = build_acp_address(

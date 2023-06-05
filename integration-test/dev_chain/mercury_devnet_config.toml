@@ -94,7 +94,7 @@ script_name = "sudt"
 script = '''
 {
     "args": "0x",
-    "code_hash": "0x73e5467341b55ffd7bdeb5b6f32aa0e9433baf6808f8c5f2472dbc36b1ab04f7",
+    "code_hash": "0x9c6933d977360f115a3e9cd5a2e0e475853681b80d775d93ad0f8969da343e56",
     "hash_type": "type"
 }
 '''
@@ -102,7 +102,7 @@ cell_dep = '''
 {
     "dep_type": "code",
     "out_point": {
-        "index": "0xa",
+        "index": "0x7",
         "tx_hash": "0x44f65509633382e29cdb15a7790881bdf7cd91ae955432e29c3c01fd7a57678b"
     }
 }
@@ -182,25 +182,6 @@ cell_dep = '''
     "dep_type": "code",
     "out_point": {
         "index": "0x9",
-        "tx_hash": "0x44f65509633382e29cdb15a7790881bdf7cd91ae955432e29c3c01fd7a57678b"
-    }
-}
-'''
-
-[[extension_scripts]]
-script_name = "xudt_rce"
-script = '''
-{
-    "args": "0x",
-    "code_hash": "0x73e5467341b55ffd7bdeb5b6f32aa0e9433baf6808f8c5f2472dbc36b1ab04f7",
-    "hash_type": "type"
-}
-'''
-cell_dep = '''
-{
-    "dep_type": "code",
-    "out_point": {
-        "index": "0xa",
         "tx_hash": "0x44f65509633382e29cdb15a7790881bdf7cd91ae955432e29c3c01fd7a57678b"
     }
 }

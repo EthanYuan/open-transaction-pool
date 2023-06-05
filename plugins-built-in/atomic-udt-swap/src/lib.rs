@@ -82,7 +82,7 @@ impl AtomicUdtSwap {
         let state = PluginMeta::new(PathBuf::default(), true, true);
         let info = PluginInfo::new(
             name,
-            "One kind of xUDT can be used to swap another kind of xUDT.",
+            "One kind of UDT can be used to swap another kind of UDT.",
             "1.0",
         );
         let context = Context::new(name, ckb_config, script_config, service_handler);
@@ -122,8 +122,8 @@ impl Plugin for AtomicUdtSwap {
             log::info!("payment: {:?}", payment_amount);
             if payment_amount.capacity <= 0
                 || payment_amount.capacity > MIN_PAYMENT as i128
-                || payment_amount.x_udt_amount.len() != 2
-                || !payment_amount.s_udt_amount.is_empty()
+                || payment_amount.s_udt_amount.len() != 2
+                || !payment_amount.x_udt_amount.is_empty()
             {
                 return;
             }
@@ -133,7 +133,7 @@ impl Plugin for AtomicUdtSwap {
         };
 
         let mut order_key = OrderKey::default();
-        for (type_script, udt_amount) in payment_amount.x_udt_amount {
+        for (type_script, udt_amount) in payment_amount.s_udt_amount {
             if udt_amount > 0 {
                 order_key.sell_udt = type_script;
                 order_key.sell_amount = udt_amount as u128;

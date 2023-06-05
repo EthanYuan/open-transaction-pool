@@ -49,7 +49,7 @@ fn test_otx_swap_udt_to_udt() {
     // get otx lock script info
     let script_config = SCRIPT_CONFIG.get().unwrap().clone();
     let otx_lock_script_info = script_config.get_script_info("otx-sighash-lock").unwrap();
-    let udt_type_script_info = script_config.get_script_info("xudt_rce").unwrap();
+    let udt_type_script_info = script_config.get_script_info("sudt").unwrap();
 
     // alice build otxs
     // pay 10 UDT-1, get 10 UDT-2, pay fee 1 CKB
@@ -88,10 +88,7 @@ fn test_otx_swap_udt_to_udt() {
         20,
         90,
         200_0000_0000,
-        vec![
-            otx_lock_script_info,
-            udt_type_script_info,
-        ],
+        vec![otx_lock_script_info, udt_type_script_info],
     )
     .unwrap();
 
@@ -190,9 +187,9 @@ fn build_signed_otx(
     remain_capacity: usize,
     script_infos: Vec<ScriptInfo>,
 ) -> Result<OpenTransaction> {
-    // get otx lock script info
+    // get udt script info
     let script_config = SCRIPT_CONFIG.get().unwrap().clone();
-    let xudt_script_code_hash = script_config.get_xudt_rce_code_hash();
+    let udt_script_code_hash = script_config.get_sudt_code_hash();
 
     // get ckb config
     let ckb_config = CkbConfig::new("ckb_dev", CKB_URI);
@@ -251,31 +248,31 @@ fn build_signed_otx(
     assert_eq!(balance.balances[0].occupied, 61_0000_0000u128.into());
 
     // 5. generate open transaction, pay UDT-1, get UDT-2, pay fee
-    let xudt_1_issuer_script: Script = UDT_1_HOLDER_SECP_ADDRESS.get().unwrap().into();
-    let xudt_1_type_script = Script::new_builder()
-        .code_hash(Byte32::from_slice(xudt_script_code_hash.as_bytes()).unwrap())
+    let udt_1_issuer_script: Script = UDT_1_HOLDER_SECP_ADDRESS.get().unwrap().into();
+    let udt_1_type_script = Script::new_builder()
+        .code_hash(Byte32::from_slice(udt_script_code_hash.as_bytes()).unwrap())
         .hash_type(ScriptHashType::Type.into())
-        .args(xudt_1_issuer_script.calc_script_hash().raw_data().pack())
+        .args(udt_1_issuer_script.calc_script_hash().raw_data().pack())
         .build();
-    let xudt_1_output = CellOutput::new_builder()
+    let udt_1_output = CellOutput::new_builder()
         .capacity(capacity_bytes!(142).pack())
         .lock(otx_script.clone())
-        .type_(Some(xudt_1_type_script).pack())
+        .type_(Some(udt_1_type_script).pack())
         .build();
-    let xudt_1_data = Bytes::from(remain_udt_1.to_le_bytes().to_vec());
+    let udt_1_data = Bytes::from(remain_udt_1.to_le_bytes().to_vec());
 
-    let xudt_2_issuer_script: Script = UDT_2_HOLDER_SECP_ADDRESS.get().unwrap().into();
-    let xudt_2_type_script = Script::new_builder()
-        .code_hash(Byte32::from_slice(xudt_script_code_hash.as_bytes()).unwrap())
+    let udt_2_issuer_script: Script = UDT_2_HOLDER_SECP_ADDRESS.get().unwrap().into();
+    let udt_2_type_script = Script::new_builder()
+        .code_hash(Byte32::from_slice(udt_script_code_hash.as_bytes()).unwrap())
         .hash_type(ScriptHashType::Type.into())
-        .args(xudt_2_issuer_script.calc_script_hash().raw_data().pack())
+        .args(udt_2_issuer_script.calc_script_hash().raw_data().pack())
         .build();
-    let xudt_2_output = CellOutput::new_builder()
+    let udt_2_output = CellOutput::new_builder()
         .capacity(capacity_bytes!(142).pack())
         .lock(otx_script.clone())
-        .type_(Some(xudt_2_type_script).pack())
+        .type_(Some(udt_2_type_script).pack())
         .build();
-    let xudt_2_data = Bytes::from(remain_udt_2.to_le_bytes().to_vec());
+    let udt_2_data = Bytes::from(remain_udt_2.to_le_bytes().to_vec());
 
     let capacity_output = CellOutput::new_builder()
         .capacity((remain_capacity as u64).pack())
@@ -287,8 +284,8 @@ fn build_signed_otx(
     let open_tx = otx_builder
         .build_otx(
             vec![out_point_1, out_point_2, out_point_3],
-            vec![xudt_1_output, xudt_2_output, capacity_output],
-            vec![xudt_1_data.pack(), xudt_2_data.pack(), data.pack()],
+            vec![udt_1_output, udt_2_output, capacity_output],
+            vec![udt_1_data.pack(), udt_2_data.pack(), data.pack()],
             script_infos,
         )
         .unwrap();

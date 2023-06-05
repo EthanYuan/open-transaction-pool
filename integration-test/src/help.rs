@@ -112,7 +112,7 @@ pub(crate) fn start_mercury(ckb: Child) -> (Child, Child) {
                     .unwrap()
                     .get_secp256k1_blake160_sighash_all_code_hash(),
             );
-            let _ = SUDT_CODE_HASH.set(SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash());
+            let _ = SUDT_CODE_HASH.set(SCRIPT_CONFIG.get().unwrap().get_sudt_code_hash());
             let _ = ACP_CODE_HASH.set(SCRIPT_CONFIG.get().unwrap().get_anyone_can_pay_code_hash());
             let _ = CHEQUE_CODE_HASH.set(CHEQUE_DEVNET_TYPE_HASH);
             let _ = DAO_CODE_HASH.set(DAO_DEVNET_TYPE_HASH);
