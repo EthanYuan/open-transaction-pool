@@ -27,7 +27,7 @@ use core_rpc_types::{AssetInfo, GetBalancePayload, JsonItem};
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::OpenTxStatus;
 use otx_sdk::address::build_otx_address_from_secp_address;
-use otx_sdk::build_tx::build_otx;
+use otx_sdk::build_tx::OtxBuilder;
 use otx_sdk::client::OtxPoolRpcClient;
 use otx_sdk::signer::{SighashMode, Signer};
 use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
@@ -89,8 +89,8 @@ fn test_otx_swap_udt_to_udt() {
         90,
         200_0000_0000,
         vec![
-            otx_lock_script_info.to_owned(),
-            udt_type_script_info.to_owned(),
+            otx_lock_script_info,
+            udt_type_script_info,
         ],
     )
     .unwrap();
@@ -283,15 +283,15 @@ fn build_signed_otx(
         .build();
     let data = Bytes::default();
 
-    let open_tx = build_otx(
-        vec![out_point_1, out_point_2, out_point_3],
-        vec![xudt_1_output, xudt_2_output, capacity_output],
-        vec![xudt_1_data.pack(), xudt_2_data.pack(), data.pack()],
-        script_infos,
-        script_config.to_owned(),
-        ckb_config.to_owned(),
-    )
-    .unwrap();
+    let otx_builder = OtxBuilder::new(script_config.to_owned(), ckb_config.to_owned());
+    let open_tx = otx_builder
+        .build_otx(
+            vec![out_point_1, out_point_2, out_point_3],
+            vec![xudt_1_output, xudt_2_output, capacity_output],
+            vec![xudt_1_data.pack(), xudt_2_data.pack(), data.pack()],
+            script_infos,
+        )
+        .unwrap();
     let file = format!("./free-space/swap_{}_otx_unsigned.json", payer);
     dump_data(&open_tx, &file).unwrap();
 

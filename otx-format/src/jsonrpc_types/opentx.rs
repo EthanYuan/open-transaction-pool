@@ -188,7 +188,7 @@ impl OpenTransaction {
             .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
             .into();
             let output_xudt_amount: u128 = Uint128::from_slice(output_xudt_amount.as_bytes())
-                .expect("get input xudt amount")
+                .expect("get output xudt amount")
                 .unpack();
             *x_udt_amount.entry(script).or_insert(0) -= output_xudt_amount as i128;
         }
@@ -207,7 +207,7 @@ impl OpenTransaction {
             .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
             .into();
             let input_sudt_amount: u128 = Uint128::from_slice(input_sudt_amount.as_bytes())
-                .expect("get input xudt amount")
+                .expect("get input sudt amount")
                 .unpack();
             *s_udt_amount.entry(script).or_insert(0) += input_sudt_amount as i128;
         }
@@ -224,7 +224,7 @@ impl OpenTransaction {
             .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
             .into();
             let output_sudt_amount: u128 = Uint128::from_slice(output_sudt_amount.as_bytes())
-                .expect("get input xudt amount")
+                .expect("get output sudt amount")
                 .unpack();
             *s_udt_amount.entry(script).or_insert(0) -= output_sudt_amount as i128;
         }

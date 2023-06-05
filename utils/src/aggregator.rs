@@ -23,7 +23,7 @@ use ckb_types::{
 use faster_hex::hex_decode;
 use json_types::OutPoint;
 use otx_format::error::OtxFormatError;
-use otx_format::jsonrpc_types::tx_view::OtxBuilder;
+use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::jsonrpc_types::OpenTransaction;
 
 use std::collections::HashMap;
@@ -76,10 +76,14 @@ impl OtxAggregator {
             output_amout.udt_amount,
             udt_issuer_script,
         )?;
-        let otx_builder = OtxBuilder::new(self.script_config.to_owned(), self.ckb_config.clone());
-        otx_builder
-            .tx_view_to_otx(ckb_tx, aggregate_count)
-            .map_err(|err| anyhow!(err.to_string()))
+
+        tx_view_to_otx(
+            ckb_tx,
+            aggregate_count,
+            self.ckb_config.clone(),
+            self.script_config.to_owned(),
+        )
+        .map_err(|err| anyhow!(err.to_string()))
     }
 
     pub fn merge_otxs(&self, otx_list: Vec<OpenTransaction>) -> Result<OpenTransaction> {
@@ -112,11 +116,13 @@ impl OtxAggregator {
             let tx = assemble_new_tx(txs, &tx_dep_provider, cell.type_hash.pack())?;
             let tx = json_types::TransactionView::from(tx);
 
-            let otx_builder =
-                OtxBuilder::new(self.script_config.to_owned(), self.ckb_config.clone());
-            return otx_builder
-                .tx_view_to_otx(tx, aggregate_count as u32)
-                .map_err(|err| anyhow!(err.to_string()));
+            return tx_view_to_otx(
+                tx,
+                aggregate_count as u32,
+                self.ckb_config.clone(),
+                self.script_config.to_owned(),
+            )
+            .map_err(|err| anyhow!(err.to_string()));
         }
         Err(anyhow!("merge otxs failed!"))
     }

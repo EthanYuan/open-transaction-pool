@@ -1,6 +1,6 @@
 use crate::const_definition::{CKB_URI, MERCURY_URI, OTX_POOL_URI, SCRIPT_CONFIG};
 use crate::help::start_otx_pool;
-use crate::tests_omni_lock::helper::{_bob_build_signed_otx, build_pay_ckb_signed_otx};
+use crate::tests_omni_lock::helper::build_pay_ckb_signed_otx;
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
 use crate::utils::instruction::mercury::{prepare_ckb_capacity, prepare_udt_1};
@@ -9,7 +9,7 @@ use crate::IntegrationTest;
 
 use config::CkbConfig;
 use dust_collector::DEFAULT_FEE;
-use otx_format::jsonrpc_types::OtxBuilder;
+use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::types::{packed, OpenTxStatus};
 use otx_sdk::client::OtxPoolRpcClient;
 
@@ -111,22 +111,12 @@ fn build_pay_ckb_otx(
     let tx_info =
         build_pay_ckb_signed_otx(payer, prepare_capacity, remain_capacity, open_capacity).unwrap();
     let tx_view = tx_info.tx;
-    let otx_builder = OtxBuilder::new(
-        SCRIPT_CONFIG.get().unwrap().to_owned(),
+    let otx = tx_view_to_otx(
+        tx_view,
+        1,
         CkbConfig::new("ckb_dev", CKB_URI),
-    );
-    let otx = otx_builder.tx_view_to_otx(tx_view, 1).unwrap();
-    Ok(otx.into())
-}
-
-fn _bob_build_otx() -> Result<packed::OpenTransaction> {
-    let tx_info = _bob_build_signed_otx().unwrap();
-    let tx_view = tx_info.tx;
-
-    let otx_builder = OtxBuilder::new(
         SCRIPT_CONFIG.get().unwrap().to_owned(),
-        CkbConfig::new("ckb_dev", CKB_URI),
-    );
-    let otx = otx_builder.tx_view_to_otx(tx_view, 1).unwrap();
+    )
+    .unwrap();
     Ok(otx.into())
 }

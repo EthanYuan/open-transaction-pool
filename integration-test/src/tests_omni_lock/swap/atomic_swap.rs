@@ -13,8 +13,8 @@ use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
 use config::CkbConfig;
+use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::jsonrpc_types::OpenTransaction;
-use otx_format::jsonrpc_types::OtxBuilder;
 use otx_format::types::OpenTxStatus;
 use otx_sdk::client::OtxPoolRpcClient;
 use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
@@ -301,11 +301,13 @@ fn build_signed_otx(
     )
     .unwrap();
 
-    let otx_builder = OtxBuilder::new(
-        SCRIPT_CONFIG.get().unwrap().to_owned(),
+    let otx = tx_view_to_otx(
+        open_tx.tx,
+        1,
         CkbConfig::new("ckb_dev", CKB_URI),
-    );
-    let otx = otx_builder.tx_view_to_otx(open_tx.tx, 1).unwrap();
+        SCRIPT_CONFIG.get().unwrap().to_owned(),
+    )
+    .unwrap();
 
     dump_data(
         &otx,

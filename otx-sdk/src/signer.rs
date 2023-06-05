@@ -1,6 +1,6 @@
 use config::CkbConfig;
 use config::ScriptConfig;
-use otx_format::jsonrpc_types::{OpenTransaction, OtxBuilder};
+use otx_format::jsonrpc_types::{tx_view::tx_view_to_otx, OpenTransaction};
 
 use anyhow::{anyhow, Result};
 use ckb_crypto::secp::Privkey;
@@ -79,10 +79,13 @@ impl Signer {
         for index in indexs {
             tx = self.sign_tx_single_anyone_can_pay(tx, index)?;
         }
-        let otx_builder = OtxBuilder::new(self.script_config.to_owned(), self.ckb_config.clone());
-        let otx = otx_builder
-            .tx_view_to_otx(tx.into(), aggregate_count)
-            .map_err(|err| anyhow!(err.to_string()))?;
+        let otx = tx_view_to_otx(
+            tx.into(),
+            aggregate_count,
+            self.ckb_config.clone(),
+            self.script_config.to_owned(),
+        )
+        .map_err(|err| anyhow!(err.to_string()))?;
         Ok(otx)
     }
 
