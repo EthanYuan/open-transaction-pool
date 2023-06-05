@@ -55,25 +55,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "atomic-swap"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ckb-jsonrpc-types",
- "ckb-sdk 2.3.0",
- "ckb-sdk 2.3.1",
- "ckb-stop-handler",
- "ckb-types",
- "config",
- "dashmap",
- "derive_more",
- "log",
- "otx-format",
- "otx-plugin-protocol",
- "utils",
-]
-
-[[package]]
 name = "atomic-udt-swap"
 version = "0.1.0"
 dependencies = [
@@ -1425,7 +1406,6 @@ name = "open-transaction-pool"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "atomic-swap",
  "atomic-udt-swap",
  "clap",
  "config",
