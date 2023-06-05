@@ -16,7 +16,7 @@ where
     Ok(child)
 }
 
-pub fn run_command_status<I, S>(bin: &str, args: I) -> Result<ExitStatus>
+pub fn _run_command_status<I, S>(bin: &str, args: I) -> Result<ExitStatus>
 where
     I: IntoIterator<Item = S> + std::fmt::Debug,
     S: AsRef<OsStr>,

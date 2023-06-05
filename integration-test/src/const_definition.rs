@@ -1,6 +1,6 @@
 use config::ScriptConfig;
 
-use ckb_sdk_otx::Address;
+use ckb_sdk::Address;
 use ckb_types::{h256, H256};
 use lazy_static::lazy_static;
 use once_cell::sync::OnceCell;

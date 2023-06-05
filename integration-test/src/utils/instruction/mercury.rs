@@ -5,15 +5,14 @@ use crate::const_definition::{
 };
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::ckb::send_transaction_to_ckb;
+use crate::utils::lock::acp::build_acp_address;
+use crate::utils::lock::get_udt_hash_by_owner;
 use crate::utils::lock::secp::prepare_secp_address_with_ckb_capacity;
 use crate::utils::signer::sign_transaction;
 
-use utils::lock::acp::build_acp_address;
-use utils::lock::get_udt_hash_by_owner;
-
 use anyhow::Result;
 use ckb_jsonrpc_types::OutPoint;
-use ckb_sdk_otx::Address;
+use ckb_sdk::Address;
 use ckb_types::H256;
 
 use core_rpc_types::{

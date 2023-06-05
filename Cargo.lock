@@ -410,42 +410,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ckb-sdk"
-version = "2.3.1"
-source = "git+https://github.com/EthanYuan/ckb-sdk-rust.git?branch=opentx_sign_tx_ethan#1651dc634b293955a87607e41ffe994e140eef4f"
-dependencies = [
- "anyhow",
- "bech32",
- "bitflags",
- "bytes",
- "ckb-crypto",
- "ckb-dao-utils",
- "ckb-hash",
- "ckb-jsonrpc-types",
- "ckb-resource",
- "ckb-traits",
- "ckb-types",
- "dashmap",
- "enum-repr-derive",
- "futures",
- "jsonrpc-core",
- "lazy_static",
- "log",
- "lru",
- "parking_lot 0.12.1",
- "reqwest",
- "secp256k1",
- "serde",
- "serde_derive",
- "serde_json",
- "sha3",
- "sparse-merkle-tree",
- "thiserror",
- "tokio",
- "tokio-util 0.6.10",
-]
-
-[[package]]
 name = "ckb-spawn"
 version = "0.105.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -684,8 +648,7 @@ name = "dust-collector"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "ckb-sdk 2.3.0",
- "ckb-sdk 2.3.1",
+ "ckb-sdk",
  "ckb-stop-handler",
  "ckb-types",
  "config",
@@ -694,6 +657,7 @@ dependencies = [
  "log",
  "otx-format",
  "otx-plugin-protocol",
+ "otx-sdk",
  "utils",
 ]
 
@@ -1476,7 +1440,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "ckb-jsonrpc-types",
- "ckb-sdk 2.3.0",
+ "ckb-sdk",
  "ckb-types",
  "config",
  "derive_more",
@@ -1508,8 +1472,7 @@ dependencies = [
  "async-trait",
  "ckb-async-runtime",
  "ckb-jsonrpc-types",
- "ckb-sdk 2.3.0",
- "ckb-sdk 2.3.1",
+ "ckb-sdk",
  "ckb-stop-handler",
  "ckb-types",
  "config",
@@ -1539,7 +1502,7 @@ dependencies = [
  "ckb-crypto",
  "ckb-hash",
  "ckb-jsonrpc-types",
- "ckb-sdk 2.3.1",
+ "ckb-sdk",
  "ckb-types",
  "config",
  "jsonrpc-core",
@@ -2024,8 +1987,7 @@ name = "signer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "ckb-sdk 2.3.0",
- "ckb-sdk 2.3.1",
+ "ckb-sdk",
  "ckb-stop-handler",
  "ckb-types",
  "config",
@@ -2342,7 +2304,7 @@ dependencies = [
  "ckb-crypto",
  "ckb-hash",
  "ckb-jsonrpc-types",
- "ckb-sdk 2.3.1",
+ "ckb-sdk",
  "ckb-types",
  "config",
  "faster-hex",

@@ -5,6 +5,7 @@ use crate::const_definition::{
     UDT_2_HASH, UDT_2_HOLDER_SECP_ADDRESS,
 };
 use crate::help::start_otx_pool;
+use crate::utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
 use crate::utils::instruction::ckb::dump_data;
@@ -19,12 +20,11 @@ use otx_sdk::address::build_otx_address_from_secp_address;
 use otx_sdk::build_tx::OtxBuilder;
 use otx_sdk::client::OtxPoolRpcClient;
 use otx_sdk::signer::{SighashMode, Signer};
-use utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
 
 use core_rpc_types::{AssetInfo, GetBalancePayload, JsonItem};
 
 use anyhow::{Ok, Result};
-use ckb_sdk_otx::Address;
+use ckb_sdk::Address;
 use ckb_types::prelude::Entity;
 use ckb_types::{
     bytes::Bytes,

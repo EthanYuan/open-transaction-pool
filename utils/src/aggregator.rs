@@ -1,28 +1,25 @@
 use super::build_tx::TxBuilder;
-use super::lock::omni::{build_cell_dep, TxInfo};
 
 use config::{CkbConfig, ScriptConfig};
 
 use anyhow::{anyhow, Result};
 use ckb_jsonrpc_types as json_types;
 use ckb_jsonrpc_types::TransactionView;
-use ckb_sdk_otx::{
+use ckb_sdk::{
     constants::SIGHASH_TYPE_HASH, rpc::CkbRpcClient, traits::DefaultTransactionDependencyProvider,
-    unlock::opentx::assembler::assemble_new_tx, unlock::OmniUnlockMode, Address, HumanCapacity,
+    Address, 
 };
-use ckb_sdk_otx::{
+use ckb_sdk::{
     traits::SecpCkbRawKeySigner, tx_builder::unlock_tx, unlock::ScriptUnlocker,
-    unlock::SecpSighashUnlocker, ScriptGroup, ScriptId,
+    unlock::SecpSighashUnlocker, ScriptGroup, ScriptId,HumanCapacity
 };
 use ckb_types::{
     core::TransactionView as CoreTransactionView,
-    packed::{Script, Transaction, WitnessArgs},
-    prelude::*,
+    packed::{Script, Transaction},
     H256,
 };
 use faster_hex::hex_decode;
 use json_types::OutPoint;
-use otx_format::error::OtxFormatError;
 use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::jsonrpc_types::OpenTransaction;
 
@@ -85,82 +82,6 @@ impl OtxAggregator {
         )
         .map_err(|err| anyhow!(err.to_string()))
     }
-
-    pub fn merge_otxs(&self, otx_list: Vec<OpenTransaction>) -> Result<OpenTransaction> {
-        let mut txs = vec![];
-        let aggregate_count = otx_list.len();
-        for otx in otx_list {
-            let tx: TransactionView = otx
-                .try_into()
-                .map_err(|err: OtxFormatError| anyhow!(err.to_string()))?;
-            let tx = Transaction::from(tx.inner.clone()).into_view();
-            txs.push(tx);
-        }
-        if !txs.is_empty() {
-            let mut ckb_client = CkbRpcClient::new(self.ckb_config.get_ckb_uri());
-            let cell = build_cell_dep(
-                &mut ckb_client,
-                &self
-                    .script_config
-                    .get_omni_lock_cell_dep()
-                    .out_point
-                    .tx_hash,
-                self.script_config
-                    .get_omni_lock_cell_dep()
-                    .out_point
-                    .index
-                    .into(),
-            )?;
-            let tx_dep_provider =
-                DefaultTransactionDependencyProvider::new(self.ckb_config.get_ckb_uri(), 10);
-            let tx = assemble_new_tx(txs, &tx_dep_provider, cell.type_hash.pack())?;
-            let tx = json_types::TransactionView::from(tx);
-
-            return tx_view_to_otx(
-                tx,
-                aggregate_count as u32,
-                self.ckb_config.clone(),
-                self.script_config.to_owned(),
-            )
-            .map_err(|err| anyhow!(err.to_string()));
-        }
-        Err(anyhow!("merge otxs failed!"))
-    }
-
-    pub fn merge_open_txs(&self, otx_list: Vec<TxInfo>, ckb_uri: &str) -> Result<TxInfo> {
-        let mut txes = vec![];
-        let mut omnilock_config = None;
-        for tx_info in otx_list {
-            // println!("> tx: {}", serde_json::to_string_pretty(&tx_info.tx)?);
-            let tx = Transaction::from(tx_info.tx.inner.clone()).into_view();
-            txes.push(tx);
-            omnilock_config = Some(tx_info.omnilock_config.clone());
-        }
-        if !txes.is_empty() {
-            let mut ckb_client = CkbRpcClient::new(ckb_uri);
-            let cell = build_cell_dep(
-                &mut ckb_client,
-                &self
-                    .script_config
-                    .get_omni_lock_cell_dep()
-                    .out_point
-                    .tx_hash,
-                self.script_config
-                    .get_omni_lock_cell_dep()
-                    .out_point
-                    .index
-                    .into(),
-            )?;
-            let tx_dep_provider = DefaultTransactionDependencyProvider::new(ckb_uri, 10);
-            let tx = assemble_new_tx(txes, &tx_dep_provider, cell.type_hash.pack())?;
-            let tx_info = TxInfo {
-                tx: json_types::TransactionView::from(tx),
-                omnilock_config: omnilock_config.unwrap(),
-            };
-            return Ok(tx_info);
-        }
-        Err(anyhow!("merge otxs failed!"))
-    }
 }
 
 pub struct Committer {
@@ -218,20 +139,6 @@ impl SignInfo {
     pub fn sign_ckb_tx(&self, tx_view: TransactionView) -> Result<json_types::TransactionView> {
         let tx = Transaction::from(tx_view.inner).into_view();
         let (tx, _) = self.sighash_sign(&[self.pk.clone()], tx)?;
-        Ok(json_types::TransactionView::from(tx))
-    }
-
-    pub fn sign_tx(&self, tx_info: TxInfo) -> Result<json_types::TransactionView> {
-        let tx = Transaction::from(tx_info.tx.inner).into_view();
-        let (tx, _) = self.sighash_sign(&[self.pk.clone()], tx)?;
-        let witness_args =
-            WitnessArgs::from_slice(tx.witnesses().get(0).unwrap().raw_data().as_ref())?;
-        let lock_field = witness_args.lock().to_opt().unwrap().raw_data();
-        if lock_field != tx_info.omnilock_config.zero_lock(OmniUnlockMode::Normal)? {
-            println!("> transaction ready to send!");
-        } else {
-            println!("failed to sign tx");
-        }
         Ok(json_types::TransactionView::from(tx))
     }
 

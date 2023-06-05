@@ -1,4 +1,3 @@
-pub mod ckb_cli_client;
 pub mod ckb_client;
 
 use anyhow::{anyhow, Result};

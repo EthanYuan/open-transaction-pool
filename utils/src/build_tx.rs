@@ -2,7 +2,7 @@ use config::{CkbConfig, ScriptConfig};
 
 use anyhow::Result;
 use ckb_jsonrpc_types as json_types;
-use ckb_sdk_otx::{
+use ckb_sdk::{
     rpc::CkbRpcClient, traits::DefaultCellDepResolver, Address, HumanCapacity, ScriptId,
 };
 use ckb_types::{

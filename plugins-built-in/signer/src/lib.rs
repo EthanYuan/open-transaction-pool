@@ -6,7 +6,7 @@ use otx_plugin_protocol::{
 use utils::aggregator::{Committer, SignInfo};
 
 use anyhow::{anyhow, Result};
-use ckb_sdk_open_tx::types::Address;
+use ckb_sdk::types::Address;
 use ckb_types::core::service::Request;
 use ckb_types::H256;
 use dashmap::DashMap;

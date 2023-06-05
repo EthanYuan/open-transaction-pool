@@ -4,7 +4,7 @@ use otx_format::jsonrpc_types::OpenTransaction;
 
 use anyhow::{anyhow, Result};
 use ckb_jsonrpc_types::{OutputsValidator, TransactionView};
-use ckb_sdk_otx::CkbRpcClient;
+use ckb_sdk::CkbRpcClient;
 use ckb_types::core;
 use ckb_types::core::TransactionBuilder;
 use ckb_types::packed::Transaction;

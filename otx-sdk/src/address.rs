@@ -1,7 +1,7 @@
 use config::ScriptInfo;
 
 use anyhow::Result;
-use ckb_sdk_otx::{Address, AddressPayload};
+use ckb_sdk::{Address, AddressPayload};
 use ckb_types::core::ScriptHashType;
 
 pub fn build_otx_address_from_secp_address(

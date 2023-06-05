@@ -1,10 +1,9 @@
 use crate::utils::instruction::mercury::prepare_ckb_capacity;
-
-use utils::lock::{generate_rand_private_key, generate_secp_args_from_pk};
+use crate::utils::lock::{generate_rand_private_key, generate_secp_args_from_pk};
 
 use anyhow::Result;
 use ckb_jsonrpc_types::OutPoint;
-use ckb_sdk_otx::{constants::SIGHASH_TYPE_HASH, types::NetworkType, Address, AddressPayload};
+use ckb_sdk::{constants::SIGHASH_TYPE_HASH, types::NetworkType, Address, AddressPayload};
 use ckb_types::{bytes::Bytes, core::ScriptHashType, packed, prelude::*, H256};
 
 pub fn generate_rand_secp_address_pk_pair() -> (Address, H256) {

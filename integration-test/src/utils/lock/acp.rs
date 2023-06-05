@@ -1,5 +1,5 @@
 use anyhow::Result;
-use ckb_sdk_otx::{Address, AddressPayload, NetworkType};
+use ckb_sdk::{Address, AddressPayload, NetworkType};
 use ckb_types::{core::ScriptHashType, packed, prelude::*, H256};
 
 pub fn build_acp_address(
