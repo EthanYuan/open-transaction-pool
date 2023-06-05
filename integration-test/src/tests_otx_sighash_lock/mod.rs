@@ -1,3 +1,5 @@
 mod atomic_swap;
-mod blank_check;
+pub(crate) mod blank_check;
 mod rpc;
+
+pub(crate) use blank_check::build_signed_otx;

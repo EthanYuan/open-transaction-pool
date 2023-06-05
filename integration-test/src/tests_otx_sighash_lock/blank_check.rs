@@ -140,7 +140,7 @@ fn test_payment_ckb_blank_check() {
     );
 }
 
-fn build_signed_otx(
+pub(crate) fn build_signed_otx(
     payer: &str,
     otx_address: &Address,
     (_secp_addr, pk): (&Address, &H256),

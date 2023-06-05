@@ -1,6 +1,5 @@
 mod const_definition;
 mod help;
-mod tests_omni_lock;
 mod tests_otx_sighash_lock;
 mod utils;
 
