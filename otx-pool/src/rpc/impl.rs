@@ -1,13 +1,12 @@
 use super::{OtxPoolRpc, OtxPoolRpcImpl};
 
-use otx_format::types::OpenTxStatus;
+use otx_format::{jsonrpc_types::OpenTransaction, types::OpenTxStatus};
 
-use ckb_jsonrpc_types::JsonBytes;
 use ckb_types::H256;
 use jsonrpc_core::Result as RpcResult;
 
 impl OtxPoolRpc for OtxPoolRpcImpl {
-    fn submit_otx(&self, otx: JsonBytes) -> RpcResult<H256> {
+    fn submit_otx(&self, otx: OpenTransaction) -> RpcResult<H256> {
         self.otx_pool.insert(otx).map_err(Into::into)
     }
 

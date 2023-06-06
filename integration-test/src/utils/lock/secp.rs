@@ -1,6 +1,5 @@
 use crate::utils::instruction::mercury::prepare_ckb_capacity;
-
-use utils::lock::{generate_rand_private_key, generate_secp_args_from_pk};
+use crate::utils::lock::{generate_rand_private_key, generate_secp_args_from_pk};
 
 use anyhow::Result;
 use ckb_jsonrpc_types::OutPoint;

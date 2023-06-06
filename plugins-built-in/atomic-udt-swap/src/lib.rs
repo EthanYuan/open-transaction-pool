@@ -1,9 +1,10 @@
+use config::{CkbConfig, ScriptConfig};
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{
     HostServiceHandler, MessageFromHost, MessageFromPlugin, Plugin, PluginInfo, PluginMeta,
 };
-use utils::aggregator::{Committer, OtxAggregator};
-use utils::config::{CkbConfig, ScriptConfig};
+use otx_sdk::build_tx::send_tx;
+use otx_sdk::build_tx::OtxBuilder;
 
 use ckb_jsonrpc_types::Script;
 use ckb_types::core::service::Request;
@@ -65,27 +66,27 @@ impl OrderKey {
     }
 }
 
-pub struct AtomicSwap {
+pub struct AtomicUdtSwap {
     meta: PluginMeta,
     info: PluginInfo,
     context: Context,
 }
 
-impl AtomicSwap {
+impl AtomicUdtSwap {
     pub fn new(
         service_handler: HostServiceHandler,
         ckb_config: CkbConfig,
         script_config: ScriptConfig,
-    ) -> Result<AtomicSwap, String> {
-        let name = "atomic swap";
+    ) -> Result<AtomicUdtSwap, String> {
+        let name = "atomic udt swap";
         let state = PluginMeta::new(PathBuf::default(), true, true);
         let info = PluginInfo::new(
             name,
-            "One kind of xUDT can be used to swap another kind of xUDT.",
+            "One kind of UDT can be used to swap another kind of UDT.",
             "1.0",
         );
         let context = Context::new(name, ckb_config, script_config, service_handler);
-        Ok(AtomicSwap {
+        Ok(AtomicUdtSwap {
             meta: state,
             info,
             context,
@@ -93,7 +94,7 @@ impl AtomicSwap {
     }
 }
 
-impl Plugin for AtomicSwap {
+impl Plugin for AtomicUdtSwap {
     fn get_name(&self) -> String {
         self.info.name.clone()
     }
@@ -121,8 +122,8 @@ impl Plugin for AtomicSwap {
             log::info!("payment: {:?}", payment_amount);
             if payment_amount.capacity <= 0
                 || payment_amount.capacity > MIN_PAYMENT as i128
-                || payment_amount.x_udt_amount.len() != 2
-                || !payment_amount.s_udt_amount.is_empty()
+                || payment_amount.s_udt_amount.len() != 2
+                || !payment_amount.x_udt_amount.is_empty()
             {
                 return;
             }
@@ -132,7 +133,7 @@ impl Plugin for AtomicSwap {
         };
 
         let mut order_key = OrderKey::default();
-        for (type_script, udt_amount) in payment_amount.x_udt_amount {
+        for (type_script, udt_amount) in payment_amount.s_udt_amount {
             if udt_amount > 0 {
                 order_key.sell_udt = type_script;
                 order_key.sell_amount = udt_amount as u128;
@@ -152,12 +153,12 @@ impl Plugin for AtomicSwap {
                 let pair_otx = self.context.otxs.get(pair_tx_hash).unwrap().value().clone();
 
                 // merge_otx
-                let otx_list = vec![otx, pair_otx];
-                let aggregator = OtxAggregator::new(
-                    self.context.ckb_config.clone(),
+                let builder = OtxBuilder::new(
                     self.context.script_config.clone(),
+                    self.context.ckb_config.clone(),
                 );
-                let merged_otx = if let Ok(merged_otx) = aggregator.merge_otxs(otx_list) {
+                let otx_list = vec![otx, pair_otx];
+                let merged_otx = if let Ok(merged_otx) = builder.merge_otxs_single_acp(otx_list) {
                     log::debug!("otxs merge successfully.");
                     merged_otx
                 } else {
@@ -169,17 +170,17 @@ impl Plugin for AtomicSwap {
                 let tx = if let Ok(tx) = merged_otx.try_into() {
                     tx
                 } else {
-                    log::info!("Failed to generate final tx.");
+                    log::info!("failed to generate final tx.");
                     return;
                 };
 
                 // send_ckb
-                let committer = Committer::new(self.context.ckb_config.get_ckb_uri());
-                let tx_hash = if let Ok(tx_hash) = committer.send_tx(tx) {
-                    tx_hash
-                } else {
-                    log::error!("failed to send final tx.");
-                    return;
+                let tx_hash = match send_tx(self.context.ckb_config.get_ckb_uri(), tx) {
+                    Ok(tx_hash) => tx_hash,
+                    Err(err) => {
+                        log::error!("failed to send final tx: {}", err);
+                        return;
+                    }
                 };
                 log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
 
@@ -219,6 +220,10 @@ impl Plugin for AtomicSwap {
         );
         otx_hashes.iter().for_each(|otx_hash| {
             self.context.otxs.remove(otx_hash);
+            self.context.orders.retain(|_, hashes| {
+                hashes.remove(otx_hash);
+                !hashes.is_empty()
+            });
         })
     }
 

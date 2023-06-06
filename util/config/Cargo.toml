@@ -1,5 +1,5 @@
 [package]
-name = "otx-format"
+name = "config"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,12 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 ckb-jsonrpc-types = "0.105"
-ckb-sdk = "=2.3.0"
 ckb-types = "0.105"
-derive_more = "0.99"
-linked-hash-map = "0.5.6"
-molecule = "=0.7.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-
-config = { path = "../util/config" }
+toml = "0.5"

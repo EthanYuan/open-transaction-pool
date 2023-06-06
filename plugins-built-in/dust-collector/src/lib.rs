@@ -1,15 +1,16 @@
+use config::built_in_plugins::DustCollectorConfig;
+use config::{CkbConfig, ScriptConfig};
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{
     HostServiceHandler, MessageFromHost, MessageFromPlugin, Plugin, PluginInfo, PluginMeta,
 };
+use otx_sdk::build_tx::OtxBuilder;
 use utils::aggregator::{OtxAggregator, OutputAmount};
-use utils::config::built_in_plugins::DustCollectorConfig;
-use utils::config::{CkbConfig, ScriptConfig};
 
 use anyhow::{anyhow, Result};
 use ckb_sdk::rpc::ckb_indexer::{Order, ScriptType, SearchKey};
 use ckb_sdk::rpc::IndexerRpcClient;
-use ckb_sdk_open_tx::types::{Address, HumanCapacity};
+use ckb_sdk::types::{Address, HumanCapacity};
 use ckb_types::core::service::Request;
 use ckb_types::packed::Script;
 use ckb_types::{packed, H256};
@@ -151,11 +152,11 @@ impl Plugin for DustCollector {
         // merge_otx
         let otx_list: Vec<OpenTransaction> =
             self.context.otxs.iter().map(|otx| otx.clone()).collect();
-        let aggregator = OtxAggregator::new(
-            self.context.ckb_config.clone(),
+        let otx_builder = OtxBuilder::new(
             self.context.script_config.clone(),
+            self.context.ckb_config.clone(),
         );
-        let merged_otx = if let Ok(merged_otx) = aggregator.merge_otxs(otx_list) {
+        let merged_otx = if let Ok(merged_otx) = otx_builder.merge_otxs_single_acp(otx_list) {
             log::debug!("otxs merge successfully.");
             merged_otx
         } else {
@@ -197,6 +198,10 @@ impl Plugin for DustCollector {
             capacity: HumanCapacity::from(output_capacity),
             udt_amount: None,
         };
+        let aggregator = OtxAggregator::new(
+            self.context.ckb_config.clone(),
+            self.context.script_config.clone(),
+        );
         let unsigned_otx = if let Ok(ckb_tx) = aggregator.add_input_and_output(
             merged_otx,
             cell.out_point,

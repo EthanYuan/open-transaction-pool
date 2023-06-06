@@ -140,7 +140,7 @@ impl MercuryRpcClient {
                 continue;
             };
             if let SyncState::Serial(progress) = sync_state {
-                log::debug!("Mercury {:?}", progress);
+                log::info!("Mercury {:?}", progress);
                 if progress.current == progress.target {
                     break;
                 }

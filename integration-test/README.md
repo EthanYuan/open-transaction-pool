@@ -13,28 +13,28 @@
 - create tables and indexes
 
 ```bash
-cd integration
+cd integration-test
 psql -h localhost -U postgres -d mercury-otx-dev -f devtools/create_table.sql
 ```
 
 ### Init CKB
 
 ```bash
-cd integration
+cd integration-test
 rm -rf ./dev_chain/dev/data  ./free-space
 ```
 
 ### Run integration tests
 
 ```bash
-cd integration
+cd integration-test
 cargo run
 ```
 
 or
  
 ```bash
-cd integration
+cd integration-test
 cargo run -- -t test_service_rpc
 ```
 
@@ -88,12 +88,12 @@ If you need to deploy contract scripts on the dev chain, you need to do the foll
     | curl -H 'content-type: application/json' -d @- http://127.0.0.1:8114 > genesis.json
     ```
 
-- update the existing configuration according to the genesis transactions in `devnet_config.toml`
+- update the existing configuration according to the genesis transactions in both `devnet_config.toml` and `mercury_devnet_config.toml`
 
 - add new script in `devnet_config.toml`, for example:
 
     ```toml
-    [[extension_scripts]]
+    [[scripts]]
     script_name = "omni_lock"
     script = '''
     {
@@ -151,7 +151,7 @@ If you need to deploy contract scripts on the dev chain, you need to do the foll
 - run integration tests
 
     ```bash
-    cd integration
+    cd integration-test
     cargo run
     ```
 

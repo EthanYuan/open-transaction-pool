@@ -408,42 +408,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ckb-sdk"
-version = "2.3.1"
-source = "git+https://github.com/EthanYuan/ckb-sdk-rust.git?branch=opentx_sign_tx_ethan#1651dc634b293955a87607e41ffe994e140eef4f"
-dependencies = [
- "anyhow",
- "bech32",
- "bitflags",
- "bytes",
- "ckb-crypto",
- "ckb-dao-utils",
- "ckb-hash",
- "ckb-jsonrpc-types",
- "ckb-resource",
- "ckb-traits",
- "ckb-types",
- "dashmap",
- "enum-repr-derive",
- "futures",
- "jsonrpc-core",
- "lazy_static",
- "log",
- "lru",
- "parking_lot 0.12.1",
- "reqwest",
- "secp256k1 0.24.3",
- "serde",
- "serde_derive",
- "serde_json",
- "sha3",
- "sparse-merkle-tree",
- "thiserror",
- "tokio",
- "tokio-util 0.6.10",
-]
-
-[[package]]
 name = "ckb-spawn"
 version = "0.105.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -561,6 +525,18 @@ dependencies = [
  "once_cell",
  "secp256k1 0.22.2",
  "serde",
+]
+
+[[package]]
+name = "config"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ckb-jsonrpc-types",
+ "ckb-types",
+ "serde",
+ "serde_json",
+ "toml",
 ]
 
 [[package]]
@@ -706,15 +682,16 @@ name = "dust-collector"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "ckb-sdk 2.3.0",
- "ckb-sdk 2.3.1",
+ "ckb-sdk",
  "ckb-stop-handler",
  "ckb-types",
+ "config",
  "dashmap",
  "derive_more",
  "log",
  "otx-format",
  "otx-plugin-protocol",
+ "otx-sdk",
  "utils",
 ]
 
@@ -1154,10 +1131,11 @@ dependencies = [
  "ckb-crypto",
  "ckb-hash",
  "ckb-jsonrpc-types",
- "ckb-sdk 2.3.1",
+ "ckb-sdk",
  "ckb-types",
  "clap",
  "common",
+ "config",
  "core-rpc-types",
  "dust-collector",
  "env_logger",
@@ -1168,6 +1146,8 @@ dependencies = [
  "once_cell",
  "otx-format",
  "otx-pool",
+ "otx-sdk",
+ "rand 0.8.5",
  "secp256k1 0.24.3",
  "serde",
  "serde_json",
@@ -1317,6 +1297,12 @@ name = "libc"
 version = "0.2.139"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "201de327520df007757c1f0adce6e827fe8562fbc28bfd9c15571c66ca1f5f79"
+
+[[package]]
+name = "linked-hash-map"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
 name = "lock_api"
@@ -1557,9 +1543,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "ckb-jsonrpc-types",
- "ckb-sdk 2.3.0",
+ "ckb-sdk",
  "ckb-types",
+ "config",
  "derive_more",
+ "linked-hash-map",
  "molecule",
  "serde",
  "serde_json",
@@ -1587,10 +1575,10 @@ dependencies = [
  "async-trait",
  "ckb-async-runtime",
  "ckb-jsonrpc-types",
- "ckb-sdk 2.3.0",
- "ckb-sdk 2.3.1",
+ "ckb-sdk",
  "ckb-stop-handler",
  "ckb-types",
+ "config",
  "crossbeam-channel",
  "dashmap",
  "derive_more",
@@ -1606,6 +1594,26 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "utils",
+]
+
+[[package]]
+name = "otx-sdk"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ckb-crypto",
+ "ckb-hash",
+ "ckb-jsonrpc-types",
+ "ckb-sdk",
+ "ckb-types",
+ "config",
+ "jsonrpc-core",
+ "otx-format",
+ "reqwest",
+ "secp256k1 0.24.3",
+ "serde",
+ "serde_json",
  "utils",
 ]
 
@@ -2417,8 +2425,9 @@ dependencies = [
  "ckb-crypto",
  "ckb-hash",
  "ckb-jsonrpc-types",
- "ckb-sdk 2.3.1",
+ "ckb-sdk",
  "ckb-types",
+ "config",
  "faster-hex",
  "jsonrpc-core",
  "log",

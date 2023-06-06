@@ -13,10 +13,12 @@ ctrlc = "3.2.3"
 env_logger = "0.9.3"
 log = "0.4.17"
 
+config = { path = "util/config" }
 otx-pool = { path = "./otx-pool" }
+otx-sdk = { path = "./otx-sdk" }
 utils = { path = "./utils" }
 
-atomic-swap = { path = "plugins-built-in/atomic-swap" }
+atomic-udt-swap = { path = "plugins-built-in/atomic-udt-swap" }
 dust-collector = { path = "plugins-built-in/dust-collector"}
 signer = { path = "plugins-built-in/signer" }
 
@@ -25,9 +27,11 @@ members = [
     "otx-format",
     "otx-plugin-protocol",
     "otx-pool",
+    "otx-sdk",
+    "util/config",
     "utils",
 
-    "plugins-built-in/atomic-swap",
+    "plugins-built-in/atomic-udt-swap",
     "plugins-built-in/dust-collector",
     "plugins-built-in/signer",
 

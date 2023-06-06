@@ -1,4 +1,4 @@
-use utils::config::ScriptConfig;
+use config::ScriptConfig;
 
 use ckb_sdk::Address;
 use ckb_types::{h256, H256};

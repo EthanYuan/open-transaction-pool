@@ -9,15 +9,17 @@ use crate::constant::extra_keys::{
     OTX_LOCATING_INPUT_CAPACITY, OTX_VERSIONING_META_OPEN_TX_VERSION,
 };
 use crate::error::OtxFormatError;
-use crate::jsonrpc_types::{OpenTransaction, OtxKeyPair, OtxMap};
+use crate::jsonrpc_types::otx_map::{OtxKeyPair, OtxMap};
+use crate::jsonrpc_types::OpenTransaction;
+use config::{CkbConfig, ScriptConfig};
 
 use anyhow::Result;
 use ckb_jsonrpc_types::{JsonBytes, Script, TransactionView, Uint32};
 use ckb_jsonrpc_types::{Uint128, Uint64};
-use ckb_sdk::{CkbRpcClient, IndexerRpcClient};
+use ckb_sdk::CkbRpcClient;
 use ckb_types::packed::{self, Transaction};
 use ckb_types::prelude::*;
-use ckb_types::H256;
+use serde::Serialize;
 
 use std::collections::HashMap;
 use std::convert::Into;
@@ -72,13 +74,13 @@ pub fn tx_view_to_basic_otx(tx_view: TransactionView) -> Result<OpenTransaction,
 
 pub fn tx_view_to_otx(
     tx_view: TransactionView,
-    xudt_code_hash: H256,
-    sudt_code_hash: H256,
     aggregate_count: u32,
-    ckb_uri: &str,
+    ckb_config: CkbConfig,
+    script_config: ScriptConfig,
 ) -> Result<OpenTransaction, OtxFormatError> {
-    let mut ckb_rpc_client = CkbRpcClient::new(ckb_uri);
-    let _indexer_rpc_client = IndexerRpcClient::new(ckb_uri);
+    let mut ckb_rpc_client = CkbRpcClient::new(ckb_config.get_ckb_uri());
+    let xudt_code_hash = script_config.get_xudt_rce_code_hash();
+    let sudt_code_hash = script_config.get_sudt_code_hash();
 
     let mut input_ckb_capacity: u64 = 0;
     let mut output_ckb_capacity: u64 = 0;
@@ -238,26 +240,26 @@ pub fn tx_view_to_otx(
         });
     sudt_input_map
         .into_iter()
-        .for_each(|(type_, input_xudt_amount)| {
+        .for_each(|(type_, input_sudt_amount)| {
             meta.push(OtxKeyPair::new(
                 OTX_ACCOUNTING_META_INPUT_SUDT.into(),
                 {
                     let script: packed::Script = type_.into();
                     Some(JsonBytes::from_bytes(script.as_bytes()))
                 },
-                JsonBytes::from_bytes(Uint128::from(input_xudt_amount).pack().as_bytes()),
+                JsonBytes::from_bytes(Uint128::from(input_sudt_amount).pack().as_bytes()),
             ));
         });
     sudt_output_map
         .into_iter()
-        .for_each(|(type_, output_xudt_amount)| {
+        .for_each(|(type_, output_sudt_amount)| {
             meta.push(OtxKeyPair::new(
                 OTX_ACCOUNTING_META_OUTPUT_SUDT.into(),
                 {
                     let script: packed::Script = type_.into();
                     Some(JsonBytes::from_bytes(script.as_bytes()))
                 },
-                JsonBytes::from_bytes(Uint128::from(output_xudt_amount).pack().as_bytes()),
+                JsonBytes::from_bytes(Uint128::from(output_sudt_amount).pack().as_bytes()),
             ));
         });
     Ok(OpenTransaction::new(
@@ -282,4 +284,12 @@ fn to_fixed_array<const LEN: usize>(input: &[u8]) -> [u8; LEN] {
     let mut list = [0; LEN];
     list.copy_from_slice(input);
     list
+}
+
+pub fn dump_data<T>(data: &T, file_name: &str) -> Result<()>
+where
+    T: ?Sized + Serialize,
+{
+    let json_string = serde_json::to_string_pretty(data)?;
+    std::fs::write(file_name, json_string).map_err(Into::into)
 }

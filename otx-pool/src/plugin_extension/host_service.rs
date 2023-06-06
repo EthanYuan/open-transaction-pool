@@ -1,13 +1,11 @@
 use crate::notify::NotifyController;
 use crate::pool::OtxPool;
 
-use ckb_types::prelude::Entity;
 use otx_format::jsonrpc_types::OpenTransaction;
-use otx_format::types::{packed, OpenTxStatus};
+use otx_format::types::OpenTxStatus;
 use otx_plugin_protocol::{HostServiceHandler, MessageFromHost, MessageFromPlugin};
 
 use anyhow::{anyhow, Result};
-use ckb_jsonrpc_types::JsonBytes;
 use ckb_types::core::service::Request;
 use ckb_types::H256;
 use crossbeam_channel::{bounded, select, Sender};
@@ -129,10 +127,7 @@ impl HostServiceProvider {
         for otx_hash in included_otx_hashes.iter() {
             otx_pool.update_otx_status(otx_hash, OpenTxStatus::Merged(merged_otx_hash.clone()));
         }
-        let otx: packed::OpenTransaction = new_merged_otx.into();
-        otx_pool
-            .insert(JsonBytes::from_bytes(otx.as_bytes()))
-            .expect("insert merged otx");
+        otx_pool.insert(new_merged_otx).expect("insert merged otx");
         Ok(())
     }
 

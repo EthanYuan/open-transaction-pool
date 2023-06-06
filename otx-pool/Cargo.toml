@@ -12,7 +12,6 @@ async-trait = "0.1"
 ckb-async-runtime = "0.105"
 ckb-jsonrpc-types = "0.105"
 ckb-sdk = "=2.3.0"
-ckb-sdk-open-tx = { git = "https://github.com/EthanYuan/ckb-sdk-rust.git", branch = "opentx_sign_tx_ethan", package = "ckb-sdk"}
 ckb-stop-handler = "0.105"
 ckb-types = "0.105"
 crossbeam-channel = "0.5.1"
@@ -28,6 +27,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1", features = ["sync", "process"] }
 
+config = { path = "../util/config" }
 otx-format = { path = "../otx-format" }
 otx-plugin-protocol = { path = "../otx-plugin-protocol" }
 utils = { path = "../utils" }

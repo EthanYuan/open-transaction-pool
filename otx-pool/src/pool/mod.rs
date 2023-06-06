@@ -28,8 +28,7 @@ impl OtxPool {
         }
     }
 
-    pub fn insert(&self, otx: JsonBytes) -> InnerResult<H256> {
-        let mut otx = parse_otx(otx)?;
+    pub fn insert(&self, mut otx: OpenTransaction) -> InnerResult<H256> {
         let tx_hash = otx.get_or_insert_otx_id()?;
         match self.raw_otxs.entry(tx_hash.clone()) {
             Entry::Vacant(entry) => {
@@ -70,7 +69,7 @@ impl OtxPool {
     }
 }
 
-fn parse_otx(otx: JsonBytes) -> InnerResult<OpenTransaction> {
+fn _parse_otx(otx: JsonBytes) -> InnerResult<OpenTransaction> {
     let r = packed::OpenTransaction::from_slice(otx.as_bytes());
     r.map(Into::into).map_err(Into::into)
 }

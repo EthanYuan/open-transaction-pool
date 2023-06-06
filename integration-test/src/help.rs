@@ -4,12 +4,12 @@ use super::const_definition::{
 };
 use crate::const_definition::CURRENT_OTX_POOL_SERVICE_PROCESS;
 use crate::utils::client::mercury_client::MercuryRpcClient;
+use crate::utils::instruction::command::run_command_spawn;
 use crate::utils::instruction::{ckb::generate_blocks, ckb::unlock_frozen_capacity_in_genesis};
 
+use config::{parse, AppConfig, ConfigFile};
+use otx_sdk::client::OtxPoolRpcClient;
 use utils::client::ckb_client::CkbRpcClient;
-use utils::client::otx_pool_client::OtxPoolRpcClient;
-use utils::config::{parse, AppConfig, ConfigFile};
-use utils::instruction::command::run_command_spawn;
 
 use common::lazy::{
     ACP_CODE_HASH, CHEQUE_CODE_HASH, DAO_CODE_HASH, PW_LOCK_CODE_HASH, SECP256K1_CODE_HASH,
@@ -112,7 +112,7 @@ pub(crate) fn start_mercury(ckb: Child) -> (Child, Child) {
                     .unwrap()
                     .get_secp256k1_blake160_sighash_all_code_hash(),
             );
-            let _ = SUDT_CODE_HASH.set(SCRIPT_CONFIG.get().unwrap().get_xudt_rce_code_hash());
+            let _ = SUDT_CODE_HASH.set(SCRIPT_CONFIG.get().unwrap().get_sudt_code_hash());
             let _ = ACP_CODE_HASH.set(SCRIPT_CONFIG.get().unwrap().get_anyone_can_pay_code_hash());
             let _ = CHEQUE_CODE_HASH.set(CHEQUE_DEVNET_TYPE_HASH);
             let _ = DAO_CODE_HASH.set(DAO_DEVNET_TYPE_HASH);
