@@ -65,19 +65,19 @@ impl OrderKey {
     }
 }
 
-pub struct AtomicUdtSwap {
+pub struct AtomicSwap {
     meta: PluginMeta,
     info: PluginInfo,
     context: Context,
 }
 
-impl AtomicUdtSwap {
+impl AtomicSwap {
     pub fn new(
         service_handler: HostServiceHandler,
         ckb_config: CkbConfig,
         script_config: ScriptConfig,
-    ) -> Result<AtomicUdtSwap, String> {
-        let name = "atomic udt swap";
+    ) -> Result<AtomicSwap, String> {
+        let name = "atomic swap";
         let state = PluginMeta::new(PathBuf::default(), true, true);
         let info = PluginInfo::new(
             name,
@@ -85,7 +85,7 @@ impl AtomicUdtSwap {
             "1.0",
         );
         let context = Context::new(name, ckb_config, script_config, service_handler);
-        Ok(AtomicUdtSwap {
+        Ok(AtomicSwap {
             meta: state,
             info,
             context,
@@ -93,7 +93,7 @@ impl AtomicUdtSwap {
     }
 }
 
-impl Plugin for AtomicUdtSwap {
+impl Plugin for AtomicSwap {
     fn get_name(&self) -> String {
         self.info.name.clone()
     }

@@ -18,7 +18,7 @@ otx-pool = { path = "./otx-pool" }
 otx-sdk = { path = "./otx-sdk" }
 utils = { path = "./utils" }
 
-atomic-udt-swap = { path = "plugins-built-in/atomic-udt-swap" }
+atomic-swap = { path = "plugins-built-in/atomic-swap" }
 dust-collector = { path = "plugins-built-in/dust-collector"}
 signer = { path = "plugins-built-in/signer" }
 
@@ -31,7 +31,7 @@ members = [
     "util/config",
     "utils",
 
-    "plugins-built-in/atomic-udt-swap",
+    "plugins-built-in/atomic-swap",
     "plugins-built-in/dust-collector",
     "plugins-built-in/signer",
 

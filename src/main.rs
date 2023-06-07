@@ -1,4 +1,4 @@
-use atomic_udt_swap::AtomicUdtSwap;
+use atomic_swap::AtomicSwap;
 use config::{parse, AppConfig, ConfigFile};
 use dust_collector::DustCollector;
 use otx_pool::{logo::print_logo, OtxPoolService};
@@ -44,7 +44,7 @@ fn main() -> Result<()> {
 
     // add plugin AtomicUdtSwap
     if config.get_atomic_swap_config().is_enabled() {
-        let atomic_udt_swap = AtomicUdtSwap::new(
+        let atomic_udt_swap = AtomicSwap::new(
             otx_pool_service.get_host_service_handler(),
             config.get_ckb_config(),
             config.get_script_config(),
