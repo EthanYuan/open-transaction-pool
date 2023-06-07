@@ -7,11 +7,11 @@ use ckb_jsonrpc_types as json_types;
 use ckb_jsonrpc_types::TransactionView;
 use ckb_sdk::{
     constants::SIGHASH_TYPE_HASH, rpc::CkbRpcClient, traits::DefaultTransactionDependencyProvider,
-    Address, 
+    Address,
 };
 use ckb_sdk::{
     traits::SecpCkbRawKeySigner, tx_builder::unlock_tx, unlock::ScriptUnlocker,
-    unlock::SecpSighashUnlocker, ScriptGroup, ScriptId,HumanCapacity
+    unlock::SecpSighashUnlocker, HumanCapacity, ScriptGroup, ScriptId,
 };
 use ckb_types::{
     core::TransactionView as CoreTransactionView,

@@ -13,7 +13,6 @@ use dashmap::DashMap;
 
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 pub const EVERY_INTERVALS: usize = 10;
 pub const MIN_PAYMENT: usize = 1_0000_0000;
@@ -25,8 +24,8 @@ struct Context {
     script_config: ScriptConfig,
     service_handler: HostServiceHandler,
 
-    otxs: Arc<DashMap<H256, OpenTransaction>>,
-    orders: Arc<DashMap<OrderKey, HashSet<H256>>>,
+    otxs: DashMap<H256, OpenTransaction>,
+    orders: DashMap<OrderKey, HashSet<H256>>,
 }
 
 impl Context {
@@ -41,8 +40,8 @@ impl Context {
             ckb_config,
             script_config,
             service_handler,
-            otxs: Arc::new(DashMap::new()),
-            orders: Arc::new(DashMap::new()),
+            otxs: DashMap::new(),
+            orders: DashMap::new(),
         }
     }
 }
