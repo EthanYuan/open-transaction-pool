@@ -34,10 +34,10 @@ use std::thread::sleep;
 use std::time::Duration;
 
 inventory::submit!(IntegrationTest {
-    name: "test_payment_ckb_blank_check",
-    test_fn: test_payment_ckb_blank_check
+    name: "test_payment_small_blank_check",
+    test_fn: test_payment_small_blank_check
 });
-fn test_payment_ckb_blank_check() {
+fn test_payment_small_blank_check() {
     // run otx pool
     let (payee_address, pk) = generate_rand_secp_address_pk_pair();
     prepare_ckb_capacity(&payee_address, 200_0000_0000u64).unwrap();
