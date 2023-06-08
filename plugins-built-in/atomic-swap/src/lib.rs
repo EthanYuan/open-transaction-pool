@@ -12,6 +12,7 @@ use ckb_jsonrpc_types::Script;
 use ckb_types::core::service::Request;
 use ckb_types::H256;
 use dashmap::DashMap;
+use serde::{Deserialize, Serialize};
 
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -27,7 +28,7 @@ struct Context {
     service_handler: HostServiceHandler,
 
     otxs: DashMap<H256, OpenTransaction>,
-    orders: DashMap<OrderKey, HashSet<H256>>,
+    proposals: DashMap<SwapProposal, HashSet<H256>>,
 }
 
 impl Context {
@@ -43,26 +44,41 @@ impl Context {
             script_config,
             service_handler,
             otxs: DashMap::new(),
-            orders: DashMap::new(),
+            proposals: DashMap::new(),
         }
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash, Default, Clone)]
-struct OrderKey {
+#[derive(Debug, Eq, PartialEq, Hash, Default, Clone, Serialize, Deserialize)]
+pub struct SwapProposal {
     sell_udt: Script,
     sell_amount: u128,
     buy_udt: Script,
     buy_amount: u128,
 }
 
-impl OrderKey {
-    fn pair_order(&self) -> OrderKey {
-        OrderKey {
+impl SwapProposal {
+    fn pair_order(&self) -> SwapProposal {
+        SwapProposal {
             sell_udt: self.buy_udt.clone(),
             sell_amount: self.buy_amount,
             buy_udt: self.sell_udt.clone(),
             buy_amount: self.sell_amount,
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Hash, Default, Clone, Serialize, Deserialize)]
+pub struct SwapProposalWithCount {
+    swap_proposal: SwapProposal,
+    count: usize,
+}
+
+impl SwapProposalWithCount {
+    pub fn new(swap_proposal: SwapProposal, count: usize) -> Self {
+        Self {
+            swap_proposal,
+            count,
         }
     }
 }
@@ -133,7 +149,7 @@ impl Plugin for AtomicSwap {
             return;
         };
 
-        let mut order_key = OrderKey::default();
+        let mut order_key = SwapProposal::default();
         for (type_script, udt_amount) in payment_amount.s_udt_amount {
             if udt_amount > 0 {
                 order_key.sell_udt = type_script;
@@ -148,7 +164,7 @@ impl Plugin for AtomicSwap {
         }
 
         let otx_hash = otx.get_tx_hash().expect("get otx tx hash");
-        if let Some(item) = self.context.orders.get(&order_key.pair_order()) {
+        if let Some(item) = self.context.proposals.get(&order_key.pair_order()) {
             if let Some(pair_tx_hash) = item.value().iter().next() {
                 log::info!("matched tx: {:#x}", pair_tx_hash);
                 let pair_otx = self.context.otxs.get(pair_tx_hash).unwrap().value().clone();
@@ -194,7 +210,7 @@ impl Plugin for AtomicSwap {
                     Request::call(&self.context.service_handler, message)
                 {
                     self.context.otxs.remove(pair_tx_hash);
-                    self.context.orders.retain(|_, hashes| {
+                    self.context.proposals.retain(|_, hashes| {
                         hashes.remove(pair_tx_hash);
                         !hashes.is_empty()
                     });
@@ -203,7 +219,7 @@ impl Plugin for AtomicSwap {
         } else {
             self.context.otxs.insert(otx_hash.clone(), otx);
             self.context
-                .orders
+                .proposals
                 .entry(order_key)
                 .or_insert_with(HashSet::new)
                 .insert(otx_hash);
@@ -221,7 +237,7 @@ impl Plugin for AtomicSwap {
         );
         otx_hashes.iter().for_each(|otx_hash| {
             self.context.otxs.remove(otx_hash);
-            self.context.orders.retain(|_, hashes| {
+            self.context.proposals.retain(|_, hashes| {
                 hashes.remove(otx_hash);
                 !hashes.is_empty()
             });

@@ -16,7 +16,7 @@ use std::sync::Arc;
 pub const PLUGINS_DIRNAME: &str = "plugins";
 pub const INACTIVE_DIRNAME: &str = "plugins_inactive";
 
-type PluginList = Vec<(String, Arc<Box<dyn Plugin + Send>>)>;
+type PluginList = Vec<(String, Box<Arc<dyn Plugin + Send>>)>;
 
 pub struct PluginManager {
     _plugin_dir: PathBuf,
@@ -26,7 +26,7 @@ pub struct PluginManager {
     plugin_configs: HashMap<String, (PluginMeta, PluginInfo)>,
 
     // proxies for activated plugin processes
-    plugins: HashMap<String, Arc<Box<dyn Plugin + Send>>>,
+    plugins: HashMap<String, Box<Arc<dyn Plugin + Send>>>,
 
     service_provider: HostServiceHandler,
     _event_thread: Option<JoinHandle<()>>,
@@ -35,7 +35,7 @@ pub struct PluginManager {
 impl PluginManager {
     pub fn new(host_dir: &Path, service_provider: HostServiceHandler) -> Self {
         let plugin_configs: HashMap<String, (PluginMeta, PluginInfo)> = HashMap::new();
-        let plugins: HashMap<String, Arc<Box<dyn Plugin + Send>>> = HashMap::new();
+        let plugins: HashMap<String, Box<Arc<dyn Plugin + Send>>> = HashMap::new();
 
         PluginManager {
             _plugin_dir: host_dir.join(PLUGINS_DIRNAME),
@@ -47,17 +47,13 @@ impl PluginManager {
         }
     }
 
-    pub fn register_built_in_plugins(
-        &mut self,
-        plugin: Box<dyn Plugin + Send>,
-    ) -> Result<Arc<Box<dyn Plugin + Send>>> {
+    pub fn register_built_in_plugins(&mut self, plugin: Box<Arc<dyn Plugin + Send>>) {
         let plugin_info = plugin.get_info();
         let plugin_state = plugin.get_meta();
         self.plugin_configs
             .insert(plugin.get_name(), (plugin_state, plugin_info));
-        let plugin = Arc::new(plugin);
+        let plugin = plugin;
         self.plugins.insert(plugin.get_name(), plugin.clone());
-        Ok(plugin)
     }
 
     pub fn load_third_party_plugins(
@@ -82,7 +78,7 @@ impl PluginManager {
                     service_provider.handler(),
                 )?;
                 self.plugins
-                    .insert(plugin_name.to_owned(), Arc::new(Box::new(plugin_proxy)));
+                    .insert(plugin_name.to_owned(), Box::new(Arc::new(plugin_proxy)));
             }
         }
 

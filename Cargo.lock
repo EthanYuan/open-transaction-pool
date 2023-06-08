@@ -72,6 +72,8 @@ dependencies = [
  "otx-format",
  "otx-plugin-protocol",
  "otx-sdk",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

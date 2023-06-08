@@ -84,10 +84,7 @@ impl OtxPoolService {
         })
     }
 
-    pub fn add_plugin(
-        &mut self,
-        plugin: Box<dyn Plugin + Send>,
-    ) -> Result<Arc<Box<dyn Plugin + Send>>> {
+    pub fn add_plugin(&mut self, plugin: Box<Arc<dyn Plugin + Send>>) {
         self.plugin_manager.register_built_in_plugins(plugin)
     }
 
