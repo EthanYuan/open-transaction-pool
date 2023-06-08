@@ -28,6 +28,7 @@ members = [
     "otx-plugin-protocol",
     "otx-pool",
     "otx-sdk",
+    "util/client",
     "util/config",
     "utils",
 

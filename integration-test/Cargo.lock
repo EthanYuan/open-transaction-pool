@@ -61,6 +61,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "atomic-swap"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ckb-jsonrpc-types",
+ "ckb-sdk",
+ "ckb-stop-handler",
+ "ckb-types",
+ "config",
+ "dashmap",
+ "derive_more",
+ "jsonrpc-core",
+ "jsonrpc-derive",
+ "log",
+ "otx-format",
+ "otx-plugin-protocol",
+ "otx-sdk",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -506,6 +528,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2850f2f5a82cbf437dd5af4d49848fbdfc27c157c3d010345776f952765261c5"
 dependencies = [
  "os_str_bytes",
+]
+
+[[package]]
+name = "client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "atomic-swap",
+ "ckb-types",
+ "jsonrpc-core",
+ "otx-format",
+ "otx-plugin-protocol",
+ "reqwest",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1134,6 +1171,7 @@ dependencies = [
  "ckb-sdk",
  "ckb-types",
  "clap",
+ "client",
  "common",
  "config",
  "core-rpc-types",
@@ -1611,7 +1649,6 @@ dependencies = [
  "jsonrpc-core",
  "otx-format",
  "otx-plugin-protocol",
- "reqwest",
  "secp256k1 0.24.3",
  "serde",
  "serde_json",

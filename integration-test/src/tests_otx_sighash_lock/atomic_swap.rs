@@ -13,12 +13,12 @@ use crate::utils::instruction::mercury::{prepare_ckb_capacity, prepare_udt_1, pr
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
+use client::OtxPoolRpcClient;
 use config::{CkbConfig, ScriptInfo};
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::OpenTxStatus;
 use otx_sdk::address::build_otx_address_from_secp_address;
 use otx_sdk::build_tx::OtxBuilder;
-use otx_sdk::client::OtxPoolRpcClient;
 use otx_sdk::signer::{SighashMode, Signer};
 
 use core_rpc_types::{AssetInfo, GetBalancePayload, JsonItem};
@@ -177,7 +177,7 @@ fn test_otx_swap_udt_to_udt() {
     assert_eq!(90u128, response.balances[0].free.into());
 }
 
-fn build_signed_otx(
+pub fn build_signed_otx(
     payer: &str,
     otx_address: &Address,
     (_secp_addr, pk): (&Address, &H256),

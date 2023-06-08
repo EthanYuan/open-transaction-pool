@@ -51,10 +51,10 @@ impl Context {
 
 #[derive(Debug, Eq, PartialEq, Hash, Default, Clone, Serialize, Deserialize)]
 pub struct SwapProposal {
-    sell_udt: Script,
-    sell_amount: u128,
-    buy_udt: Script,
-    buy_amount: u128,
+    pub sell_udt: Script,
+    pub sell_amount: u64,
+    pub buy_udt: Script,
+    pub buy_amount: u64,
 }
 
 impl SwapProposal {
@@ -69,16 +69,16 @@ impl SwapProposal {
 }
 
 #[derive(Debug, Eq, PartialEq, Hash, Default, Clone, Serialize, Deserialize)]
-pub struct SwapProposalWithCount {
-    swap_proposal: SwapProposal,
-    count: usize,
+pub struct SwapProposalWithIds {
+    pub swap_proposal: SwapProposal,
+    pub otx_ids: Vec<H256>,
 }
 
-impl SwapProposalWithCount {
-    pub fn new(swap_proposal: SwapProposal, count: usize) -> Self {
+impl SwapProposalWithIds {
+    pub fn new(swap_proposal: SwapProposal, otx_ids: Vec<H256>) -> Self {
         Self {
             swap_proposal,
-            count,
+            otx_ids,
         }
     }
 }
@@ -153,10 +153,10 @@ impl Plugin for AtomicSwap {
         for (type_script, udt_amount) in payment_amount.s_udt_amount {
             if udt_amount > 0 {
                 order_key.sell_udt = type_script;
-                order_key.sell_amount = udt_amount as u128;
+                order_key.sell_amount = udt_amount as u64;
             } else {
                 order_key.buy_udt = type_script;
-                order_key.buy_amount = (-udt_amount) as u128;
+                order_key.buy_amount = (-udt_amount) as u64;
             }
         }
         if order_key.sell_amount == 0 || order_key.buy_amount == 0 {

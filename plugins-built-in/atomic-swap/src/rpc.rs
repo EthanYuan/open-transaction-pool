@@ -1,4 +1,4 @@
-use super::{AtomicSwap, SwapProposalWithCount};
+use super::{AtomicSwap, SwapProposalWithIds};
 
 use otx_plugin_protocol::Plugin;
 use otx_plugin_protocol::PluginInfo;
@@ -14,7 +14,7 @@ pub trait AtomicSwapRpc {
     fn get_atomic_swap_info(&self) -> RpcResult<PluginInfo>;
 
     #[rpc(name = "get_all_swap_proposals")]
-    fn get_all_swap_proposals(&self) -> RpcResult<Vec<SwapProposalWithCount>>;
+    fn get_all_swap_proposals(&self) -> RpcResult<Vec<SwapProposalWithIds>>;
 }
 
 impl AtomicSwapRpc for Arc<AtomicSwap> {
@@ -23,12 +23,17 @@ impl AtomicSwapRpc for Arc<AtomicSwap> {
         Ok(plugin_info)
     }
 
-    fn get_all_swap_proposals(&self) -> RpcResult<Vec<SwapProposalWithCount>> {
+    fn get_all_swap_proposals(&self) -> RpcResult<Vec<SwapProposalWithIds>> {
         let proposals = self
             .context
             .proposals
             .iter()
-            .map(|p| SwapProposalWithCount::new(p.key().clone(), p.value().len()))
+            .map(|p| {
+                SwapProposalWithIds::new(
+                    p.key().clone(),
+                    p.value().iter().map(|id| id.to_owned()).collect(),
+                )
+            })
             .collect();
         Ok(proposals)
     }
