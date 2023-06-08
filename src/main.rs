@@ -1,4 +1,4 @@
-use atomic_swap::AtomicSwap;
+use atomic_swap::{rpc::AtomicSwapRpc, AtomicSwap};
 use config::{parse, AppConfig, ConfigFile};
 use dust_collector::DustCollector;
 use otx_pool::{logo::print_logo, OtxPoolService};
@@ -44,13 +44,14 @@ fn main() -> Result<()> {
 
     // add plugin AtomicUdtSwap
     if config.get_atomic_swap_config().is_enabled() {
-        let atomic_udt_swap = AtomicSwap::new(
+        let atomic_swap = AtomicSwap::new(
             otx_pool_service.get_host_service_handler(),
             config.get_ckb_config(),
             config.get_script_config(),
         )
         .map_err(|err| anyhow!(err))?;
-        otx_pool_service.add_plugin(Box::new(atomic_udt_swap));
+        let plugin = otx_pool_service.add_plugin(Box::new(atomic_swap))?;
+        otx_pool_service.extended_rpc_with(AtomicSwapRpc::to_delegate(plugin));
     }
 
     // add plugin DustCollector
@@ -62,7 +63,7 @@ fn main() -> Result<()> {
             config.get_script_config(),
         )
         .map_err(|err| anyhow!(err))?;
-        otx_pool_service.add_plugin(Box::new(dust_collector));
+        otx_pool_service.add_plugin(Box::new(dust_collector))?;
     }
 
     // add plugin Signer
@@ -74,7 +75,7 @@ fn main() -> Result<()> {
             config.get_script_config(),
         )
         .map_err(|err| anyhow!(err))?;
-        otx_pool_service.add_plugin(Box::new(signer));
+        otx_pool_service.add_plugin(Box::new(signer))?;
     }
 
     // start otx pool service

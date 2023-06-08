@@ -1,3 +1,5 @@
+pub mod rpc;
+
 use config::{CkbConfig, ScriptConfig};
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{
