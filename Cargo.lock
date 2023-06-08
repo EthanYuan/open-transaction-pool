@@ -1510,6 +1510,7 @@ dependencies = [
  "config",
  "jsonrpc-core",
  "otx-format",
+ "otx-plugin-protocol",
  "reqwest",
  "secp256k1",
  "serde",

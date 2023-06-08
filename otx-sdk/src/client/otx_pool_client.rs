@@ -1,6 +1,7 @@
 use super::{request, RpcClient};
 
 use otx_format::{jsonrpc_types::OpenTransaction, types::OpenTxStatus};
+use otx_plugin_protocol::PluginInfo;
 
 use anyhow::Result;
 use ckb_types::H256;
@@ -21,5 +22,9 @@ impl OtxPoolRpcClient {
 
     pub fn query_otx_status_by_id(&self, otx: H256) -> Result<Option<OpenTxStatus>> {
         request(&self.client, "query_otx_status_by_id", vec![otx])
+    }
+
+    pub fn get_atomic_swap_info(&self) -> Result<PluginInfo> {
+        request(&self.client, "get_atomic_swap_info", ())
     }
 }

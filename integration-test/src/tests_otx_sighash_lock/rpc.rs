@@ -1,6 +1,7 @@
 use crate::const_definition::{OTX_POOL_URI, SCRIPT_CONFIG};
 use crate::help::start_otx_pool;
 use crate::tests_otx_sighash_lock::build_signed_otx;
+use crate::utils::instruction::mercury::prepare_ckb_capacity;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
@@ -64,4 +65,19 @@ fn test_service_rpc_submit_otx() {
         .query_otx_status_by_id(H256::default())
         .unwrap();
     assert!(ret.is_none());
+}
+
+inventory::submit!(IntegrationTest {
+    name: "test_atomic_swap_rpc_get_info",
+    test_fn: test_atomic_swap_rpc_get_info
+});
+fn test_atomic_swap_rpc_get_info() {
+    // run otx pool
+    let (address, pk) = generate_rand_secp_address_pk_pair();
+    prepare_ckb_capacity(&address, 200_0000_0000u64).unwrap();
+    start_otx_pool(address, pk);
+
+    let service_client = OtxPoolRpcClient::new(OTX_POOL_URI.to_string());
+    let ret = service_client.get_atomic_swap_info().unwrap();
+    assert_eq!(ret.name, "atomic swap");
 }
