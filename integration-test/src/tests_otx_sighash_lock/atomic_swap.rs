@@ -1,4 +1,5 @@
 #![allow(clippy::too_many_arguments)]
+#![allow(unused_doc_comments)]
 
 use crate::const_definition::{
     CKB_URI, MERCURY_URI, OTX_POOL_URI, SCRIPT_CONFIG, UDT_1_HASH, UDT_1_HOLDER_SECP_ADDRESS,
@@ -183,10 +184,10 @@ pub fn build_signed_otx(
     (_secp_addr, pk): (&Address, &H256),
     prepare_udt_1_amount: u128,
     prepare_udt_2_amount: u128,
-    prepare_capacity: usize,
+    prepare_capacity: u64,
     remain_udt_1: u128,
     remain_udt_2: u128,
-    remain_capacity: usize,
+    remain_capacity: u64,
     script_infos: Vec<ScriptInfo>,
 ) -> Result<OpenTransaction> {
     // get udt script info
@@ -277,7 +278,7 @@ pub fn build_signed_otx(
     let udt_2_data = Bytes::from(remain_udt_2.to_le_bytes().to_vec());
 
     let capacity_output = CellOutput::new_builder()
-        .capacity((remain_capacity as u64).pack())
+        .capacity(remain_capacity.pack())
         .lock(otx_script)
         .build();
     let data = Bytes::default();
@@ -289,6 +290,7 @@ pub fn build_signed_otx(
             vec![udt_1_output, udt_2_output, capacity_output],
             vec![udt_1_data.pack(), udt_2_data.pack(), data.pack()],
             script_infos,
+            prepare_capacity - remain_capacity,
         )
         .unwrap();
     let file = format!("./free-space/swap_{}_otx_unsigned.json", payer);

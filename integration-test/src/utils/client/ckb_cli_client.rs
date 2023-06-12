@@ -6,7 +6,7 @@ use ckb_types::H256;
 
 use std::str::FromStr;
 
-pub fn ckb_cli_transfer_ckb(address: &Address, capacity: usize) -> Result<H256> {
+pub fn ckb_cli_transfer_ckb(address: &Address, capacity: u64) -> Result<H256> {
     // ckb-cli
     // config --url http://127.0.0.1:8114"
     let (stdout, _) = run_command_output(

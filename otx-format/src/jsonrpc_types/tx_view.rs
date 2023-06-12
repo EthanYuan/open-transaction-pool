@@ -3,7 +3,7 @@
 use crate::constant::essential_keys::OTX_META_VERSION;
 use crate::constant::extra_keys::{
     OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_INPUT_SUDT, OTX_ACCOUNTING_META_INPUT_XUDT,
-    OTX_ACCOUNTING_META_OUTPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_SUDT,
+    OTX_ACCOUNTING_META_MAX_FEE, OTX_ACCOUNTING_META_OUTPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_SUDT,
     OTX_ACCOUNTING_META_OUTPUT_XUDT, OTX_IDENTIFYING_META_AGGREGATE_COUNT,
     OTX_IDENTIFYING_META_TX_HASH, OTX_IDENTIFYING_META_TX_WITNESS_HASH,
     OTX_LOCATING_INPUT_CAPACITY, OTX_VERSIONING_META_OPEN_TX_VERSION,
@@ -74,6 +74,7 @@ pub fn tx_view_to_basic_otx(tx_view: TransactionView) -> Result<OpenTransaction,
 
 pub fn tx_view_to_otx(
     tx_view: TransactionView,
+    fee: u64,
     aggregate_count: u32,
     ckb_config: CkbConfig,
     script_config: ScriptConfig,
@@ -115,6 +116,11 @@ pub fn tx_view_to_otx(
             OTX_IDENTIFYING_META_AGGREGATE_COUNT.into(),
             None,
             JsonBytes::from_bytes(Uint32::from(aggregate_count).pack().as_bytes()),
+        ),
+        OtxKeyPair::new(
+            OTX_ACCOUNTING_META_MAX_FEE.into(),
+            None,
+            JsonBytes::from_bytes(Uint64::from(fee).pack().as_bytes()),
         ),
     ];
 

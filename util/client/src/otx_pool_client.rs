@@ -1,6 +1,6 @@
 use super::{request, RpcClient};
 
-use atomic_swap::SwapProposalWithIds;
+use atomic_swap::SwapProposalWithOtxs;
 use otx_format::{jsonrpc_types::OpenTransaction, types::OpenTxStatus};
 use otx_plugin_protocol::PluginInfo;
 
@@ -29,7 +29,7 @@ impl OtxPoolRpcClient {
         request(&self.client, "get_atomic_swap_info", ())
     }
 
-    pub fn get_all_swap_proposals(&self) -> Result<Vec<SwapProposalWithIds>> {
+    pub fn get_all_swap_proposals(&self) -> Result<Vec<SwapProposalWithOtxs>> {
         request(&self.client, "get_all_swap_proposals", ())
     }
 }

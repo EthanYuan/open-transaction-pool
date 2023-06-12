@@ -34,6 +34,7 @@ impl OtxBuilder {
         outputs: Vec<CellOutput>,
         outputs_data: Vec<packed::Bytes>,
         script_infos: Vec<ScriptInfo>,
+        fee: u64,
     ) -> Result<OpenTransaction> {
         let inputs: Vec<packed::CellInput> = inputs
             .into_iter()
@@ -54,8 +55,14 @@ impl OtxBuilder {
             .cell_deps(cell_deps)
             .build()
             .into();
-        let otx = tx_view_to_otx(tx, 1, self.ckb_config.clone(), self.script_config.clone())
-            .map_err(|err| anyhow!(err.to_string()))?;
+        let otx = tx_view_to_otx(
+            tx,
+            fee,
+            1,
+            self.ckb_config.clone(),
+            self.script_config.clone(),
+        )
+        .map_err(|err| anyhow!(err.to_string()))?;
         Ok(otx)
     }
 
@@ -65,7 +72,9 @@ impl OtxBuilder {
         }
         let mut txs = vec![];
         let aggregate_count = otxs.len();
+        let mut fee = 0;
         for otx in otxs {
+            fee += otx.get_max_fee();
             let tx: TransactionView = otx
                 .try_into()
                 .map_err(|_| anyhow!("otx convert to ckb tx"))?;
@@ -93,6 +102,7 @@ impl OtxBuilder {
             .into();
         let otx = tx_view_to_otx(
             tx,
+            fee,
             aggregate_count as u32,
             self.ckb_config.clone(),
             self.script_config.clone(),

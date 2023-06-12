@@ -144,8 +144,8 @@ pub(crate) fn build_signed_otx(
     payer: &str,
     otx_address: &Address,
     (_secp_addr, pk): (&Address, &H256),
-    prepare_capacity: usize,
-    remain_capacity: usize,
+    prepare_capacity: u64,
+    remain_capacity: u64,
     script_infos: Vec<ScriptInfo>,
 ) -> Result<OpenTransaction> {
     // get udt script info
@@ -178,7 +178,7 @@ pub(crate) fn build_signed_otx(
 
     // 5. generate open transaction, pay ckb
     let capacity_output = CellOutput::new_builder()
-        .capacity((remain_capacity as u64).pack())
+        .capacity(remain_capacity.pack())
         .lock(otx_script)
         .build();
     let data = Bytes::default();
@@ -190,6 +190,7 @@ pub(crate) fn build_signed_otx(
             vec![capacity_output],
             vec![data.pack()],
             script_infos,
+            prepare_capacity - remain_capacity,
         )
         .unwrap();
     let file = format!("./free-space/payment_{}_otx_unsigned.json", payer);

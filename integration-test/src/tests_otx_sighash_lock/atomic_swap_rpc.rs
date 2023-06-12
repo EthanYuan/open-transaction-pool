@@ -1,10 +1,10 @@
 use crate::const_definition::{OTX_POOL_URI, SCRIPT_CONFIG};
 use crate::help::start_otx_pool;
 use crate::tests_otx_sighash_lock::atomic_swap::build_signed_otx;
+use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
 use crate::utils::instruction::mercury::prepare_ckb_capacity;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
-use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
 
 use client::OtxPoolRpcClient;
 use otx_sdk::address::build_otx_address_from_secp_address;

@@ -207,6 +207,7 @@ impl Plugin for DustCollector {
             &self.context.default_address,
             output_amount,
             Script::default(),
+            DEFAULT_FEE as u64,
         ) {
             ckb_tx
         } else {

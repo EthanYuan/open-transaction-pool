@@ -2,6 +2,7 @@ pub mod rpc;
 
 use config::{CkbConfig, ScriptConfig};
 use otx_format::jsonrpc_types::OpenTransaction;
+use otx_format::types::PaymentAmount;
 use otx_plugin_protocol::{
     HostServiceHandler, MessageFromHost, MessageFromPlugin, Plugin, PluginInfo, PluginMeta,
 };
@@ -18,7 +19,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 pub const EVERY_INTERVALS: usize = 10;
-pub const MIN_PAYMENT: usize = 1_0000_0000;
+pub const MIN_FEE: u64 = 1_0000_0000;
 
 #[derive(Clone)]
 struct Context {
@@ -55,26 +56,84 @@ pub struct SwapProposal {
     pub sell_amount: u64,
     pub buy_udt: Script,
     pub buy_amount: u64,
+    pub pay_fee: u64,
 }
 
 impl SwapProposal {
-    fn pair_order(&self) -> SwapProposal {
+    fn pair_proposal(&self) -> SwapProposal {
         SwapProposal {
             sell_udt: self.buy_udt.clone(),
             sell_amount: self.buy_amount,
             buy_udt: self.sell_udt.clone(),
             buy_amount: self.sell_amount,
+            pay_fee: 0, // no need to consider the fee when doing a pair
         }
+    }
+
+    fn cap_match(&self, swap_proposal: SwapProposal) -> bool {
+        self.pay_fee + swap_proposal.pay_fee >= MIN_FEE
+            && self.buy_udt == swap_proposal.sell_udt
+            && self.sell_udt == swap_proposal.buy_udt
+            && self.buy_amount == swap_proposal.sell_amount
+            && self.sell_amount == swap_proposal.buy_amount
+    }
+}
+
+impl TryFrom<PaymentAmount> for SwapProposal {
+    type Error = String;
+    fn try_from(payment_amount: PaymentAmount) -> Result<Self, Self::Error> {
+        let asset_types_number = payment_amount.s_udt_amount.len()
+            + payment_amount.x_udt_amount.len()
+            + usize::from(payment_amount.capacity - payment_amount.fee as i128 != 0);
+        if asset_types_number != 2 {
+            return Err(format!(
+                "The number of asset types must be 2, but got {}",
+                asset_types_number
+            ));
+        }
+        let mut swap_proposal = SwapProposal {
+            pay_fee: payment_amount.fee,
+            ..Default::default()
+        };
+        if payment_amount.capacity - payment_amount.fee as i128 > 0 {
+            swap_proposal.sell_udt = Script::default();
+            swap_proposal.sell_amount = payment_amount.capacity as u64 - payment_amount.fee;
+        } else {
+            swap_proposal.buy_udt = Script::default();
+            swap_proposal.buy_amount = payment_amount.capacity as u64 - payment_amount.fee;
+        }
+        for (type_script, udt_amount) in payment_amount.s_udt_amount {
+            if udt_amount > 0 {
+                swap_proposal.sell_udt = type_script;
+                swap_proposal.sell_amount = udt_amount as u64;
+            } else {
+                swap_proposal.buy_udt = type_script;
+                swap_proposal.buy_amount = (-udt_amount) as u64;
+            }
+        }
+        for (type_script, udt_amount) in payment_amount.x_udt_amount {
+            if udt_amount > 0 {
+                swap_proposal.sell_udt = type_script;
+                swap_proposal.sell_amount = udt_amount as u64;
+            } else {
+                swap_proposal.buy_udt = type_script;
+                swap_proposal.buy_amount = (-udt_amount) as u64;
+            }
+        }
+        if swap_proposal.sell_amount == 0 || swap_proposal.buy_amount == 0 {
+            return Err("The amount of sell and buy must be greater than 0".to_owned());
+        }
+        Ok(swap_proposal)
     }
 }
 
 #[derive(Debug, Eq, PartialEq, Hash, Default, Clone, Serialize, Deserialize)]
-pub struct SwapProposalWithIds {
+pub struct SwapProposalWithOtxs {
     pub swap_proposal: SwapProposal,
     pub otx_ids: Vec<H256>,
 }
 
-impl SwapProposalWithIds {
+impl SwapProposalWithOtxs {
     pub fn new(swap_proposal: SwapProposal, otx_ids: Vec<H256>) -> Self {
         Self {
             swap_proposal,
@@ -136,93 +195,99 @@ impl Plugin for AtomicSwap {
             }
         }
         let payment_amount = if let Ok(payment_amount) = otx.get_payment_amount() {
-            log::info!("payment: {:?}", payment_amount);
-            if payment_amount.capacity <= 0
-                || payment_amount.capacity > MIN_PAYMENT as i128
-                || payment_amount.s_udt_amount.len() != 2
-                || !payment_amount.x_udt_amount.is_empty()
-            {
-                return;
-            }
             payment_amount
         } else {
             return;
         };
-
-        let mut order_key = SwapProposal::default();
-        for (type_script, udt_amount) in payment_amount.s_udt_amount {
-            if udt_amount > 0 {
-                order_key.sell_udt = type_script;
-                order_key.sell_amount = udt_amount as u64;
-            } else {
-                order_key.buy_udt = type_script;
-                order_key.buy_amount = (-udt_amount) as u64;
+        log::info!("payment amount: {:?}", payment_amount);
+        let mut swap_proposal: SwapProposal = match payment_amount.try_into() {
+            Ok(swap_proposal) => swap_proposal,
+            Err(err) => {
+                log::error!("parse payment amount error: {:?}", err);
+                return;
             }
-        }
-        if order_key.sell_amount == 0 || order_key.buy_amount == 0 {
-            return;
-        }
+        };
+        log::info!("swap proposal {:?}", swap_proposal);
 
         let otx_hash = otx.get_tx_hash().expect("get otx tx hash");
-        if let Some(item) = self.context.proposals.get(&order_key.pair_order()) {
-            if let Some(pair_tx_hash) = item.value().iter().next() {
-                log::info!("matched tx: {:#x}", pair_tx_hash);
-                let pair_otx = self.context.otxs.get(pair_tx_hash).unwrap().value().clone();
-
-                // merge_otx
-                let builder = OtxBuilder::new(
-                    self.context.script_config.clone(),
-                    self.context.ckb_config.clone(),
-                );
-                let otx_list = vec![otx, pair_otx];
-                let merged_otx = if let Ok(merged_otx) = builder.merge_otxs_single_acp(otx_list) {
-                    log::debug!("otxs merge successfully.");
-                    merged_otx
-                } else {
-                    log::info!("{} failed to merge otxs.", self.context.plugin_name);
-                    return;
-                };
-
-                // to final tx
-                let tx = if let Ok(tx) = merged_otx.try_into() {
-                    tx
-                } else {
-                    log::info!("failed to generate final tx.");
-                    return;
-                };
-
-                // send_ckb
-                let tx_hash = match send_tx(self.context.ckb_config.get_ckb_uri(), tx) {
-                    Ok(tx_hash) => tx_hash,
-                    Err(err) => {
-                        log::error!("failed to send final tx: {}", err);
-                        return;
-                    }
-                };
-                log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
-
-                // call host service
-                let message = MessageFromPlugin::MergeOtxsAndSentToCkb((
-                    vec![pair_tx_hash.to_owned(), otx_hash],
-                    tx_hash,
-                ));
-                if let Some(MessageFromHost::Ok) =
-                    Request::call(&self.context.service_handler, message)
-                {
-                    self.context.otxs.remove(pair_tx_hash);
-                    self.context.proposals.retain(|_, hashes| {
-                        hashes.remove(pair_tx_hash);
-                        !hashes.is_empty()
-                    });
-                }
+        let item = match self.context.proposals.get(&swap_proposal.pair_proposal()) {
+            Some(item) => item,
+            None => {
+                self.context.otxs.insert(otx_hash.clone(), otx);
+                swap_proposal.pay_fee = 0;
+                self.context
+                    .proposals
+                    .entry(swap_proposal)
+                    .or_insert_with(HashSet::new)
+                    .insert(otx_hash);
+                return;
             }
-        } else {
-            self.context.otxs.insert(otx_hash.clone(), otx);
-            self.context
-                .proposals
-                .entry(order_key)
-                .or_insert_with(HashSet::new)
-                .insert(otx_hash);
+        };
+
+        for pair_otx_hash in item.value() {
+            log::info!("matched tx: {:#x}", pair_otx_hash);
+            let pair_otx = self
+                .context
+                .otxs
+                .get(pair_otx_hash)
+                .expect("get pair otx from otxs")
+                .value()
+                .clone();
+            let pair_payment_amount = pair_otx.get_payment_amount().expect("get payment amount");
+            let pair_swap_proposal = pair_payment_amount
+                .try_into()
+                .expect("parse payment amount");
+            if !swap_proposal.cap_match(pair_swap_proposal) {
+                continue;
+            }
+
+            // merge_otx
+            let builder = OtxBuilder::new(
+                self.context.script_config.clone(),
+                self.context.ckb_config.clone(),
+            );
+            let otx_list = vec![otx.clone(), pair_otx];
+            let merged_otx = if let Ok(merged_otx) = builder.merge_otxs_single_acp(otx_list) {
+                log::debug!("otxs merge successfully.");
+                merged_otx
+            } else {
+                log::info!("{} failed to merge otxs.", self.context.plugin_name);
+                continue;
+            };
+
+            // to final tx
+            let tx = if let Ok(tx) = merged_otx.try_into() {
+                tx
+            } else {
+                log::info!("failed to generate final tx.");
+                continue;
+            };
+
+            // send_ckb
+            let tx_hash = match send_tx(self.context.ckb_config.get_ckb_uri(), tx) {
+                Ok(tx_hash) => tx_hash,
+                Err(err) => {
+                    log::error!("failed to send final tx: {}", err);
+                    continue;
+                }
+            };
+            log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
+
+            // call host service
+            let message = MessageFromPlugin::MergeOtxsAndSentToCkb((
+                vec![pair_otx_hash.to_owned(), otx_hash],
+                tx_hash,
+            ));
+            if let Some(MessageFromHost::Ok) = Request::call(&self.context.service_handler, message)
+            {
+                self.context.otxs.remove(pair_otx_hash);
+                self.context.proposals.retain(|_, hashes| {
+                    hashes.remove(pair_otx_hash);
+                    !hashes.is_empty()
+                });
+            }
+
+            break;
         }
     }
 

@@ -37,6 +37,7 @@ impl OpenTxWithStatus {
 #[derive(Debug)]
 pub struct PaymentAmount {
     pub capacity: i128,
+    pub fee: u64,
     pub x_udt_amount: HashMap<Script, i128>,
     pub s_udt_amount: HashMap<Script, i128>,
 }
