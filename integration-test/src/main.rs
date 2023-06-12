@@ -1,6 +1,6 @@
 mod const_definition;
 mod help;
-mod tests_otx_sighash_lock;
+mod tests;
 mod utils;
 
 use help::{setup, teardown};

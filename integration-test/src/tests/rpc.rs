@@ -1,37 +1,38 @@
 use crate::const_definition::{OTX_POOL_URI, SCRIPT_CONFIG};
 use crate::help::start_otx_pool;
-use crate::tests_otx_sighash_lock::atomic_swap::build_signed_otx;
-use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
-use crate::utils::instruction::mercury::prepare_ckb_capacity;
+use crate::tests::small_blank_check::build_signed_otx;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
 use client::OtxPoolRpcClient;
+use otx_format::jsonrpc_types::OpenTransaction;
+use otx_format::types::OpenTxStatus;
 use otx_sdk::address::build_otx_address_from_secp_address;
 
-use std::thread::sleep;
-use std::time::Duration;
+use ckb_types::H256;
 
 inventory::submit!(IntegrationTest {
-    name: "test_atomic_swap_rpc_get_info",
-    test_fn: test_atomic_swap_rpc_get_info
+    name: "test_service_rpc",
+    test_fn: test_service_rpc
 });
-fn test_atomic_swap_rpc_get_info() {
-    // run otx pool
+fn test_service_rpc() {
     let (address, pk) = generate_rand_secp_address_pk_pair();
-    prepare_ckb_capacity(&address, 200_0000_0000u64).unwrap();
     start_otx_pool(address, pk);
 
     let service_client = OtxPoolRpcClient::new(OTX_POOL_URI.to_string());
-    let ret = service_client.get_atomic_swap_info().unwrap();
-    assert_eq!(ret.name, "atomic swap");
+    let otx = OpenTransaction::default();
+    let id = otx.get_tx_hash().unwrap();
+    let ret = service_client.submit_otx(otx);
+    assert!(ret.is_ok());
+    let ret = service_client.query_otx_status_by_id(id);
+    assert!(ret.is_ok());
 }
 
 inventory::submit!(IntegrationTest {
-    name: "test_atomic_swap_rpc_get_all_swap_proposals",
-    test_fn: test_atomic_swap_rpc_get_all_swap_proposals
+    name: "test_service_rpc_submit_otx",
+    test_fn: test_service_rpc_submit_otx
 });
-fn test_atomic_swap_rpc_get_all_swap_proposals() {
+fn test_service_rpc_submit_otx() {
     let (address, pk) = generate_rand_secp_address_pk_pair();
     start_otx_pool(address, pk);
 
@@ -44,15 +45,11 @@ fn test_atomic_swap_rpc_get_all_swap_proposals() {
     let (address, pk) = generate_rand_secp_address_pk_pair();
     let otx_address = build_otx_address_from_secp_address(&address, &otx_lock_script_info).unwrap();
     let otx = build_signed_otx(
-        "alice",
+        "payer",
         &otx_address,
         (&address, &pk),
-        12,
-        5,
-        201_0000_0000,
-        2,
-        15,
-        200_0000_0000,
+        151_0000_0000,
+        100_0000_0000,
         vec![otx_lock_script_info],
     )
     .unwrap();
@@ -60,14 +57,11 @@ fn test_atomic_swap_rpc_get_all_swap_proposals() {
     let service_client = OtxPoolRpcClient::new(OTX_POOL_URI.to_string());
     let id = service_client.submit_otx(otx).unwrap();
     log::debug!("id: {:?}", id);
+    let status = service_client.query_otx_status_by_id(id).unwrap().unwrap();
+    assert_eq!(status, OpenTxStatus::Pending);
 
-    sleep(Duration::from_secs(5));
-    aggregate_transactions_into_blocks().unwrap();
-
-    let proposals = service_client.get_all_swap_proposals().unwrap();
-    assert_eq!(proposals.len(), 1);
-    assert_eq!(proposals[0].otx_id, id);
-    assert_eq!(proposals[0].swap_proposal.buy_amount, 10);
-    assert_eq!(proposals[0].swap_proposal.sell_amount, 10);
-    assert_eq!(proposals[0].swap_proposal.pay_fee, 1_0000_0000);
+    let ret = service_client
+        .query_otx_status_by_id(H256::default())
+        .unwrap();
+    assert!(ret.is_none());
 }
