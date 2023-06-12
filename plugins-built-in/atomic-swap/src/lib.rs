@@ -100,7 +100,8 @@ impl TryFrom<PaymentAmount> for SwapProposal {
             swap_proposal.sell_amount = payment_amount.capacity as u64 - payment_amount.fee;
         } else {
             swap_proposal.buy_udt = Script::default();
-            swap_proposal.buy_amount = payment_amount.capacity as u64 - payment_amount.fee;
+            swap_proposal.buy_amount =
+                (-(payment_amount.capacity - payment_amount.fee as i128)) as u64;
         }
         for (type_script, udt_amount) in payment_amount.s_udt_amount {
             if udt_amount > 0 {

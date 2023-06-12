@@ -1,7 +1,7 @@
 use crate::const_definition::{OTX_POOL_URI, SCRIPT_CONFIG};
 use crate::help::start_otx_pool;
 use crate::tests::atomic_swap_udt_to_udt::build_signed_otx;
-use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
+use crate::utils::instruction::ckb::{aggregate_transactions_into_blocks, dump_data};
 use crate::utils::instruction::mercury::prepare_ckb_capacity;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
@@ -70,4 +70,6 @@ fn test_atomic_swap_rpc_get_all_swap_proposals() {
     assert_eq!(proposals[0].swap_proposal.buy_amount, 10);
     assert_eq!(proposals[0].swap_proposal.sell_amount, 10);
     assert_eq!(proposals[0].swap_proposal.pay_fee, 1_0000_0000);
+
+    dump_data(&proposals, "./free-space/proposals.json").unwrap();
 }
