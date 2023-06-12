@@ -28,7 +28,7 @@ struct Context {
     script_config: ScriptConfig,
     service_handler: HostServiceHandler,
 
-    otxs: DashMap<H256, OpenTransaction>,
+    otxs: DashMap<H256, (OpenTransaction, SwapProposal)>,
     proposals: DashMap<SwapProposal, HashSet<H256>>,
 }
 
@@ -128,16 +128,16 @@ impl TryFrom<PaymentAmount> for SwapProposal {
 }
 
 #[derive(Debug, Eq, PartialEq, Hash, Default, Clone, Serialize, Deserialize)]
-pub struct SwapProposalWithOtxs {
+pub struct SwapProposalWithOtxId {
     pub swap_proposal: SwapProposal,
-    pub otx_ids: Vec<H256>,
+    pub otx_id: H256,
 }
 
-impl SwapProposalWithOtxs {
-    pub fn new(swap_proposal: SwapProposal, otx_ids: Vec<H256>) -> Self {
+impl SwapProposalWithOtxId {
+    pub fn new(swap_proposal: SwapProposal, otx_id: H256) -> Self {
         Self {
             swap_proposal,
-            otx_ids,
+            otx_id,
         }
     }
 }
@@ -199,11 +199,10 @@ impl Plugin for AtomicSwap {
         } else {
             return;
         };
-        log::info!("payment amount: {:?}", payment_amount);
         let mut swap_proposal: SwapProposal = match payment_amount.try_into() {
             Ok(swap_proposal) => swap_proposal,
             Err(err) => {
-                log::error!("parse payment amount error: {:?}", err);
+                log::info!("parse payment amount error: {:?}", err);
                 return;
             }
         };
@@ -213,7 +212,9 @@ impl Plugin for AtomicSwap {
         let item = match self.context.proposals.get(&swap_proposal.pair_proposal()) {
             Some(item) => item,
             None => {
-                self.context.otxs.insert(otx_hash.clone(), otx);
+                self.context
+                    .otxs
+                    .insert(otx_hash.clone(), (otx, swap_proposal.clone()));
                 swap_proposal.pay_fee = 0;
                 self.context
                     .proposals
@@ -225,7 +226,6 @@ impl Plugin for AtomicSwap {
         };
 
         for pair_otx_hash in item.value() {
-            log::info!("matched tx: {:#x}", pair_otx_hash);
             let pair_otx = self
                 .context
                 .otxs
@@ -233,25 +233,22 @@ impl Plugin for AtomicSwap {
                 .expect("get pair otx from otxs")
                 .value()
                 .clone();
-            let pair_payment_amount = pair_otx.get_payment_amount().expect("get payment amount");
-            let pair_swap_proposal = pair_payment_amount
-                .try_into()
-                .expect("parse payment amount");
-            if !swap_proposal.cap_match(pair_swap_proposal) {
+            if !swap_proposal.cap_match(pair_otx.1) {
                 continue;
             }
+            log::info!("matched tx: {:#x}", pair_otx_hash);
 
             // merge_otx
             let builder = OtxBuilder::new(
                 self.context.script_config.clone(),
                 self.context.ckb_config.clone(),
             );
-            let otx_list = vec![otx.clone(), pair_otx];
+            let otx_list = vec![otx.clone(), pair_otx.0];
             let merged_otx = if let Ok(merged_otx) = builder.merge_otxs_single_acp(otx_list) {
                 log::debug!("otxs merge successfully.");
                 merged_otx
             } else {
-                log::info!("{} failed to merge otxs.", self.context.plugin_name);
+                log::error!("{} failed to merge otxs.", self.context.plugin_name);
                 continue;
             };
 
@@ -259,7 +256,7 @@ impl Plugin for AtomicSwap {
             let tx = if let Ok(tx) = merged_otx.try_into() {
                 tx
             } else {
-                log::info!("failed to generate final tx.");
+                log::error!("failed to generate final tx.");
                 continue;
             };
 

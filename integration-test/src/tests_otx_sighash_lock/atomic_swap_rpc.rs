@@ -66,7 +66,8 @@ fn test_atomic_swap_rpc_get_all_swap_proposals() {
 
     let proposals = service_client.get_all_swap_proposals().unwrap();
     assert_eq!(proposals.len(), 1);
-    assert_eq!(proposals[0].otx_ids[0], id);
+    assert_eq!(proposals[0].otx_id, id);
     assert_eq!(proposals[0].swap_proposal.buy_amount, 10);
     assert_eq!(proposals[0].swap_proposal.sell_amount, 10);
+    assert_eq!(proposals[0].swap_proposal.pay_fee, 1_0000_0000);
 }
