@@ -177,3 +177,22 @@ cell_dep = '''
     }
 }
 '''
+
+[[scripts]]
+script_name = "otx-sighash-lock"
+script = '''
+{
+    "args": "0x",
+    "code_hash": "0x96f5f7c1731ad93acf4d84275e363941180b6417b1fc6dbcbcd6dd034f4b232f",
+    "hash_type": "type"
+}
+'''
+cell_dep = '''
+{
+    "dep_type": "dep_group",
+    "out_point": {
+        "index": "0x0",
+        "tx_hash": "0xb136eb95b34898caa716f4dd6815801971dea60167c268b947a636adb4f90028"
+    }
+}
+'''

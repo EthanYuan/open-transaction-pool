@@ -1,13 +1,13 @@
 use crate::const_definition::{OTX_POOL_URI, SCRIPT_CONFIG};
 use crate::help::start_otx_pool;
-use crate::tests_otx_sighash_lock::build_signed_otx;
+use crate::tests::small_blank_check::build_signed_otx;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
+use client::OtxPoolRpcClient;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::OpenTxStatus;
 use otx_sdk::address::build_otx_address_from_secp_address;
-use otx_sdk::client::OtxPoolRpcClient;
 
 use ckb_types::H256;
 

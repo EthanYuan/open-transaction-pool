@@ -8,13 +8,13 @@ use crate::utils::instruction::mercury::prepare_ckb_capacity;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
+use client::OtxPoolRpcClient;
 use config::{CkbConfig, ScriptInfo};
 use dust_collector::DEFAULT_FEE;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::OpenTxStatus;
 use otx_sdk::address::build_otx_address_from_secp_address;
 use otx_sdk::build_tx::OtxBuilder;
-use otx_sdk::client::OtxPoolRpcClient;
 use otx_sdk::signer::{SighashMode, Signer};
 
 use core_rpc_types::{GetBalancePayload, JsonItem};
@@ -34,10 +34,10 @@ use std::thread::sleep;
 use std::time::Duration;
 
 inventory::submit!(IntegrationTest {
-    name: "test_payment_ckb_blank_check",
-    test_fn: test_payment_ckb_blank_check
+    name: "test_payment_small_blank_check",
+    test_fn: test_payment_small_blank_check
 });
-fn test_payment_ckb_blank_check() {
+fn test_payment_small_blank_check() {
     // run otx pool
     let (payee_address, pk) = generate_rand_secp_address_pk_pair();
     prepare_ckb_capacity(&payee_address, 200_0000_0000u64).unwrap();
@@ -144,8 +144,8 @@ pub(crate) fn build_signed_otx(
     payer: &str,
     otx_address: &Address,
     (_secp_addr, pk): (&Address, &H256),
-    prepare_capacity: usize,
-    remain_capacity: usize,
+    prepare_capacity: u64,
+    remain_capacity: u64,
     script_infos: Vec<ScriptInfo>,
 ) -> Result<OpenTransaction> {
     // get udt script info
@@ -178,7 +178,7 @@ pub(crate) fn build_signed_otx(
 
     // 5. generate open transaction, pay ckb
     let capacity_output = CellOutput::new_builder()
-        .capacity((remain_capacity as u64).pack())
+        .capacity(remain_capacity.pack())
         .lock(otx_script)
         .build();
     let data = Bytes::default();
@@ -190,6 +190,7 @@ pub(crate) fn build_signed_otx(
             vec![capacity_output],
             vec![data.pack()],
             script_infos,
+            prepare_capacity - remain_capacity,
         )
         .unwrap();
     let file = format!("./free-space/payment_{}_otx_unsigned.json", payer);

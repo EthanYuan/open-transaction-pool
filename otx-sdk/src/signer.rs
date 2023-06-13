@@ -71,6 +71,8 @@ impl Signer {
         mut indexs: Vec<usize>,
     ) -> Result<OpenTransaction> {
         let aggregate_count = otx.get_aggregate_count().unwrap_or(1);
+        let fee = otx.get_max_fee();
+
         let mut tx: TransactionView = otx
             .try_into()
             .map_err(|_| anyhow!("otx convert to ckb tx"))?;
@@ -81,6 +83,7 @@ impl Signer {
         }
         let otx = tx_view_to_otx(
             tx.into(),
+            fee,
             aggregate_count,
             self.ckb_config.clone(),
             self.script_config.to_owned(),

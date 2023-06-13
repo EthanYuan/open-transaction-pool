@@ -15,7 +15,7 @@ use rpc::{OtxPoolRpc, OtxPoolRpcImpl};
 
 use anyhow::{anyhow, Result};
 use ckb_async_runtime::{new_global_runtime, Handle, Runtime};
-use jsonrpc_core::IoHandler;
+use jsonrpc_core::{IoDelegate, IoHandler};
 use jsonrpc_http_server::{Server, ServerBuilder};
 use jsonrpc_server_utils::cors::AccessControlAllowOrigin;
 use jsonrpc_server_utils::hosts::DomainsValidation;
@@ -39,6 +39,7 @@ pub struct OtxPoolService {
     plugin_manager: PluginManager,
 
     interval_handler: Option<JoinHandle<()>>,
+    io_handler: Option<IoHandler>,
     rpc_server: Option<Server>,
 }
 
@@ -66,6 +67,8 @@ impl OtxPoolService {
         let plugin_manager =
             PluginManager::new(Path::new(PLUGIN_ROOT), _service_provider.handler());
 
+        let io_handler = Some(IoHandler::new());
+
         Ok(OtxPoolService {
             runtime_handle,
             runtime,
@@ -77,11 +80,19 @@ impl OtxPoolService {
             plugin_manager,
             interval_handler: None,
             rpc_server: None,
+            io_handler,
         })
     }
 
-    pub fn add_plugin(&mut self, plugin: Box<dyn Plugin + Send>) {
+    pub fn add_plugin(&mut self, plugin: Box<Arc<dyn Plugin + Send>>) {
         self.plugin_manager.register_built_in_plugins(plugin)
+    }
+
+    pub fn extended_rpc_with<T: Send + Sync>(&mut self, delegate: IoDelegate<T>) {
+        self.io_handler
+            .as_mut()
+            .expect("extended_rpc before start")
+            .extend_with(delegate);
     }
 
     pub fn load_third_party_plugins(&mut self) -> Result<()> {
@@ -119,7 +130,7 @@ impl OtxPoolService {
 
         // init otx pool rpc
         let rpc_impl = OtxPoolRpcImpl::new(self.otx_pool.clone());
-        let mut io_handler = IoHandler::new();
+        let mut io_handler = self.io_handler.take().expect("io_handler");
         io_handler.extend_with(rpc_impl.to_delegate());
 
         // start rpc server

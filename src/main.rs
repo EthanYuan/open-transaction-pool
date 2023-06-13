@@ -1,4 +1,4 @@
-use atomic_udt_swap::AtomicUdtSwap;
+use atomic_swap::{rpc::AtomicSwapRpc, AtomicSwap};
 use config::{parse, AppConfig, ConfigFile};
 use dust_collector::DustCollector;
 use otx_pool::{logo::print_logo, OtxPoolService};
@@ -6,6 +6,8 @@ use signer::Signer;
 
 use anyhow::{anyhow, Result};
 use clap::Parser;
+
+use std::sync::Arc;
 
 pub const PLUGINS_DIRNAME: &str = "plugins";
 
@@ -44,36 +46,43 @@ fn main() -> Result<()> {
 
     // add plugin AtomicUdtSwap
     if config.get_atomic_swap_config().is_enabled() {
-        let atomic_udt_swap = AtomicUdtSwap::new(
-            otx_pool_service.get_host_service_handler(),
-            config.get_ckb_config(),
-            config.get_script_config(),
-        )
-        .map_err(|err| anyhow!(err))?;
-        otx_pool_service.add_plugin(Box::new(atomic_udt_swap));
+        let atomic_swap = Arc::new(
+            AtomicSwap::new(
+                otx_pool_service.get_host_service_handler(),
+                config.get_ckb_config(),
+                config.get_script_config(),
+            )
+            .map_err(|err| anyhow!(err))?,
+        );
+        otx_pool_service.extended_rpc_with(AtomicSwapRpc::to_delegate(atomic_swap.clone()));
+        otx_pool_service.add_plugin(Box::new(atomic_swap));
     }
 
     // add plugin DustCollector
     if config.get_dust_collector_config().is_enabled() {
-        let dust_collector = DustCollector::new(
-            otx_pool_service.get_host_service_handler(),
-            config.get_dust_collector_config(),
-            config.get_ckb_config(),
-            config.get_script_config(),
-        )
-        .map_err(|err| anyhow!(err))?;
+        let dust_collector = Arc::new(
+            DustCollector::new(
+                otx_pool_service.get_host_service_handler(),
+                config.get_dust_collector_config(),
+                config.get_ckb_config(),
+                config.get_script_config(),
+            )
+            .map_err(|err| anyhow!(err))?,
+        );
         otx_pool_service.add_plugin(Box::new(dust_collector));
     }
 
     // add plugin Signer
     if config.get_signer_config().is_enabled() {
-        let signer = Signer::new(
-            otx_pool_service.get_host_service_handler(),
-            config.get_signer_config(),
-            config.get_ckb_config(),
-            config.get_script_config(),
-        )
-        .map_err(|err| anyhow!(err))?;
+        let signer = Arc::new(
+            Signer::new(
+                otx_pool_service.get_host_service_handler(),
+                config.get_signer_config(),
+                config.get_ckb_config(),
+                config.get_script_config(),
+            )
+            .map_err(|err| anyhow!(err))?,
+        );
         otx_pool_service.add_plugin(Box::new(signer));
     }
 

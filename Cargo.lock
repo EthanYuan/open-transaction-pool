@@ -55,20 +55,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "atomic-udt-swap"
+name = "atomic-swap"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "ckb-jsonrpc-types",
+ "ckb-sdk",
  "ckb-stop-handler",
  "ckb-types",
  "config",
  "dashmap",
  "derive_more",
+ "jsonrpc-core",
+ "jsonrpc-derive",
  "log",
  "otx-format",
  "otx-plugin-protocol",
  "otx-sdk",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -508,6 +513,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2850f2f5a82cbf437dd5af4d49848fbdfc27c157c3d010345776f952765261c5"
 dependencies = [
  "os_str_bytes",
+]
+
+[[package]]
+name = "client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "atomic-swap",
+ "ckb-types",
+ "jsonrpc-core",
+ "otx-format",
+ "otx-plugin-protocol",
+ "reqwest",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1370,7 +1390,7 @@ name = "open-transaction-pool"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "atomic-udt-swap",
+ "atomic-swap",
  "clap",
  "config",
  "ctrlc",
@@ -1507,7 +1527,7 @@ dependencies = [
  "config",
  "jsonrpc-core",
  "otx-format",
- "reqwest",
+ "otx-plugin-protocol",
  "secp256k1",
  "serde",
  "serde_json",

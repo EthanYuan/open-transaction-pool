@@ -2,7 +2,7 @@
 
 use crate::constant::extra_keys::{
     OTX_ACCOUNTING_META_INPUT_CKB, OTX_ACCOUNTING_META_INPUT_SUDT, OTX_ACCOUNTING_META_INPUT_XUDT,
-    OTX_ACCOUNTING_META_OUTPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_SUDT,
+    OTX_ACCOUNTING_META_MAX_FEE, OTX_ACCOUNTING_META_OUTPUT_CKB, OTX_ACCOUNTING_META_OUTPUT_SUDT,
     OTX_ACCOUNTING_META_OUTPUT_XUDT, OTX_IDENTIFYING_META_AGGREGATE_COUNT,
     OTX_IDENTIFYING_META_TX_HASH,
 };
@@ -128,6 +128,18 @@ impl OpenTransaction {
         Ok(aggregate_count)
     }
 
+    pub fn get_max_fee(&self) -> u64 {
+        self.meta
+            .get(OTX_ACCOUNTING_META_MAX_FEE.into(), None)
+            .map(|max_fee| {
+                let count: u64 = ckb_types::packed::Uint64::from_slice(max_fee.as_bytes())
+                    .expect("get aggregate count")
+                    .unpack();
+                count
+            })
+            .unwrap_or(0)
+    }
+
     pub fn get_payment_amount(&self) -> Result<PaymentAmount, OtxFormatError> {
         // capacity
         let input_capacity = self
@@ -155,6 +167,9 @@ impl OpenTransaction {
             .ok_or_else(|| {
                 OtxFormatError::OtxMapParseMissingField(OTX_ACCOUNTING_META_OUTPUT_CKB.to_string())
             })?;
+
+        // fee
+        let fee = self.get_max_fee();
 
         let mut kv_map = self.meta.clone();
         let mut x_udt_amount = HashMap::new();
@@ -231,6 +246,7 @@ impl OpenTransaction {
 
         Ok(PaymentAmount {
             capacity: input_capacity as i128 - output_capacity as i128,
+            fee,
             x_udt_amount,
             s_udt_amount,
         })

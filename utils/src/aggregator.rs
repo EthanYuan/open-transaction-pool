@@ -7,11 +7,11 @@ use ckb_jsonrpc_types as json_types;
 use ckb_jsonrpc_types::TransactionView;
 use ckb_sdk::{
     constants::SIGHASH_TYPE_HASH, rpc::CkbRpcClient, traits::DefaultTransactionDependencyProvider,
-    Address, 
+    Address,
 };
 use ckb_sdk::{
     traits::SecpCkbRawKeySigner, tx_builder::unlock_tx, unlock::ScriptUnlocker,
-    unlock::SecpSighashUnlocker, ScriptGroup, ScriptId,HumanCapacity
+    unlock::SecpSighashUnlocker, HumanCapacity, ScriptGroup, ScriptId,
 };
 use ckb_types::{
     core::TransactionView as CoreTransactionView,
@@ -54,6 +54,7 @@ impl OtxAggregator {
         output_address: &Address,
         output_amout: OutputAmount,
         udt_issuer_script: Script,
+        fee: u64,
     ) -> Result<OpenTransaction> {
         let aggregate_count = open_tx
             .get_aggregate_count()
@@ -76,6 +77,7 @@ impl OtxAggregator {
 
         tx_view_to_otx(
             ckb_tx,
+            fee,
             aggregate_count,
             self.ckb_config.clone(),
             self.script_config.to_owned(),

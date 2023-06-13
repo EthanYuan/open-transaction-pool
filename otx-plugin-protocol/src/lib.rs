@@ -7,7 +7,7 @@ use serde_derive::{Deserialize, Serialize};
 
 use std::path::PathBuf;
 
-pub trait Plugin: Send {
+pub trait Plugin: Send + Sync {
     fn get_name(&self) -> String;
     fn get_meta(&self) -> PluginMeta;
     fn get_info(&self) -> PluginInfo;

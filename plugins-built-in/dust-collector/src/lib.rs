@@ -18,7 +18,6 @@ use dashmap::DashMap;
 
 use std::env;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 pub const EVERY_INTERVALS: usize = 10;
 pub const MIN_PAYMENT: usize = 1_0000_0000;
@@ -27,7 +26,7 @@ pub const DEFAULT_FEE: usize = 1000_0000;
 #[derive(Clone)]
 struct Context {
     plugin_name: String,
-    otxs: Arc<DashMap<H256, OpenTransaction>>,
+    otxs: DashMap<H256, OpenTransaction>,
     default_address: Address,
     ckb_config: CkbConfig,
     script_config: ScriptConfig,
@@ -44,7 +43,7 @@ impl Context {
     ) -> Self {
         Context {
             plugin_name: plugin_name.to_owned(),
-            otxs: Arc::new(DashMap::new()),
+            otxs: DashMap::new(),
             default_address,
             ckb_config,
             script_config,
@@ -208,6 +207,7 @@ impl Plugin for DustCollector {
             &self.context.default_address,
             output_amount,
             Script::default(),
+            DEFAULT_FEE as u64,
         ) {
             ckb_tx
         } else {
