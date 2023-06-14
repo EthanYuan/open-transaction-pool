@@ -20,7 +20,7 @@ default_address = "DEFAUT_ADDRESS"
 
 [ckb_config]
 network_type = "ckb"
-ckb_uri = "http://127.0.0.1:8114"
+ckb_uri = "https://testnet.ckbapp.dev/"
 
 
 [[scripts]]
