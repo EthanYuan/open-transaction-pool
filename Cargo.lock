@@ -1371,8 +1371,8 @@ dependencies = [
  "log",
  "otx-pool",
  "otx-pool-config",
+ "otx-pool-plugin-signer",
  "otx-sdk",
- "signer",
  "utils",
 ]
 
@@ -1496,6 +1496,23 @@ dependencies = [
  "serde",
  "serde_json",
  "toml",
+]
+
+[[package]]
+name = "otx-pool-plugin-signer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ckb-sdk",
+ "ckb-stop-handler",
+ "ckb-types",
+ "dashmap",
+ "derive_more",
+ "log",
+ "otx-format",
+ "otx-plugin-protocol",
+ "otx-pool-config",
+ "utils",
 ]
 
 [[package]]
@@ -1999,23 +2016,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e51e73328dc4ac0c7ccbda3a494dfa03df1de2f46018127f60c693f2648455b0"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "signer"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ckb-sdk",
- "ckb-stop-handler",
- "ckb-types",
- "dashmap",
- "derive_more",
- "log",
- "otx-format",
- "otx-plugin-protocol",
- "otx-pool-config",
- "utils",
 ]
 
 [[package]]

@@ -20,7 +20,7 @@ utils = { path = "./utils" }
 
 atomic-swap = { path = "plugins-built-in/atomic-swap" }
 dust-collector = { path = "plugins-built-in/dust-collector"}
-signer = { path = "plugins-built-in/signer" }
+otx-pool-plugin-signer = { path = "plugins-built-in/signer" }
 
 [workspace]
 members = [

@@ -2,7 +2,7 @@ use atomic_swap::{rpc::AtomicSwapRpc, AtomicSwap};
 use dust_collector::DustCollector;
 use otx_pool::{logo::print_logo, OtxPoolService};
 use otx_pool_config::{parse, AppConfig, ConfigFile};
-use signer::Signer;
+use otx_pool_plugin_signer::Signer;
 
 use anyhow::{anyhow, Result};
 use clap::Parser;
