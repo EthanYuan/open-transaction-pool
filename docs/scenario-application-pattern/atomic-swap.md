@@ -11,7 +11,7 @@ The initiator of an Open Transaction (OTX) locks the payment of one asset and th
 
 ## 1.2 OTX Overview
 
-The test case CKB <==> UDT for this pattern have already been implemented in [Swap: CKB to UDT](../../integration-test/src/tests/swap/atomic_swap_ckb_to_udt.rs#L29).
+The test case CKB <==> UDT for this pattern have already been implemented in [Swap: CKB to UDT](../../integration-test/src/tests/swap/atomic_swap_ckb_to_udt.rs#L29):
 
 Alice is willing to exchange 10 CKB for 10 UDT-A and pay 1 CKB as a transaction fee. Alice's OTX:
 
@@ -21,7 +21,7 @@ Alice is willing to exchange 10 CKB for 10 UDT-A and pay 1 CKB as a transaction 
         {capacity: 142+10+1, data: "", type: "", lock: Alice},
     ],
     outputs: [
-        {capacity: 142, data: 10, type: xudt A, lock: Alice},
+        {capacity: 142, data: 10, type: udt A, lock: Alice},
     ]
 }
 ```
@@ -31,7 +31,7 @@ Bob is willing to exchange 10 UDT-A for 10 CKB and pay 1 CKB as a transaction fe
 ```
 {
     inputs: [
-        {capacity: 142, data: 10, type: xudt A, lock: Bob},
+        {capacity: 142, data: 10, type: udt A, lock: Bob},
     ],
     outputs: [
         {capacity: 152-1, data: "", type: "", lock: Bob},
@@ -47,10 +47,10 @@ Final Transaction:
 {
     inputs: [
         {capacity: 142+10+1, data: "", type: "", lock: Alice},
-        {capacity: 142, data: 10, type: xudt A, lock: Bob},
+        {capacity: 142, data: 10, type: udt A, lock: Bob},
     ],
     outputs: [   
-        {capacity: 142, data: 10, type: xudt A, lock: Alice},
+        {capacity: 142, data: 10, type: udt A, lock: Alice},
         {capacity: 152-1, data: "", type: "", lock: Bob},
     ]
 }
@@ -131,6 +131,8 @@ pub struct SwapProposal {
 
 For the example in [1.2 OTX Overview](#12-otx-overview), it has the following json form:
 
+Alice's OTX swap proposal:
+
 ```json
 {
   "swap_proposal": {
@@ -151,6 +153,30 @@ For the example in [1.2 OTX Overview](#12-otx-overview), it has the following js
   "otx_id": "0x89a3e20524424a6d8bae9edc38c046fc030d942f5df7513c67079d72aacfc2b5"
 }
 ```
-The swap proposal here is calculated by relying on the value of the `Accouting Key Group` field in the OTX Format.
+
+Bob's OTX swap proposal:
+
+```json
+  {
+    "swap_proposal": {
+      "sell_udt": {
+        "code_hash": "0x9c6933d977360f115a3e9cd5a2e0e475853681b80d775d93ad0f8969da343e56",
+        "hash_type": "type",
+        "args": "0x019965e078505327d1d67e30cc68d48e80005394b80c91f3f8c9a72c28e53ca2"
+      },
+      "sell_amount": 10,
+      "buy_udt": {
+        "code_hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "hash_type": "data",
+        "args": "0x"
+      },
+      "buy_amount": 1000000000,
+      "pay_fee": 100000000
+    },
+    "otx_id": "0xecf65486f802a6365f6b0d19af4ca3a9d6f109e0adc547798e42dfe01e334748"
+  }
+```
+
+The swap proposals here are calculated by relying on the value of the `Accouting Key Group` field in the OTX Format.
 
 It is important to note that an OTX is required to meet the following conditions before it can be indexed by the atomic swap plugin: **after removing the max fee, only swaps of two asset types in the OTX**.
