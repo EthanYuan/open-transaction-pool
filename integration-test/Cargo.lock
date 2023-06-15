@@ -1124,7 +1124,6 @@ dependencies = [
  "secp256k1 0.24.3",
  "serde",
  "serde_json",
- "utils",
 ]
 
 [[package]]
@@ -1565,7 +1564,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "utils",
 ]
 
 [[package]]
@@ -1587,7 +1585,6 @@ dependencies = [
  "anyhow",
  "ckb-jsonrpc-types",
  "ckb-sdk",
- "ckb-stop-handler",
  "ckb-types",
  "dashmap",
  "derive_more",
@@ -1607,17 +1604,15 @@ name = "otx-pool-plugin-dust-collector"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ckb-jsonrpc-types",
  "ckb-sdk",
- "ckb-stop-handler",
  "ckb-types",
  "dashmap",
- "derive_more",
  "log",
  "otx-format",
  "otx-plugin-protocol",
  "otx-pool-config",
  "otx-sdk",
- "utils",
 ]
 
 [[package]]
@@ -1637,7 +1632,6 @@ dependencies = [
  "secp256k1 0.24.3",
  "serde",
  "serde_json",
- "utils",
 ]
 
 [[package]]
@@ -2453,28 +2447,6 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
-]
-
-[[package]]
-name = "utils"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ckb-crypto",
- "ckb-hash",
- "ckb-jsonrpc-types",
- "ckb-sdk",
- "ckb-types",
- "faster-hex",
- "log",
- "once_cell",
- "otx-format",
- "otx-pool-config",
- "rand 0.8.5",
- "secp256k1 0.24.3",
- "serde",
- "serde_json",
- "toml",
 ]
 
 [[package]]

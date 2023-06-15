@@ -1,9 +1,13 @@
+mod helper;
+
+use helper::SignInfo;
+
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_plugin_protocol::{
     HostServiceHandler, MessageFromHost, MessageFromPlugin, Plugin, PluginInfo, PluginMeta,
 };
 use otx_pool_config::{built_in_plugins::SignerConfig, CkbConfig, ScriptConfig};
-use utils::aggregator::{Committer, SignInfo};
+use otx_sdk::build_tx::send_tx;
 
 use anyhow::{anyhow, Result};
 use ckb_sdk::types::Address;
@@ -127,13 +131,13 @@ impl Plugin for Signer {
         let signed_ckb_tx = signer.sign_ckb_tx(ckb_tx).unwrap();
 
         // send_ckb
-        let committer = Committer::new(self.context.ckb_config.get_ckb_uri());
-        let tx_hash = if let Ok(tx_hash) = committer.send_tx(signed_ckb_tx) {
-            tx_hash
-        } else {
-            log::error!("failed to send final tx.");
-            return;
-        };
+        let tx_hash =
+            if let Ok(tx_hash) = send_tx(self.context.ckb_config.get_ckb_uri(), signed_ckb_tx) {
+                tx_hash
+            } else {
+                log::error!("failed to send final tx.");
+                return;
+            };
         log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
 
         // call host service to notify the host that the final tx has been sent

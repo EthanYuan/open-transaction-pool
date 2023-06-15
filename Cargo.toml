@@ -16,7 +16,6 @@ log = "0.4.17"
 otx-pool-config = { path = "util/config" }
 otx-pool = { path = "./otx-pool" }
 otx-sdk = { path = "./otx-sdk" }
-utils = { path = "./utils" }
 
 otx-pool-plugin-atomic-swap = { path = "plugins-built-in/atomic-swap" }
 otx-pool-plugin-dust-collector = { path = "plugins-built-in/dust-collector"}
@@ -30,7 +29,6 @@ members = [
     "otx-sdk",
     "util/client",
     "util/config",
-    "utils",
 
     "plugins-built-in/atomic-swap",
     "plugins-built-in/dust-collector",

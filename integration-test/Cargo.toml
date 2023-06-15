@@ -31,7 +31,6 @@ otx-pool = { path = "../otx-pool"}
 otx-pool-config = { path = "../util/config" }
 otx-sdk = { path = "../otx-sdk"}
 otx-util-client = { path = "../util/client" }
-utils = { path = "../utils" }
 
 otx-pool-plugin-dust-collector = { path = "../plugins-built-in/dust-collector" }
 
