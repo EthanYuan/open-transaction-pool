@@ -1,6 +1,6 @@
 use crate::const_definition::{OTX_POOL_URI, SCRIPT_CONFIG};
 use crate::help::start_otx_pool;
-use crate::tests::atomic_swap_udt_to_udt::build_signed_otx;
+use crate::tests::swap::atomic_swap_udt_to_udt::build_signed_otx;
 use crate::utils::instruction::ckb::{aggregate_transactions_into_blocks, dump_data};
 use crate::utils::instruction::mercury::prepare_ckb_capacity;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;

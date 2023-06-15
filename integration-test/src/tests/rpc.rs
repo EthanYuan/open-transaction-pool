@@ -1,6 +1,6 @@
 use crate::const_definition::{OTX_POOL_URI, SCRIPT_CONFIG};
 use crate::help::start_otx_pool;
-use crate::tests::small_blank_check::build_signed_otx;
+use crate::tests::payment::small_blank_check::build_signed_otx;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
