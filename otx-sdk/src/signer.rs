@@ -1,6 +1,5 @@
-use config::CkbConfig;
-use config::ScriptConfig;
 use otx_format::jsonrpc_types::{tx_view::tx_view_to_otx, OpenTransaction};
+use otx_pool_config::{CkbConfig, ScriptConfig};
 
 use anyhow::{anyhow, Result};
 use ckb_crypto::secp::Privkey;
@@ -85,8 +84,9 @@ impl Signer {
             tx.into(),
             fee,
             aggregate_count,
-            self.ckb_config.clone(),
-            self.script_config.to_owned(),
+            self.ckb_config.get_ckb_uri(),
+            self.script_config.get_sudt_code_hash(),
+            self.script_config.get_xudt_rce_code_hash(),
         )
         .map_err(|err| anyhow!(err.to_string()))?;
         Ok(otx)

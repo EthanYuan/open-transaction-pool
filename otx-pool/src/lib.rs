@@ -5,9 +5,9 @@ pub mod plugin_extension;
 pub mod pool;
 pub mod rpc;
 
-use config::NetworkConfig;
 use notify::{NotifyController, NotifyService};
 use otx_plugin_protocol::{HostServiceHandler, Plugin, PluginInfo, PluginMeta};
+use otx_pool_config::NetworkConfig;
 use plugin_extension::host_service::HostServiceProvider;
 use plugin_extension::manager::PluginManager;
 use pool::OtxPool;

@@ -1,6 +1,6 @@
-use config::{CkbConfig, ScriptConfig, ScriptInfo};
 use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
 use otx_format::jsonrpc_types::OpenTransaction;
+use otx_pool_config::{CkbConfig, ScriptConfig, ScriptInfo};
 
 use anyhow::{anyhow, Result};
 use ckb_jsonrpc_types::{OutputsValidator, TransactionView};
@@ -59,8 +59,9 @@ impl OtxBuilder {
             tx,
             fee,
             1,
-            self.ckb_config.clone(),
-            self.script_config.clone(),
+            self.ckb_config.get_ckb_uri(),
+            self.script_config.get_sudt_code_hash(),
+            self.script_config.get_xudt_rce_code_hash(),
         )
         .map_err(|err| anyhow!(err.to_string()))?;
         Ok(otx)
@@ -104,8 +105,9 @@ impl OtxBuilder {
             tx,
             fee,
             aggregate_count as u32,
-            self.ckb_config.clone(),
-            self.script_config.clone(),
+            self.ckb_config.get_ckb_uri(),
+            self.script_config.get_sudt_code_hash(),
+            self.script_config.get_xudt_rce_code_hash(),
         )
         .map_err(|err| anyhow!(err.to_string()))?;
         Ok(otx)

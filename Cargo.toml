@@ -13,7 +13,7 @@ ctrlc = "3.2.3"
 env_logger = "0.9.3"
 log = "0.4.17"
 
-config = { path = "util/config" }
+otx-pool-config = { path = "util/config" }
 otx-pool = { path = "./otx-pool" }
 otx-sdk = { path = "./otx-sdk" }
 utils = { path = "./utils" }

@@ -1,4 +1,4 @@
-use config::{CkbConfig, ScriptConfig};
+use otx_pool_config::{CkbConfig, ScriptConfig};
 
 use anyhow::Result;
 use ckb_jsonrpc_types as json_types;
