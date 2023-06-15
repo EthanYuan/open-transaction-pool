@@ -16,10 +16,12 @@ ckb-types = "0.105"
 env_logger = "0.9.3"
 hex = "0.4"
 inventory = "0.2"
+jsonrpc-core = "18.0"
 lazy_static = "1.4.0"
 log = "0.4"
 once_cell = "1.10"
 rand = "0.8"
+reqwest = { version = "0.11", features = ["blocking", "json"] }
 secp256k1 = { version = "0.24", features = ["recovery"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
