@@ -24,11 +24,11 @@ secp256k1 = { version = "0.24", features = ["recovery"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-client = { path = "../util/client" }
 otx-format = { path = "../otx-format" }
 otx-pool = { path = "../otx-pool"}
 otx-pool-config = { path = "../util/config" }
 otx-sdk = { path = "../otx-sdk"}
+otx-util-client = { path = "../util/client" }
 utils = { path = "../utils" }
 
 dust-collector = { path = "../plugins-built-in/dust-collector" }

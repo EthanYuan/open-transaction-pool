@@ -531,21 +531,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "client"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "atomic-swap",
- "ckb-types",
- "jsonrpc-core",
- "otx-format",
- "otx-plugin-protocol",
- "reqwest",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "common"
 version = "0.4.4"
 source = "git+https://github.com/EthanYuan/mercury.git?branch=dev-0.4-omni-otx#85babbb32da0d2c5c31998e4edc8c81176966892"
@@ -1159,7 +1144,6 @@ dependencies = [
  "ckb-sdk",
  "ckb-types",
  "clap",
- "client",
  "common",
  "core-rpc-types",
  "dust-collector",
@@ -1173,6 +1157,7 @@ dependencies = [
  "otx-pool",
  "otx-pool-config",
  "otx-sdk",
+ "otx-util-client",
  "rand 0.8.5",
  "secp256k1 0.24.3",
  "serde",
@@ -1652,6 +1637,21 @@ dependencies = [
  "serde",
  "serde_json",
  "utils",
+]
+
+[[package]]
+name = "otx-util-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "atomic-swap",
+ "ckb-types",
+ "jsonrpc-core",
+ "otx-format",
+ "otx-plugin-protocol",
+ "reqwest",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
