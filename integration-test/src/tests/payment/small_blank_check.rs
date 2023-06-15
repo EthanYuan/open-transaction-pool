@@ -8,10 +8,10 @@ use crate::utils::instruction::mercury::prepare_ckb_capacity;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
-use dust_collector::DEFAULT_FEE;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::OpenTxStatus;
 use otx_pool_config::{CkbConfig, ScriptInfo};
+use otx_pool_plugin_dust_collector::DEFAULT_FEE;
 use otx_sdk::address::build_otx_address_from_secp_address;
 use otx_sdk::build_tx::OtxBuilder;
 use otx_sdk::signer::{SighashMode, Signer};

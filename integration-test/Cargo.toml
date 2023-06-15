@@ -31,7 +31,7 @@ otx-sdk = { path = "../otx-sdk"}
 otx-util-client = { path = "../util/client" }
 utils = { path = "../utils" }
 
-dust-collector = { path = "../plugins-built-in/dust-collector" }
+otx-pool-plugin-dust-collector = { path = "../plugins-built-in/dust-collector" }
 
 common = { git = "https://github.com/EthanYuan/mercury.git", branch = "dev-0.4-omni-otx" }
 core-rpc-types = { git = "https://github.com/EthanYuan/mercury.git", branch = "dev-0.4-omni-otx" }

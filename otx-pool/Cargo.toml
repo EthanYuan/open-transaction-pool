@@ -31,5 +31,3 @@ otx-format = { path = "../otx-format" }
 otx-plugin-protocol = { path = "../otx-plugin-protocol" }
 otx-pool-config = { path = "../util/config" }
 utils = { path = "../utils" }
-
-dust-collector = { path = "../plugins-built-in/dust-collector" }
