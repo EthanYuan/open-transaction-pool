@@ -18,7 +18,7 @@ otx-pool = { path = "./otx-pool" }
 otx-sdk = { path = "./otx-sdk" }
 utils = { path = "./utils" }
 
-atomic-swap = { path = "plugins-built-in/atomic-swap" }
+otx-pool-plugin-atomic-swap = { path = "plugins-built-in/atomic-swap" }
 otx-pool-plugin-dust-collector = { path = "plugins-built-in/dust-collector"}
 otx-pool-plugin-signer = { path = "plugins-built-in/signer" }
 

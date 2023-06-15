@@ -55,28 +55,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "atomic-swap"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ckb-jsonrpc-types",
- "ckb-sdk",
- "ckb-stop-handler",
- "ckb-types",
- "dashmap",
- "derive_more",
- "jsonrpc-core",
- "jsonrpc-derive",
- "log",
- "otx-format",
- "otx-plugin-protocol",
- "otx-pool-config",
- "otx-sdk",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1345,13 +1323,13 @@ name = "open-transaction-pool"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "atomic-swap",
  "clap",
  "ctrlc",
  "env_logger",
  "log",
  "otx-pool",
  "otx-pool-config",
+ "otx-pool-plugin-atomic-swap",
  "otx-pool-plugin-dust-collector",
  "otx-pool-plugin-signer",
  "otx-sdk",
@@ -1480,6 +1458,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "otx-pool-plugin-atomic-swap"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ckb-jsonrpc-types",
+ "ckb-sdk",
+ "ckb-stop-handler",
+ "ckb-types",
+ "dashmap",
+ "derive_more",
+ "jsonrpc-core",
+ "jsonrpc-derive",
+ "log",
+ "otx-format",
+ "otx-plugin-protocol",
+ "otx-pool-config",
+ "otx-sdk",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "otx-pool-plugin-dust-collector"
 version = "0.1.0"
 dependencies = [
@@ -1539,11 +1539,11 @@ name = "otx-util-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "atomic-swap",
  "ckb-types",
  "jsonrpc-core",
  "otx-format",
  "otx-plugin-protocol",
+ "otx-pool-plugin-atomic-swap",
  "reqwest",
  "serde",
  "serde_json",

@@ -1,6 +1,6 @@
 use super::{request, RpcClient};
 
-use atomic_swap::SwapProposalWithOtxId;
+use otx_pool_plugin_atomic_swap::SwapProposalWithOtxId;
 use otx_format::{jsonrpc_types::OpenTransaction, types::OpenTxStatus};
 use otx_plugin_protocol::PluginInfo;
 

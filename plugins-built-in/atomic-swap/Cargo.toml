@@ -1,5 +1,5 @@
 [package]
-name = "atomic-swap"
+name = "otx-pool-plugin-atomic-swap"
 version = "0.1.0"
 edition = "2021"
 
