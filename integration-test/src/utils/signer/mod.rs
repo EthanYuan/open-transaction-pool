@@ -1,12 +1,12 @@
 mod secp;
 
 use crate::const_definition::{CHEQUE_DEVNET_TYPE_HASH, SCRIPT_CONFIG};
+use crate::utils::client::mercury_client::types::{ScriptGroupType, TransactionCompletionResponse};
 use secp::{get_secp_lock_arg, sign_secp};
 
 use anyhow::Result;
 use ckb_jsonrpc_types::{Script, Transaction};
 use ckb_types::{bytes::Bytes, packed, prelude::*, H256};
-use core_rpc_types::{ScriptGroupType, TransactionCompletionResponse};
 use secp256k1::{self, PublicKey, Secp256k1, SecretKey};
 
 use std::convert::From;

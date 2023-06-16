@@ -8,11 +8,11 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 clap = { version = "3.1", features = ["derive"] }
-ckb-crypto = "0.105"
-ckb-hash = "0.105"
-ckb-jsonrpc-types = "0.105"
-ckb-sdk = "=2.3.0"
-ckb-types = "0.105"
+ckb-crypto = "0.108"
+ckb-hash = "0.108"
+ckb-jsonrpc-types = "0.108"
+ckb-sdk = "2.5.0"
+ckb-types = "0.108"
 env_logger = "0.9.3"
 hex = "0.4"
 inventory = "0.2"
@@ -33,9 +33,6 @@ otx-pool-config = { path = "../util/config" }
 otx-sdk = { path = "../otx-sdk"}
 
 otx-pool-plugin-dust-collector = { path = "../plugins-built-in/dust-collector" }
-
-common = { git = "https://github.com/EthanYuan/mercury.git", branch = "dev-0.4-omni-otx" }
-core-rpc-types = { git = "https://github.com/EthanYuan/mercury.git", branch = "dev-0.4-omni-otx" }
 
 [workspace]
 members = ["."]
