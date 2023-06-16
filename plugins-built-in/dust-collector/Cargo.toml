@@ -8,9 +8,9 @@ description = "The open transaction pool plugin dust collector"
 
 [dependencies]
 anyhow = "1.0"
-ckb-jsonrpc-types = "0.105"
-ckb-sdk = "=2.3.0"
-ckb-types = "0.105"
+ckb-jsonrpc-types = "0.108"
+ckb-sdk = "2.5.0"
+ckb-types = "0.108"
 dashmap = "5.4.0"
 log = "0.4.17"
 

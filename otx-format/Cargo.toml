@@ -8,9 +8,9 @@ description = "The open transaction format"
 
 [dependencies]
 anyhow = "1.0"
-ckb-jsonrpc-types = "0.105"
-ckb-sdk = "=2.3.0"
-ckb-types = "0.105"
+ckb-jsonrpc-types = "0.108"
+ckb-sdk = "2.5.0"
+ckb-types = "0.108"
 derive_more = "0.99"
 linked-hash-map = "0.5.6"
 molecule = "=0.7.3"

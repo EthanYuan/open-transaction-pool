@@ -176,6 +176,7 @@ impl Plugin for DustCollector {
         let search_key = SearchKey {
             script: lock_script.into(),
             script_type: ScriptType::Lock,
+            script_search_mode: None,
             filter: None,
             with_data: None,
             group_by_transaction: None,

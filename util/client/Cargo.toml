@@ -8,7 +8,7 @@ description = "The open transaction pool util client"
 
 [dependencies]
 anyhow = "1.0"
-ckb-types = "0.105"
+ckb-types = "0.108"
 jsonrpc-core = "18.0"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 serde = { version = "1.0", features = ["derive"] }
