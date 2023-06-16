@@ -10,12 +10,12 @@ use crate::IntegrationTest;
 
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::OpenTxStatus;
+use otx_pool_client::OtxPoolRpcClient;
 use otx_pool_config::{CkbConfig, ScriptInfo};
 use otx_pool_plugin_dust_collector::DEFAULT_FEE;
 use otx_sdk::address::build_otx_address_from_secp_address;
 use otx_sdk::build_tx::OtxBuilder;
 use otx_sdk::signer::{SighashMode, Signer};
-use otx_util_client::OtxPoolRpcClient;
 
 use core_rpc_types::{GetBalancePayload, JsonItem};
 

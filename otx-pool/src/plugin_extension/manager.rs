@@ -4,7 +4,7 @@ use crate::plugin_extension::plugin_proxy::PluginProxy;
 
 use anyhow::Result;
 use ckb_async_runtime::Handle;
-use otx_plugin_protocol::{HostServiceHandler, Plugin, PluginInfo, PluginMeta};
+use otx_pool_plugin_protocol::{HostServiceHandler, Plugin, PluginInfo, PluginMeta};
 use tokio::task::{block_in_place, JoinHandle};
 
 use std::collections::HashMap;

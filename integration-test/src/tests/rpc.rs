@@ -6,8 +6,8 @@ use crate::IntegrationTest;
 
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::OpenTxStatus;
+use otx_pool_client::OtxPoolRpcClient;
 use otx_sdk::address::build_otx_address_from_secp_address;
-use otx_util_client::OtxPoolRpcClient;
 
 use ckb_types::H256;
 

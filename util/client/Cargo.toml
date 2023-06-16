@@ -1,5 +1,5 @@
 [package]
-name = "otx-util-client"
+name = "otx-pool-client"
 version = "0.1.0"
 edition = "2021"
 
@@ -14,6 +14,5 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 otx-format = { path = "../../otx-format" }
-otx-plugin-protocol = { path = "../../otx-plugin-protocol" }
 otx-pool-plugin-atomic-swap = { path = "../../plugins-built-in/atomic-swap" }
-
+otx-pool-plugin-protocol = { path = "../../otx-plugin-protocol" }

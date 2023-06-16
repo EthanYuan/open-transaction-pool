@@ -15,6 +15,6 @@ log = "0.4.17"
 secp256k1 = { version = "0.24", features = ["recovery"] }
 
 otx-format = { path = "../../otx-format" }
-otx-plugin-protocol = { path = "../../otx-plugin-protocol" }
 otx-pool-config = { path = "../../util/config" }
+otx-pool-plugin-protocol = { path = "../../otx-plugin-protocol" }
 otx-sdk = { path = "../../otx-sdk" }

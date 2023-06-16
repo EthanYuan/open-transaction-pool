@@ -13,8 +13,9 @@ ctrlc = "3.2.3"
 env_logger = "0.9.3"
 log = "0.4.17"
 
-otx-pool-config = { path = "util/config" }
 otx-pool = { path = "./otx-pool" }
+otx-pool-client = { path = "util/client" }
+otx-pool-config = { path = "util/config" }
 otx-sdk = { path = "./otx-sdk" }
 
 otx-pool-plugin-atomic-swap = { path = "plugins-built-in/atomic-swap" }

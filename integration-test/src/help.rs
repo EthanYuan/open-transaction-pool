@@ -8,8 +8,8 @@ use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::command::run_command_spawn;
 use crate::utils::instruction::{ckb::generate_blocks, ckb::unlock_frozen_capacity_in_genesis};
 
+use otx_pool_client::OtxPoolRpcClient;
 use otx_pool_config::{parse, AppConfig, ConfigFile};
-use otx_util_client::OtxPoolRpcClient;
 
 use common::lazy::{
     ACP_CODE_HASH, CHEQUE_CODE_HASH, DAO_CODE_HASH, PW_LOCK_CODE_HASH, SECP256K1_CODE_HASH,

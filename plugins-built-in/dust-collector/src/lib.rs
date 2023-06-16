@@ -3,11 +3,11 @@ mod helper;
 use helper::{OutputAmount, TxBuilder};
 
 use otx_format::jsonrpc_types::OpenTransaction;
-use otx_plugin_protocol::{
-    HostServiceHandler, MessageFromHost, MessageFromPlugin, Plugin, PluginInfo, PluginMeta,
-};
 use otx_pool_config::built_in_plugins::DustCollectorConfig;
 use otx_pool_config::{CkbConfig, ScriptConfig};
+use otx_pool_plugin_protocol::{
+    HostServiceHandler, MessageFromHost, MessageFromPlugin, Plugin, PluginInfo, PluginMeta,
+};
 use otx_sdk::build_tx::OtxBuilder;
 
 use anyhow::{anyhow, Result};

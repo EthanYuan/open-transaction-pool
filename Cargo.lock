@@ -1328,6 +1328,7 @@ dependencies = [
  "env_logger",
  "log",
  "otx-pool",
+ "otx-pool-client",
  "otx-pool-config",
  "otx-pool-plugin-atomic-swap",
  "otx-pool-plugin-dust-collector",
@@ -1402,19 +1403,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "otx-plugin-protocol"
-version = "0.1.0"
-dependencies = [
- "ckb-types",
- "crossbeam-channel",
- "log",
- "otx-format",
- "serde",
- "serde_derive",
- "serde_json",
-]
-
-[[package]]
 name = "otx-pool"
 version = "0.1.0"
 dependencies = [
@@ -1436,11 +1424,26 @@ dependencies = [
  "log",
  "molecule",
  "otx-format",
- "otx-plugin-protocol",
  "otx-pool-config",
+ "otx-pool-plugin-protocol",
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "otx-pool-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ckb-types",
+ "jsonrpc-core",
+ "otx-format",
+ "otx-pool-plugin-atomic-swap",
+ "otx-pool-plugin-protocol",
+ "reqwest",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1469,8 +1472,8 @@ dependencies = [
  "jsonrpc-derive",
  "log",
  "otx-format",
- "otx-plugin-protocol",
  "otx-pool-config",
+ "otx-pool-plugin-protocol",
  "otx-sdk",
  "serde",
  "serde_json",
@@ -1487,9 +1490,22 @@ dependencies = [
  "dashmap",
  "log",
  "otx-format",
- "otx-plugin-protocol",
  "otx-pool-config",
+ "otx-pool-plugin-protocol",
  "otx-sdk",
+]
+
+[[package]]
+name = "otx-pool-plugin-protocol"
+version = "0.1.0"
+dependencies = [
+ "ckb-types",
+ "crossbeam-channel",
+ "log",
+ "otx-format",
+ "serde",
+ "serde_derive",
+ "serde_json",
 ]
 
 [[package]]
@@ -1503,8 +1519,8 @@ dependencies = [
  "dashmap",
  "log",
  "otx-format",
- "otx-plugin-protocol",
  "otx-pool-config",
+ "otx-pool-plugin-protocol",
  "otx-sdk",
  "secp256k1",
 ]
@@ -1521,24 +1537,9 @@ dependencies = [
  "ckb-types",
  "jsonrpc-core",
  "otx-format",
- "otx-plugin-protocol",
  "otx-pool-config",
+ "otx-pool-plugin-protocol",
  "secp256k1",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "otx-util-client"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ckb-types",
- "jsonrpc-core",
- "otx-format",
- "otx-plugin-protocol",
- "otx-pool-plugin-atomic-swap",
- "reqwest",
  "serde",
  "serde_json",
 ]
