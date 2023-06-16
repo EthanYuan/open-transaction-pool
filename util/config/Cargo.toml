@@ -1,6 +1,7 @@
 [package]
 name = "otx-pool-config"
 version = "0.1.0"
+license = "MIT"
 edition = "2021"
 description = "The open transaction pool util config"
 

@@ -1,6 +1,7 @@
 [package]
 name = "otx-sdk"
 version = "0.1.0"
+license = "MIT"
 edition = "2021"
 description = "The open transaction related sdk"
 
@@ -18,6 +19,6 @@ secp256k1 = { version = "0.24", features = ["recovery"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-otx-format = { path = "../otx-format" }
-otx-pool-config = { path = "../util/config" }
-otx-pool-plugin-protocol = { path = "../otx-plugin-protocol" }
+otx-format = { path = "../otx-format", version = "= 0.1.0" }
+otx-pool-config = { path = "../util/config", version = "= 0.1.0" }
+otx-pool-plugin-protocol = { path = "../otx-plugin-protocol", version = "= 0.1.0" }
