@@ -1,3 +1,5 @@
+#![allow(clippy::upper_case_acronyms)]
+
 use super::uints::{Uint128, Uint16, Uint32, Uint64};
 
 use ckb_jsonrpc_types::{BlockNumber, CellDep, CellOutput, OutPoint, Script, TransactionView};
@@ -13,9 +15,9 @@ pub const SECP256K1_WITNESS_LOCATION: (u32, u32) = (20, 65); // (offset, length)
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AssetType {
     #[serde(alias = "ckb")]
-    Ckb,
+    CKB,
     #[serde(alias = "udt")]
-    Udt,
+    UDT,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -26,11 +28,11 @@ pub struct AssetInfo {
 
 impl AssetInfo {
     pub fn new_ckb() -> Self {
-        AssetInfo::new(AssetType::Ckb, H256::default())
+        AssetInfo::new(AssetType::CKB, H256::default())
     }
 
     pub fn new_udt(udt_hash: H256) -> Self {
-        AssetInfo::new(AssetType::Udt, udt_hash)
+        AssetInfo::new(AssetType::UDT, udt_hash)
     }
 
     fn new(asset_type: AssetType, udt_hash: H256) -> Self {

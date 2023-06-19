@@ -113,7 +113,7 @@ pub(crate) fn prepare_ckb_capacity(address: &Address, capacity: u64) -> Result<O
         .records
         .into_iter()
         .find(|record| {
-            record.asset_info.asset_type == AssetType::Ckb
+            record.asset_info.asset_type == AssetType::CKB
                 && record.amount == (capacity as u128).into()
                 && record.io_type == IOType::Output
         })
