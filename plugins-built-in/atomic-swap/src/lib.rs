@@ -70,7 +70,7 @@ impl SwapProposal {
         }
     }
 
-    fn cap_match(&self, swap_proposal: SwapProposal) -> bool {
+    fn can_match(&self, swap_proposal: SwapProposal) -> bool {
         self.pay_fee + swap_proposal.pay_fee >= MIN_FEE
             && self.buy_udt == swap_proposal.sell_udt
             && self.sell_udt == swap_proposal.buy_udt
@@ -210,7 +210,7 @@ impl Plugin for AtomicSwap {
         log::info!("swap proposal {:?}", swap_proposal);
 
         let otx_hash = otx.get_tx_hash().expect("get otx tx hash");
-        let item = match self.context.proposals.get(&swap_proposal.pair_proposal()) {
+        let candidates = match self.context.proposals.get(&swap_proposal.pair_proposal()) {
             Some(item) => item,
             None => {
                 log::info!("insert swap proposal as {:#x}", otx_hash);
@@ -228,7 +228,8 @@ impl Plugin for AtomicSwap {
         };
 
         log::info!("try to match the swap proposal {}", otx_hash.to_string());
-        for pair_otx_hash in item.value() {
+        let mut found_match = false;
+        for pair_otx_hash in candidates.value() {
             let pair_otx = self
                 .context
                 .otxs
@@ -236,7 +237,7 @@ impl Plugin for AtomicSwap {
                 .expect("get pair otx from otxs")
                 .value()
                 .clone();
-            if !swap_proposal.cap_match(pair_otx.1) {
+            if !swap_proposal.can_match(pair_otx.1) {
                 log::info!("match {:#x} with {:#x}: failed", otx_hash, pair_otx_hash);
                 continue;
             }
@@ -272,10 +273,11 @@ impl Plugin for AtomicSwap {
                 }
             };
             log::info!("commit final Ckb tx: {:?}", tx_hash.to_string());
+            found_match = true;
 
             // call host service
             let message = MessageFromPlugin::MergeOtxsAndSentToCkb((
-                vec![pair_otx_hash.to_owned(), otx_hash],
+                vec![pair_otx_hash.to_owned(), otx_hash.to_owned()],
                 tx_hash,
             ));
             if let Some(MessageFromHost::Ok) = Request::call(&self.context.service_handler, message)
@@ -288,6 +290,18 @@ impl Plugin for AtomicSwap {
             }
 
             break;
+        }
+
+        if !found_match {
+            self.context
+                .otxs
+                .insert(otx_hash.clone(), (otx, swap_proposal.clone()));
+            swap_proposal.pay_fee = 0;
+            self.context
+                .proposals
+                .entry(swap_proposal)
+                .or_insert_with(HashSet::new)
+                .insert(otx_hash);
         }
     }
 
