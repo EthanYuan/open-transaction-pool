@@ -27,9 +27,9 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 otx-format = { path = "../otx-format" }
-otx-pool = { path = "../otx-pool"}
 otx-pool-client = { path = "../util/client" }
 otx-pool-config = { path = "../util/config" }
+otx-pool-service = { path = "../otx-pool-service"}
 otx-sdk = { path = "../otx-sdk"}
 
 otx-pool-plugin-dust-collector = { path = "../plugins-built-in/dust-collector" }
