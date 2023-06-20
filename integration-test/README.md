@@ -3,7 +3,8 @@
 
 ### Install CKB
 
-- [install Ckb](https://docs.nervos.org/docs/basics/guides/get-ckb/#build-from-source) (compile and install with the latest release version)
+- [install ckb](https://docs.nervos.org/docs/basics/guides/get-ckb/#build-from-source) (compile and install with the latest release version)
+- [install ckb-cli](https://github.com/nervosnetwork/ckb-cli#build-this-project)
 
 ### Init Mercury
 
@@ -22,6 +23,16 @@ psql -h localhost -U postgres -d mercury-otx-dev -f devtools/create_table.sql
 ```bash
 cd integration-test
 rm -rf ./dev_chain/dev/data  ./free-space
+```
+
+Please ensure that the config of ckb-cli is set to the local network `http://127.0.0.1:8114`.
+
+```bash
+ckb-cli
+```
+
+```bash
+CKB> config --url http://127.0.0.1:8114
 ```
 
 ### Run integration tests
@@ -94,23 +105,22 @@ If you need to deploy contract scripts on the dev chain, you need to do the foll
 
     ```toml
     [[scripts]]
-    script_name = "omni_lock"
+    script_name = "otx-sighash-lock"
     script = '''
     {
         "args": "0x",
-        "code_hash": "0xbb4469004225b39e983929db71fe2253cba1d49a76223e9e1d212cdca1f79f28",
+        "code_hash": "0xddefa1e2cede14bd25f92143f7f4ca3af6fa5ac1969c53cb3c3914c9f1cded96",
         "hash_type": "type"
     }
     '''
     cell_dep = '''
     {
-        "dep_type": "code",
+        "dep_type": "dep_group",
         "out_point": {
-            "index": "0x9",
-            "tx_hash": "0x8ca16b174cdc004eca0d9de4647b38873bd7bfd305f52155f897d90b2b0b22eb"
+            "index": "0x4",
+            "tx_hash": "0x8d47e8719ae7a7c27785babd837d17454a48e6f353ddfe4bdfe30ccf33aacca5"
         }
     }
-    '''
     ```
 
     The following code is the algorithm to calculate the code hash in the above config:
