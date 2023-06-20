@@ -4,13 +4,13 @@ In payment scenarios, there are various sub-patterns that can be named to organi
 
 ## 1 Pattern: Dust Collector
 
-The test case for this pattern have already been implemented in [Payment: Dust Collector](../../integration-test/src/tests/payment/dust_collector.rs#L29).
+The test case for this pattern have already been implemented in [Payment: Dust Collector](../../integration-test/src/tests/payment/small_blank_check.rs).
 
 ### 1.1 Pattern Explanation
 
 The naming of this pattern was inspired by "Bitcoin Dust".
 
-The Dust Collector pattern involves collecting multiple small, "blank checks" (i.e. Open Transaction without payee) to solve the 61 Capacity problem and the ACP collection hotspot problem that exists with online transfer transactions. This pattern also supports xUDT payments.
+The Dust Collector pattern involves collecting multiple small, "blank checks" (i.e. Open Transaction without payee) to solve the 61 Capacity problem and the ACP collection hotspot problem that exists with online transfer transactions. This pattern also supports UDT payments.
 
 The Open Transaction (OTX) Pool in this pattern is usually the centralized payee. After gathering a certain number of small, blank checks, the payee can add its own output, as well as its own input, cell dep, and signature as needed (e.g., when the total amount collected is insufficient to create a new payee output cell).
 
@@ -72,7 +72,7 @@ The payee assembles the final Ckb transaction, which receives a total of 51 CKB 
 
 #### 1.3.1 Creation of OTX on the wallet side
 
-The wallet creates a payment OTX in which all inputs to be unlocked must use the [Omni Lock](https://github.com/nervosnetwork/ckb-production-scripts/tree/opentx) that supports OTX. After signing the OTX, it is submitted to the OTX Pool operated by the payee.
+The wallet creates a payment OTX in which all inputs to be unlocked must use the [otx-sighash-lock](https://github.com/EthanYuan/otx-sighash-lock) that supports OTX. After signing the OTX, it is submitted to the OTX Pool operated by the payee.
 
 In this pattern, the `cell dep`, `input`, `output`, and `witness` in the OTX are all determined, so they can be converted into the corresponding [`Essential Keys`](https://github.com/doitian/rfcs/blob/rfc-open-transaction/rfcs/0046-open-transaction/0046-open-transaction.md#essential-keys) relatively easily. The fields in `Essential Keys` correspond one-to-one with the fields in [CKB Open Transaction](https://github.com/doitian/rfcs/blob/rfc-open-transaction/rfcs/0046-open-transaction/0046-open-transaction.md). 
 
@@ -235,66 +235,3 @@ Whenever the OTX Pool notifies the plugin of a new OTX, the plugin checks whethe
 After receiving payment OTX for a period of time, it merges the currently accumulated OTXs, assembles them into a final Ckb transaction, and submits it to the Ckb node. 
 
 When the Ckb transaction is sent successfully, the plugin deletes its own indexed OTX and immediately notifies the host OTX Pool, which deletes its own indexed otxs and sends a notification to inform other registered plugins.
-
-## 2. Pattern: Personal Check
-
-### 2.1 Pattern Explanation
-
-Compared to a blank check, the Personal Check pattern specifies the payee in the OTX.
-
-In this pattern, multiple OTXs with the same payee can be concatenated and merged. However, it is required that the input and output for each payee in the OTXs are fixed in position.
-
-The pattern requires the payee to do a full sign at the end, making it safer than the Dust Collector pattern. The payment of the OTX can only be finally decided and signed by the payee.
-
-### 2.2 OTX Overview
-
-Alice's otx
-
-```
-{ 
-    inputs: [ 
-        {capacity: "", data: "", type: "", lock: secp Payee},
-        {capacity: 151, data: "", type: "", lock: otx Alice}
-    ], 
-    outputs: [     
-        {capacity: "", data: "", type: "", lock: secp Payee},
-        {capacity: 151-51, data: "", type: "", lock: otx Alice}
-    ]
-}
-```
-
-Bob's otx
-
-```
-{ 
-    inputs: [ 
-        {capacity: "", data: "", type: "", lock: secp Payee},
-        {capacity: 144, data: 50, type: xudt z, lock: otx Bob}
-    ], 
-    outputs: [ 
-        {capacity: "", data: "", type: "", lock: secp Payee},
-        {capacity: 144, data: 50-50, type: xudt z, lock: otx Bob}
-    ]
-}
-```
-
-Payee's final Ckb tx:
-
-```
-{ 
-    inputs: [ 
-        {capacity: 142, data: 100, type: xudt z, lock: secp Payee},
-        {capacity: 151, data: "", type: "", lock: otx Alice}, 
-        {capacity: 144, data: 51, type: xudt z, lock: otx Bob}
-    ], 
-    outputs: [ 
-        {capacity: 142+50, data: 100+50, type: xudt z, lock: secp Payee},
-        {capacity: 151-51, data: "", type: "", lock: otx Alice}, 
-        {capacity: 144, data: 50-50, type: xudt z, lock: otx Bob}
-    ]
-}
-```
-
-### 2.3 Workflow
-
-To be continued.
