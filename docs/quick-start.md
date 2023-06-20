@@ -36,7 +36,6 @@ nano ./src/configs/mainnet_config.toml
 
 ```sh
 # testnet
-# in preparation, will be available soon
 nano ./src/configs/testnet_config.toml 
 ```
 
@@ -62,13 +61,16 @@ listen_uri = "http://127.0.0.1:8118"
 enabled = true
 default_address = "DEFAUT_ADDRESS"
 
+[built_in_plugin_atomic_swap]
+enabled = true
+
 [built_in_plugin_signer]
 enabled = true
 key = "PRIVKEY"
 default_address = "DEFAUT_ADDRESS"
 ```
 
-After updating the configuration files, you can proceed to start the Open Transaction Pool service.
+After updating the configuration files, you can proceed to start the Open Transaction Pool.
 
 ## Running Service
 
@@ -82,7 +84,7 @@ export DEFAUT_ADDRESS="ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xws
 Then start the OTX pool service:
 
 ```sh
-target/release/open-transaction-pool --config-path integration-test/dev_chain/devnet_config.toml
+target/release/otx-pool --config-path integration-test/dev_chain/devnet_config.toml
 ```
 
 **NOTE**: The address and key are for demo purposes only and should not be used in a production environment.
