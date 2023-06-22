@@ -1,9 +1,8 @@
 #![allow(dead_code)]
 
 use crate::const_definition::{CELL_BASE_MATURE_EPOCH, CKB_URI, GENESIS_EPOCH_LENGTH, MERCURY_URI};
+use crate::utils::client::ckb_client::CkbRpcClient;
 use crate::utils::client::mercury_client::MercuryRpcClient;
-
-use utils::client::ckb_client::CkbRpcClient;
 
 use anyhow::Result;
 use ckb_jsonrpc_types::{OutputsValidator, Transaction};

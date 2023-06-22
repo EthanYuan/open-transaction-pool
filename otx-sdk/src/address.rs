@@ -1,4 +1,4 @@
-use config::ScriptInfo;
+use otx_pool_config::ScriptInfo;
 
 use anyhow::Result;
 use ckb_sdk::{Address, AddressPayload};

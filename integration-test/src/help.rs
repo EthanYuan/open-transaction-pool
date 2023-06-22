@@ -1,20 +1,14 @@
 use super::const_definition::{
-    CHEQUE_DEVNET_TYPE_HASH, CKB_URI, DAO_DEVNET_TYPE_HASH, MERCURY_URI, OTX_POOL_URI,
-    PW_LOCK_DEVNET_TYPE_HASH, RPC_TRY_COUNT, RPC_TRY_INTERVAL_SECS, SCRIPT_CONFIG,
+    CKB_URI, MERCURY_URI, OTX_POOL_URI, RPC_TRY_COUNT, RPC_TRY_INTERVAL_SECS, SCRIPT_CONFIG,
 };
 use crate::const_definition::CURRENT_OTX_POOL_SERVICE_PROCESS;
+use crate::utils::client::ckb_client::CkbRpcClient;
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::command::run_command_spawn;
 use crate::utils::instruction::{ckb::generate_blocks, ckb::unlock_frozen_capacity_in_genesis};
 
-use client::OtxPoolRpcClient;
-use config::{parse, AppConfig, ConfigFile};
-use utils::client::ckb_client::CkbRpcClient;
-
-use common::lazy::{
-    ACP_CODE_HASH, CHEQUE_CODE_HASH, DAO_CODE_HASH, PW_LOCK_CODE_HASH, SECP256K1_CODE_HASH,
-    SUDT_CODE_HASH,
-};
+use otx_pool_client::OtxPoolRpcClient;
+use otx_pool_config::{parse, AppConfig, ConfigFile};
 
 use anyhow::Result;
 use ckb_sdk::Address;
@@ -104,19 +98,6 @@ pub(crate) fn start_mercury(ckb: Child) -> (Child, Child) {
                 teardown(vec![ckb, mercury]);
                 panic!("generate block when start mercury");
             }
-
-            // init built-in script code hash
-            let _ = SECP256K1_CODE_HASH.set(
-                SCRIPT_CONFIG
-                    .get()
-                    .unwrap()
-                    .get_secp256k1_blake160_sighash_all_code_hash(),
-            );
-            let _ = SUDT_CODE_HASH.set(SCRIPT_CONFIG.get().unwrap().get_sudt_code_hash());
-            let _ = ACP_CODE_HASH.set(SCRIPT_CONFIG.get().unwrap().get_anyone_can_pay_code_hash());
-            let _ = CHEQUE_CODE_HASH.set(CHEQUE_DEVNET_TYPE_HASH);
-            let _ = DAO_CODE_HASH.set(DAO_DEVNET_TYPE_HASH);
-            let _ = PW_LOCK_CODE_HASH.set(PW_LOCK_DEVNET_TYPE_HASH);
 
             return (ckb, mercury);
         } else {

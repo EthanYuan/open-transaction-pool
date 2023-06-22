@@ -1,9 +1,9 @@
 pub mod rpc;
 
-use config::{CkbConfig, ScriptConfig};
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::PaymentAmount;
-use otx_plugin_protocol::{
+use otx_pool_config::{CkbConfig, ScriptConfig};
+use otx_pool_plugin_protocol::{
     HostServiceHandler, MessageFromHost, MessageFromPlugin, Plugin, PluginInfo, PluginMeta,
 };
 use otx_sdk::build_tx::send_tx;

@@ -1,6 +1,6 @@
 use crate::notify::RuntimeHandle;
 
-use otx_plugin_protocol::{
+use otx_pool_plugin_protocol::{
     HostServiceHandler, MessageFromHost, MessageFromPlugin, MessageType, Plugin, PluginInfo,
     PluginMeta,
 };

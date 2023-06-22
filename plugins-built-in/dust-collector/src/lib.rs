@@ -1,11 +1,14 @@
-use config::built_in_plugins::DustCollectorConfig;
-use config::{CkbConfig, ScriptConfig};
+mod helper;
+
+use helper::{OutputAmount, TxBuilder};
+
 use otx_format::jsonrpc_types::OpenTransaction;
-use otx_plugin_protocol::{
+use otx_pool_config::built_in_plugins::DustCollectorConfig;
+use otx_pool_config::{CkbConfig, ScriptConfig};
+use otx_pool_plugin_protocol::{
     HostServiceHandler, MessageFromHost, MessageFromPlugin, Plugin, PluginInfo, PluginMeta,
 };
 use otx_sdk::build_tx::OtxBuilder;
-use utils::aggregator::{OtxAggregator, OutputAmount};
 
 use anyhow::{anyhow, Result};
 use ckb_sdk::rpc::ckb_indexer::{Order, ScriptType, SearchKey};
@@ -173,6 +176,7 @@ impl Plugin for DustCollector {
         let search_key = SearchKey {
             script: lock_script.into(),
             script_type: ScriptType::Lock,
+            script_search_mode: None,
             filter: None,
             with_data: None,
             group_by_transaction: None,
@@ -197,7 +201,7 @@ impl Plugin for DustCollector {
             capacity: HumanCapacity::from(output_capacity),
             udt_amount: None,
         };
-        let aggregator = OtxAggregator::new(
+        let aggregator = TxBuilder::new(
             self.context.ckb_config.clone(),
             self.context.script_config.clone(),
         );

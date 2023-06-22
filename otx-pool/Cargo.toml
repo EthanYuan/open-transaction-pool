@@ -1,7 +1,9 @@
 [package]
 name = "otx-pool"
 version = "0.1.0"
+license = "MIT"
 edition = "2021"
+description = "The open transaction pool service core"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -9,11 +11,11 @@ edition = "2021"
 ansi_term = "0.12"
 anyhow = "1.0"
 async-trait = "0.1"
-ckb-async-runtime = "0.105"
-ckb-jsonrpc-types = "0.105"
-ckb-sdk = "=2.3.0"
-ckb-stop-handler = "0.105"
-ckb-types = "0.105"
+ckb-async-runtime = "0.108"
+ckb-jsonrpc-types = "0.108"
+ckb-sdk = "2.5.0"
+ckb-stop-handler = "0.108"
+ckb-types = "0.108"
 crossbeam-channel = "0.5.1"
 dashmap = "5.4.0"
 derive_more = "0.99"
@@ -27,9 +29,6 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1", features = ["sync", "process"] }
 
-config = { path = "../util/config" }
-otx-format = { path = "../otx-format" }
-otx-plugin-protocol = { path = "../otx-plugin-protocol" }
-utils = { path = "../utils" }
-
-dust-collector = { path = "../plugins-built-in/dust-collector" }
+otx-format = { path = "../otx-format", version = "= 0.1.0" }
+otx-pool-config = { path = "../util/config", version = "= 0.1.0" }
+otx-pool-plugin-protocol = { path = "../otx-plugin-protocol", version = "= 0.1.0" }

@@ -7,7 +7,7 @@ use crate::utils::instruction::mercury::prepare_ckb_capacity;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
-use client::OtxPoolRpcClient;
+use otx_pool_client::OtxPoolRpcClient;
 use otx_sdk::address::build_otx_address_from_secp_address;
 
 use std::thread::sleep;

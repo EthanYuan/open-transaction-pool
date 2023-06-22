@@ -3,7 +3,7 @@ use crate::pool::OtxPool;
 
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::OpenTxStatus;
-use otx_plugin_protocol::{HostServiceHandler, MessageFromHost, MessageFromPlugin};
+use otx_pool_plugin_protocol::{HostServiceHandler, MessageFromHost, MessageFromPlugin};
 
 use anyhow::{anyhow, Result};
 use ckb_types::core::service::Request;

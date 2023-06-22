@@ -1,17 +1,27 @@
-use config::{CkbConfig, ScriptConfig};
+use otx_format::jsonrpc_types::tx_view::tx_view_to_otx;
+use otx_format::jsonrpc_types::OpenTransaction;
+use otx_pool_config::{CkbConfig, ScriptConfig};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use ckb_jsonrpc_types as json_types;
+use ckb_jsonrpc_types::{OutPoint, TransactionView};
 use ckb_sdk::{
     rpc::CkbRpcClient, traits::DefaultCellDepResolver, Address, HumanCapacity, ScriptId,
 };
 use ckb_types::{
     bytes::Bytes,
-    core::{BlockView, Capacity, ScriptHashType, TransactionView},
-    packed::{Byte32, CellDep, CellOutput, OutPoint, Script, Transaction},
+    core::TransactionView as CoreTransactionView,
+    core::{BlockView, Capacity, ScriptHashType},
+    packed::{Byte32, CellDep, CellOutput, OutPoint as PackedOutPoint},
+    packed::{Script, Transaction},
     prelude::*,
     H256,
 };
+
+pub struct OutputAmount {
+    pub capacity: HumanCapacity,
+    pub udt_amount: Option<u128>,
+}
 
 pub struct TxBuilder {
     ckb_config: CkbConfig,
@@ -24,6 +34,45 @@ impl TxBuilder {
             ckb_config,
             script_config,
         }
+    }
+
+    pub fn add_input_and_output(
+        &self,
+        open_tx: OpenTransaction,
+        input: OutPoint,
+        output_address: &Address,
+        output_amout: OutputAmount,
+        udt_issuer_script: Script,
+        fee: u64,
+    ) -> Result<OpenTransaction> {
+        let aggregate_count = open_tx
+            .get_aggregate_count()
+            .map_err(|err| anyhow!(err.to_string()))?;
+        let ckb_tx = open_tx
+            .try_into()
+            .map_err(|_| anyhow!("open tx convert to ckb tx"))?;
+        let tx_info = self.add_input(
+            ckb_tx,
+            input.tx_hash,
+            std::convert::Into::<u32>::into(input.index) as usize,
+        )?;
+        let ckb_tx = self.add_output(
+            tx_info,
+            output_address,
+            output_amout.capacity,
+            output_amout.udt_amount,
+            udt_issuer_script,
+        )?;
+
+        tx_view_to_otx(
+            ckb_tx,
+            fee,
+            aggregate_count,
+            self.ckb_config.get_ckb_uri(),
+            self.script_config.get_sudt_code_hash(),
+            self.script_config.get_xudt_rce_code_hash(),
+        )
+        .map_err(|err| anyhow!(err.to_string()))
     }
 
     pub fn add_input(
@@ -39,18 +88,18 @@ impl TxBuilder {
 
     fn add_live_cell(
         &self,
-        tx: TransactionView,
+        tx: CoreTransactionView,
         tx_hash: H256,
         output_index: usize,
-    ) -> Result<TransactionView> {
+    ) -> Result<CoreTransactionView> {
         let mut ckb_client = CkbRpcClient::new(self.ckb_config.get_ckb_uri());
-        let out_point_json = ckb_jsonrpc_types::OutPoint {
+        let out_point_json = OutPoint {
             tx_hash: tx_hash.clone(),
             index: ckb_jsonrpc_types::Uint32::from(output_index as u32),
         };
         let cell_with_status = ckb_client.get_live_cell(out_point_json, false)?;
         let input_outpoint =
-            OutPoint::new(Byte32::from_slice(tx_hash.as_bytes())?, output_index as u32);
+            PackedOutPoint::new(Byte32::from_slice(tx_hash.as_bytes())?, output_index as u32);
         // since value should be provided in args
         let input = ckb_types::packed::CellInput::new(input_outpoint, 0);
         let cell_dep_resolver = {
@@ -71,12 +120,12 @@ impl TxBuilder {
 
     pub fn add_output(
         &self,
-        tx_view: ckb_jsonrpc_types::TransactionView,
+        tx_view: TransactionView,
         payee_address: &Address,
         capacity: HumanCapacity,
         udt_amount: Option<u128>,
         udt_issuer_script: Script,
-    ) -> Result<json_types::TransactionView> {
+    ) -> Result<TransactionView> {
         let tx = Transaction::from(tx_view.inner).into_view();
         let lock_script = Script::from(payee_address.payload());
 
@@ -104,7 +153,7 @@ impl TxBuilder {
         }
 
         let xudt_cell_dep = CellDep::new_builder()
-            .out_point(OutPoint::new(
+            .out_point(PackedOutPoint::new(
                 Byte32::from_slice(
                     self.script_config
                         .get_xdut_cell_dep()

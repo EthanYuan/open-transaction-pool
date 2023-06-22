@@ -3,6 +3,10 @@ use crate::const_definition::{
     UDT_1_HASH, UDT_1_HOLDER_ACP_ADDRESS, UDT_1_HOLDER_PK, UDT_1_HOLDER_SECP_ADDRESS, UDT_2_HASH,
     UDT_2_HOLDER_ACP_ADDRESS, UDT_2_HOLDER_PK, UDT_2_HOLDER_SECP_ADDRESS,
 };
+use crate::utils::client::mercury_client::types::{
+    AssetInfo, AssetType, IOType, JsonItem, OutputCapacityProvider, SudtIssuePayload, ToInfo,
+    TransferPayload,
+};
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::ckb::send_transaction_to_ckb;
 use crate::utils::lock::acp::build_acp_address;
@@ -11,14 +15,10 @@ use crate::utils::lock::secp::prepare_secp_address_with_ckb_capacity;
 use crate::utils::signer::sign_transaction;
 
 use anyhow::Result;
+
 use ckb_jsonrpc_types::OutPoint;
 use ckb_sdk::Address;
 use ckb_types::H256;
-
-use core_rpc_types::{
-    AssetInfo, AssetType, IOType, JsonItem, OutputCapacityProvider, SudtIssuePayload, ToInfo,
-    TransferPayload,
-};
 
 pub fn issue_udt_1() -> Result<()> {
     log::info!("issue udt 1 for test");

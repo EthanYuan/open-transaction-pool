@@ -1,6 +1,7 @@
 use crate::const_definition::{CKB_URI, MERCURY_URI, OTX_POOL_URI, SCRIPT_CONFIG};
 use crate::help::start_otx_pool;
 use crate::utils::client::ckb_cli_client::ckb_cli_transfer_ckb;
+use crate::utils::client::mercury_client::types::{GetBalancePayload, JsonItem};
 use crate::utils::client::mercury_client::MercuryRpcClient;
 use crate::utils::instruction::ckb::aggregate_transactions_into_blocks;
 use crate::utils::instruction::ckb::dump_data;
@@ -8,16 +9,14 @@ use crate::utils::instruction::mercury::prepare_ckb_capacity;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
 use crate::IntegrationTest;
 
-use client::OtxPoolRpcClient;
-use config::{CkbConfig, ScriptInfo};
-use dust_collector::DEFAULT_FEE;
 use otx_format::jsonrpc_types::OpenTransaction;
 use otx_format::types::OpenTxStatus;
+use otx_pool_client::OtxPoolRpcClient;
+use otx_pool_config::{CkbConfig, ScriptInfo};
+use otx_pool_plugin_dust_collector::DEFAULT_FEE;
 use otx_sdk::address::build_otx_address_from_secp_address;
 use otx_sdk::build_tx::OtxBuilder;
 use otx_sdk::signer::{SighashMode, Signer};
-
-use core_rpc_types::{GetBalancePayload, JsonItem};
 
 use anyhow::{Ok, Result};
 use ckb_sdk::Address;

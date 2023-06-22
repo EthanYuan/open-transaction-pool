@@ -1,10 +1,10 @@
 use super::get_uncompressed_pubkey_from_pk;
+use crate::utils::client::mercury_client::types::ScriptGroup;
 
 use ckb_crypto::secp::{Privkey, Signature};
 use ckb_hash::{blake2b_256, new_blake2b};
 use ckb_jsonrpc_types::TransactionView;
 use ckb_types::{bytes::Bytes, packed, prelude::*, H160, H256};
-use core_rpc_types::ScriptGroup;
 
 use std::convert::From;
 use std::str::FromStr;

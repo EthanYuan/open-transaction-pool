@@ -1,18 +1,21 @@
 #![allow(dead_code)]
 
-use crate::const_definition::RPC_TRY_INTERVAL_SECS;
+pub mod types;
+pub mod uints;
 
-use utils::client::{request, RpcClient};
-
-use anyhow::Result;
-use ckb_types::H256;
-use core_rpc_types::{
+use types::{
     AdjustAccountPayload, BlockInfo, DaoClaimPayload, DaoDepositPayload, DaoWithdrawPayload,
     GetAccountInfoPayload, GetAccountInfoResponse, GetBalancePayload, GetBalanceResponse,
     GetBlockInfoPayload, GetTransactionInfoResponse, MercuryInfo, PaginationResponse,
     QueryTransactionsPayload, SimpleTransferPayload, SudtIssuePayload, SyncState,
     TransactionCompletionResponse, TransferPayload, TxView,
 };
+
+use crate::const_definition::RPC_TRY_INTERVAL_SECS;
+use crate::utils::client::{request, RpcClient};
+
+use anyhow::Result;
+use ckb_types::H256;
 
 use std::thread::sleep;
 use std::time::Duration;

@@ -1,7 +1,7 @@
 use super::{AtomicSwap, SwapProposalWithOtxId};
 
-use otx_plugin_protocol::Plugin;
-use otx_plugin_protocol::PluginInfo;
+use otx_pool_plugin_protocol::Plugin;
+use otx_pool_plugin_protocol::PluginInfo;
 
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_derive::rpc;
