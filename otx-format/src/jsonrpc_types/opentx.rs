@@ -87,8 +87,9 @@ impl OpenTransaction {
 
     pub fn get_or_insert_otx_id(&mut self) -> Result<H256, OtxFormatError> {
         if let Some(value_data) = self.meta.get(OTX_IDENTIFYING_META_TX_HASH.into(), None) {
-            H256::from_slice(value_data.as_bytes())
-                .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))
+            H256::from_slice(value_data.as_bytes()).map_err(|e| {
+                OtxFormatError::OtxMapParseFailed(OTX_IDENTIFYING_META_TX_HASH, e.to_string())
+            })
         } else {
             let id = self.get_tx_hash()?;
             self.meta.push(OtxKeyPair::new(
@@ -183,7 +184,9 @@ impl OpenTransaction {
             let script = ckb_types::packed::Script::from_slice(
                 script.to_owned().expect("get script").as_bytes(),
             )
-            .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+            .map_err(|e| {
+                OtxFormatError::OtxMapParseFailed(OTX_ACCOUNTING_META_INPUT_XUDT, e.to_string())
+            })?
             .into();
             let input_xudt_amount: u128 = Uint128::from_slice(input_xudt_amount.as_bytes())
                 .expect("get input xudt amount")
@@ -200,7 +203,9 @@ impl OpenTransaction {
             let script = ckb_types::packed::Script::from_slice(
                 script.to_owned().expect("get script").as_bytes(),
             )
-            .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+            .map_err(|e| {
+                OtxFormatError::OtxMapParseFailed(OTX_ACCOUNTING_META_OUTPUT_XUDT, e.to_string())
+            })?
             .into();
             let output_xudt_amount: u128 = Uint128::from_slice(output_xudt_amount.as_bytes())
                 .expect("get output xudt amount")
@@ -219,7 +224,9 @@ impl OpenTransaction {
             let script = ckb_types::packed::Script::from_slice(
                 script.to_owned().expect("get script").as_bytes(),
             )
-            .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+            .map_err(|e| {
+                OtxFormatError::OtxMapParseFailed(OTX_ACCOUNTING_META_INPUT_SUDT, e.to_string())
+            })?
             .into();
             let input_sudt_amount: u128 = Uint128::from_slice(input_sudt_amount.as_bytes())
                 .expect("get input sudt amount")
@@ -236,7 +243,9 @@ impl OpenTransaction {
             let script = ckb_types::packed::Script::from_slice(
                 script.to_owned().expect("get script").as_bytes(),
             )
-            .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+            .map_err(|e| {
+                OtxFormatError::OtxMapParseFailed(OTX_ACCOUNTING_META_OUTPUT_SUDT, e.to_string())
+            })?
             .into();
             let output_sudt_amount: u128 = Uint128::from_slice(output_sudt_amount.as_bytes())
                 .expect("get output sudt amount")

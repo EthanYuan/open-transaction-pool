@@ -20,8 +20,8 @@ pub enum OtxFormatError {
     #[display(fmt = "map parse missing field {}", _0)]
     OtxMapParseMissingField(String),
 
-    #[display(fmt = "map parse failed: {}", _0)]
-    OtxMapParseFailed(String),
+    #[display(fmt = "map parse on {:#x} failed: {}", _0, _1)]
+    OtxMapParseFailed(u32, String),
 
     #[display(fmt = "locate input cell failed: {}", _0)]
     LocateInputFailed(String),
@@ -33,7 +33,7 @@ impl OtxError for OtxFormatError {
             OtxFormatError::VersionNotSupported(_) => -13010,
             OtxFormatError::OtxMapHasDuplicateKeypair(_) => -13011,
             OtxFormatError::OtxMapParseMissingField(_) => -13012,
-            OtxFormatError::OtxMapParseFailed(_) => -13013,
+            OtxFormatError::OtxMapParseFailed(_, _) => -13013,
             OtxFormatError::LocateInputFailed(_) => -13014,
         }
     }
