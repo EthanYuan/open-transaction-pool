@@ -1,6 +1,7 @@
 use crate::const_definition::{OTX_POOL_URI, SCRIPT_CONFIG};
 use crate::help::start_otx_pool;
-use crate::tests::atomic_swap_udt_to_udt::build_signed_otx;
+use crate::tests::swap::atomic_swap_ckb_to_udt::build_udt_to_ckb_signed_otx;
+use crate::tests::swap::atomic_swap_udt_to_udt::build_signed_otx;
 use crate::utils::instruction::ckb::{aggregate_transactions_into_blocks, dump_data};
 use crate::utils::instruction::mercury::prepare_ckb_capacity;
 use crate::utils::lock::secp::generate_rand_secp_address_pk_pair;
@@ -68,6 +69,51 @@ fn test_atomic_swap_rpc_get_all_swap_proposals() {
     assert_eq!(proposals.len(), 1);
     assert_eq!(proposals[0].otx_id, id);
     assert_eq!(proposals[0].swap_proposal.buy_amount, 10);
+    assert_eq!(proposals[0].swap_proposal.sell_amount, 10);
+    assert_eq!(proposals[0].swap_proposal.pay_fee, 1_0000_0000);
+
+    dump_data(&proposals, "./free-space/proposals.json").unwrap();
+}
+
+inventory::submit!(IntegrationTest {
+    name: "test_rpc_get_all_swap_proposals_udt_to_ckb",
+    test_fn: test_rpc_get_all_swap_proposals_udt_to_ckb
+});
+fn test_rpc_get_all_swap_proposals_udt_to_ckb() {
+    let (address, pk) = generate_rand_secp_address_pk_pair();
+    start_otx_pool(address, pk);
+
+    // get otx lock script info
+    let script_config = SCRIPT_CONFIG.get().unwrap().clone();
+    let otx_lock_script_info = script_config.get_script_info("otx-sighash-lock").unwrap();
+    let udt_type_script_info = script_config.get_script_info("sudt").unwrap();
+
+    // build otxs
+    // pay 51 CKB
+    let (address, pk) = generate_rand_secp_address_pk_pair();
+    let otx_address = build_otx_address_from_secp_address(&address, &otx_lock_script_info).unwrap();
+    let otx = build_udt_to_ckb_signed_otx(
+        "bob",
+        &otx_address,
+        (&address, &pk),
+        10,
+        151_0000_0000u64,
+        1_0000_0000u64,
+        vec![otx_lock_script_info, udt_type_script_info],
+    )
+    .unwrap();
+
+    let service_client = OtxPoolRpcClient::new(OTX_POOL_URI.to_string());
+    let id = service_client.submit_otx(otx).unwrap();
+    log::debug!("id: {:?}", id);
+
+    sleep(Duration::from_secs(5));
+    aggregate_transactions_into_blocks().unwrap();
+
+    let proposals = service_client.get_all_swap_proposals().unwrap();
+    assert_eq!(proposals.len(), 1);
+    assert_eq!(proposals[0].otx_id, id);
+    assert_eq!(proposals[0].swap_proposal.buy_amount, 10_0000_0000);
     assert_eq!(proposals[0].swap_proposal.sell_amount, 10);
     assert_eq!(proposals[0].swap_proposal.pay_fee, 1_0000_0000);
 
