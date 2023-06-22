@@ -256,12 +256,24 @@ impl TryFrom<OtxMap> for CellDep {
             }));
         let out_point = OutPointBuilder::default()
             .tx_hash(
-                ckb_types::packed::Byte32::from_slice(out_point_tx_hash.0.as_bytes())
-                    .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?,
+                ckb_types::packed::Byte32::from_slice(out_point_tx_hash.0.as_bytes()).map_err(
+                    |e| {
+                        OtxFormatError::OtxMapParseFailed(
+                            OTX_CELL_DEP_OUTPOINT_TX_HASH,
+                            e.to_string(),
+                        )
+                    },
+                )?,
             )
             .index(
-                ckb_types::packed::Uint32::from_slice(out_point_index.0.as_bytes())
-                    .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?,
+                ckb_types::packed::Uint32::from_slice(out_point_index.0.as_bytes()).map_err(
+                    |e| {
+                        OtxFormatError::OtxMapParseFailed(
+                            OTX_CELL_DEP_OUTPOINT_INDEX,
+                            e.to_string(),
+                        )
+                    },
+                )?,
             )
             .build()
             .into();
@@ -274,9 +286,11 @@ impl TryFrom<OtxMap> for CellDep {
             })
             .unwrap_or(OtxValue(packed::Byte::default().as_bytes().pack().into()));
         let dep_type: ckb_types::core::DepType = packed::Byte::from_slice(dep_type.0.as_bytes())
-            .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+            .map_err(|e| OtxFormatError::OtxMapParseFailed(OTX_CELL_DEP_TYPE, e.to_string()))?
             .try_into()
-            .map_err(|_| OtxFormatError::OtxMapParseFailed("CellDep".to_string()))?;
+            .map_err(|_| {
+                OtxFormatError::OtxMapParseFailed(OTX_CELL_DEP_TYPE, "CellDep".to_string())
+            })?;
         let dep_type: DepType = dep_type.into();
 
         Ok(CellDep {
@@ -308,7 +322,7 @@ impl TryFrom<OtxMap> for HeaderDep {
             })
             .unwrap_or(OtxValue(Byte32::zero().as_bytes().pack().into()));
         let header_dep = HeaderDep::from_slice(header_dep.0.as_bytes())
-            .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?;
+            .map_err(|e| OtxFormatError::OtxMapParseFailed(OTX_HEADER_DEP_HASH, e.to_string()))?;
 
         Ok(header_dep)
     }
@@ -383,12 +397,16 @@ impl TryFrom<OtxMap> for CellInput {
             });
         let previous_output = OutPointBuilder::default()
             .tx_hash(
-                ckb_types::packed::Byte32::from_slice(out_point_tx_hash.0.as_bytes())
-                    .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?,
+                ckb_types::packed::Byte32::from_slice(out_point_tx_hash.0.as_bytes()).map_err(
+                    |e| {
+                        OtxFormatError::OtxMapParseFailed(OTX_INPUT_OUTPOINT_TX_HASH, e.to_string())
+                    },
+                )?,
             )
             .index(
-                ckb_types::packed::Uint32::from_slice(out_point_index.0.as_bytes())
-                    .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?,
+                ckb_types::packed::Uint32::from_slice(out_point_index.0.as_bytes()).map_err(
+                    |e| OtxFormatError::OtxMapParseFailed(OTX_INPUT_OUTPOINT_INDEX, e.to_string()),
+                )?,
             )
             .build()
             .into();
@@ -404,7 +422,7 @@ impl TryFrom<OtxMap> for CellInput {
                 OtxValue(value.as_bytes().pack().into())
             });
         let since = ckb_types::packed::Uint64::from_slice(since.0.as_bytes())
-            .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+            .map_err(|e| OtxFormatError::OtxMapParseFailed(OTX_INPUT_SINCE, e.to_string()))?
             .unpack();
 
         Ok(CellInput {
@@ -478,7 +496,7 @@ impl TryFrom<OtxMap> for (CellOutput, OutputData) {
             });
 
         let capacity = ckb_types::packed::Uint64::from_slice(capacity.0.as_bytes())
-            .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+            .map_err(|e| OtxFormatError::OtxMapParseFailed(OTX_OUTPUT_CAPACITY, e.to_string()))?
             .unpack();
 
         // lock code hash
@@ -490,7 +508,9 @@ impl TryFrom<OtxMap> for (CellOutput, OutputData) {
             })
             .unwrap_or_else(|| OtxValue(Byte32::zero().as_bytes().pack().into()));
         let lock_code_hash = ckb_types::packed::Byte32::from_slice(lock_code_hash.0.as_bytes())
-            .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+            .map_err(|e| {
+                OtxFormatError::OtxMapParseFailed(OTX_OUTPUT_LOCK_CODE_HASH, e.to_string())
+            })?
             .unpack();
 
         // lock hash type
@@ -502,11 +522,16 @@ impl TryFrom<OtxMap> for (CellOutput, OutputData) {
             })
             .unwrap_or_else(|| OtxValue(packed::Byte::default().as_bytes().pack().into()));
         let lock_hash_type: u8 = packed::Byte::from_slice(lock_hash_type.0.as_bytes())
-            .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+            .map_err(|e| {
+                OtxFormatError::OtxMapParseFailed(OTX_OUTPUT_LOCK_HASH_TYPE, e.to_string())
+            })?
             .into();
-        let lock_hash_type: ScriptHashType = lock_hash_type
-            .try_into()
-            .map_err(|_| OtxFormatError::OtxMapParseFailed("ScriptHashType".to_string()))?;
+        let lock_hash_type: ScriptHashType = lock_hash_type.try_into().map_err(|_| {
+            OtxFormatError::OtxMapParseFailed(
+                OTX_OUTPUT_LOCK_HASH_TYPE,
+                "ScriptHashType".to_string(),
+            )
+        })?;
 
         // lock args
         let lock_args = map
@@ -550,7 +575,9 @@ impl TryFrom<OtxMap> for (CellOutput, OutputData) {
                 })
                 .unwrap_or_else(|| OtxValue(Byte32::zero().as_bytes().pack().into()));
             let type_code_hash = ckb_types::packed::Byte32::from_slice(type_code_hash.0.as_bytes())
-                .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+                .map_err(|e| {
+                    OtxFormatError::OtxMapParseFailed(OTX_OUTPUT_TYPE_CODE_HASH, e.to_string())
+                })?
                 .unpack();
 
             let type_hash_type = map
@@ -561,11 +588,16 @@ impl TryFrom<OtxMap> for (CellOutput, OutputData) {
                 })
                 .unwrap_or_else(|| OtxValue(packed::Byte::default().as_bytes().pack().into()));
             let type_hash_type: u8 = packed::Byte::from_slice(type_hash_type.0.as_bytes())
-                .map_err(|e| OtxFormatError::OtxMapParseFailed(e.to_string()))?
+                .map_err(|e| {
+                    OtxFormatError::OtxMapParseFailed(OTX_OUTPUT_TYPE_HASH_TYPE, e.to_string())
+                })?
                 .into();
-            let type_hash_type: ScriptHashType = type_hash_type
-                .try_into()
-                .map_err(|_| OtxFormatError::OtxMapParseFailed("ScriptHashType".to_string()))?;
+            let type_hash_type: ScriptHashType = type_hash_type.try_into().map_err(|_| {
+                OtxFormatError::OtxMapParseFailed(
+                    OTX_OUTPUT_TYPE_HASH_TYPE,
+                    "ScriptHashType".to_string(),
+                )
+            })?;
 
             let type_args = map
                 .0
