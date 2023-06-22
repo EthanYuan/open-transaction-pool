@@ -5,7 +5,8 @@ use crate::constant::essential_keys::{
     OTX_HEADER_DEP_HASH, OTX_INPUT_OUTPOINT_INDEX, OTX_INPUT_OUTPOINT_TX_HASH, OTX_INPUT_SINCE,
     OTX_OUTPUT_CAPACITY, OTX_OUTPUT_DATA, OTX_OUTPUT_LOCK_ARGS, OTX_OUTPUT_LOCK_CODE_HASH,
     OTX_OUTPUT_LOCK_HASH_TYPE, OTX_OUTPUT_TYPE_ARGS, OTX_OUTPUT_TYPE_CODE_HASH,
-    OTX_OUTPUT_TYPE_HASH_TYPE, OTX_WITNESS_RAW,
+    OTX_OUTPUT_TYPE_HASH_TYPE, OTX_WITNESS_INPUT_LOCK, OTX_WITNESS_INPUT_TYPE,
+    OTX_WITNESS_OUTPUT_TYPE, OTX_WITNESS_RAW,
 };
 
 use crate::error::OtxFormatError;
@@ -15,7 +16,7 @@ use anyhow::Result;
 use ckb_jsonrpc_types::{CellDep, CellInput, CellOutput, DepType, JsonBytes, Script, Uint32};
 use ckb_types::bytes::Bytes;
 use ckb_types::core::{self, ScriptHashType};
-use ckb_types::packed::{Byte32, OutPointBuilder, WitnessArgs};
+use ckb_types::packed::{Byte32, BytesOpt, OutPointBuilder, WitnessArgs, WitnessArgsBuilder};
 use ckb_types::{self, prelude::*, H256};
 use linked_hash_map::LinkedHashMap;
 use serde::{Deserialize, Serialize};
@@ -344,9 +345,61 @@ impl TryFrom<OtxMap> for Witness {
                 key_type: OTX_WITNESS_RAW.into(),
                 key_data: None,
             })
-            .unwrap_or(OtxValue(WitnessArgs::default().as_bytes().pack().into()))
-            .0;
+            .map(|v| v.0)
+            .unwrap_or_else(|| {
+                WitnessArgs::try_from(map)
+                    .unwrap_or_default()
+                    .as_bytes()
+                    .pack()
+                    .into()
+            });
         Ok(witness)
+    }
+}
+
+impl TryFrom<OtxMap> for WitnessArgs {
+    type Error = OtxFormatError;
+    fn try_from(mut map: OtxMap) -> Result<Self, Self::Error> {
+        let lock_witness = map
+            .0
+            .remove(&OtxKey {
+                key_type: OTX_WITNESS_INPUT_LOCK.into(),
+                key_data: None,
+            })
+            .map(|v| v.0)
+            .unwrap_or_default();
+        let input_type_witness = map
+            .0
+            .remove(&OtxKey {
+                key_type: OTX_WITNESS_INPUT_TYPE.into(),
+                key_data: None,
+            })
+            .map(|v| v.0)
+            .unwrap_or_default();
+        let output_type_witness = map
+            .0
+            .remove(&OtxKey {
+                key_type: OTX_WITNESS_OUTPUT_TYPE.into(),
+                key_data: None,
+            })
+            .map(|v| v.0)
+            .unwrap_or_default();
+
+        let builder = WitnessArgsBuilder::default()
+            .lock(BytesOpt::from_slice(lock_witness.as_bytes()).map_err(|e| {
+                OtxFormatError::OtxMapParseFailed(OTX_WITNESS_INPUT_LOCK, e.to_string())
+            })?)
+            .input_type(
+                BytesOpt::from_slice(input_type_witness.as_bytes()).map_err(|e| {
+                    OtxFormatError::OtxMapParseFailed(OTX_WITNESS_INPUT_TYPE, e.to_string())
+                })?,
+            )
+            .output_type(
+                BytesOpt::from_slice(output_type_witness.as_bytes()).map_err(|e| {
+                    OtxFormatError::OtxMapParseFailed(OTX_WITNESS_OUTPUT_TYPE, e.to_string())
+                })?,
+            );
+        Ok(builder.build())
     }
 }
 
