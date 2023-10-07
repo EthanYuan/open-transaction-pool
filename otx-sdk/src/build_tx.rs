@@ -112,6 +112,47 @@ impl OtxBuilder {
         .map_err(|err| anyhow!(err.to_string()))?;
         Ok(otx)
     }
+
+    // Merge otxs into ckb tx to skip the input existence checking
+    pub fn merge_otxs_single_acp_into_tx(
+        &self,
+        mut otxs: Vec<OpenTransaction>,
+    ) -> Result<TransactionView> {
+        if otxs.len() == 1 {
+            return otxs
+                .remove(0)
+                .try_into()
+                .map_err(|_| anyhow!("otx convert to ckb tx"));
+        }
+        let mut txs = vec![];
+        for otx in otxs {
+            let tx: TransactionView = otx
+                .try_into()
+                .map_err(|_| anyhow!("otx convert to ckb tx"))?;
+            let tx = Transaction::from(tx.inner.clone()).into_view();
+            txs.push(tx);
+        }
+
+        let mut builder = core::TransactionView::new_advanced_builder();
+        #[allow(clippy::mutable_key_type)]
+        let mut cell_deps = HashSet::new();
+        #[allow(clippy::mutable_key_type)]
+        let mut header_deps = HashSet::new();
+        for tx in txs.iter() {
+            cell_deps.extend(tx.cell_deps());
+            header_deps.extend(tx.header_deps());
+            builder = builder.inputs(tx.inputs());
+            builder = builder.outputs(tx.outputs());
+            builder = builder.outputs_data(tx.outputs_data());
+            builder = builder.witnesses(tx.witnesses());
+        }
+        let tx = builder
+            .cell_deps(cell_deps)
+            .header_deps(header_deps)
+            .build()
+            .into();
+        Ok(tx)
+    }
 }
 pub fn dump_data<T>(data: &T, file_name: &str) -> Result<()>
 where

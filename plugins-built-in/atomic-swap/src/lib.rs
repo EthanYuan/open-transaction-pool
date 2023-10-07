@@ -213,6 +213,7 @@ impl Plugin for AtomicSwap {
         let item = match self.context.proposals.get(&swap_proposal.pair_proposal()) {
             Some(item) => item,
             None => {
+                log::info!("insert swap proposal as {:#x}", otx_hash);
                 self.context
                     .otxs
                     .insert(otx_hash.clone(), (otx, swap_proposal.clone()));
@@ -226,6 +227,7 @@ impl Plugin for AtomicSwap {
             }
         };
 
+        log::info!("try to match the swap proposal {}", otx_hash.to_string());
         for pair_otx_hash in item.value() {
             let pair_otx = self
                 .context
@@ -235,9 +237,10 @@ impl Plugin for AtomicSwap {
                 .value()
                 .clone();
             if !swap_proposal.cap_match(pair_otx.1) {
+                log::info!("match {:#x} with {:#x}: failed", otx_hash, pair_otx_hash);
                 continue;
             }
-            log::info!("matched tx: {:#x}", pair_otx_hash);
+            log::info!("match {:#x} with {:#x}: succeeded", otx_hash, pair_otx_hash);
 
             // merge_otx
             let builder = OtxBuilder::new(
@@ -245,20 +248,19 @@ impl Plugin for AtomicSwap {
                 self.context.ckb_config.clone(),
             );
             let otx_list = vec![otx.clone(), pair_otx.0];
-            let merged_otx = if let Ok(merged_otx) = builder.merge_otxs_single_acp(otx_list) {
-                log::debug!("otxs merge successfully.");
-                merged_otx
-            } else {
-                log::error!("{} failed to merge otxs.", self.context.plugin_name);
-                continue;
-            };
-
-            // to final tx
-            let tx = if let Ok(tx) = merged_otx.try_into() {
-                tx
-            } else {
-                log::error!("failed to generate final tx.");
-                continue;
+            let tx = match builder.merge_otxs_single_acp_into_tx(otx_list) {
+                Ok(tx) => {
+                    log::info!("otxs merge successfully.");
+                    tx
+                }
+                Err(err) => {
+                    log::error!(
+                        "{} failed to merge otxs: {:#}",
+                        self.context.plugin_name,
+                        err
+                    );
+                    continue;
+                }
             };
 
             // send_ckb
