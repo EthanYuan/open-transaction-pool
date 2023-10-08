@@ -1447,24 +1447,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f61fba1741ea2b3d6a1e3178721804bb716a68a6aeba1149b5d52e3d464ea66"
 
 [[package]]
-name = "open-transaction-pool"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "ctrlc",
- "env_logger",
- "log",
- "otx-pool",
- "otx-pool-client",
- "otx-pool-config",
- "otx-pool-plugin-atomic-swap",
- "otx-pool-plugin-dust-collector",
- "otx-pool-plugin-signer",
- "otx-sdk",
-]
-
-[[package]]
 name = "openssl"
 version = "0.10.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1534,29 +1516,18 @@ dependencies = [
 name = "otx-pool"
 version = "0.1.0"
 dependencies = [
- "ansi_term",
  "anyhow",
- "async-trait",
- "ckb-async-runtime",
- "ckb-jsonrpc-types",
- "ckb-sdk",
- "ckb-stop-handler",
- "ckb-types",
- "crossbeam-channel",
- "dashmap",
- "derive_more",
- "jsonrpc-core",
- "jsonrpc-derive",
- "jsonrpc-http-server",
- "jsonrpc-server-utils",
+ "clap",
+ "ctrlc",
+ "env_logger",
  "log",
- "molecule",
- "otx-format",
+ "otx-pool-client",
  "otx-pool-config",
- "otx-pool-plugin-protocol",
- "serde",
- "serde_json",
- "tokio",
+ "otx-pool-plugin-atomic-swap",
+ "otx-pool-plugin-dust-collector",
+ "otx-pool-plugin-signer",
+ "otx-pool-service",
+ "otx-sdk",
 ]
 
 [[package]]
@@ -1651,6 +1622,35 @@ dependencies = [
  "otx-pool-plugin-protocol",
  "otx-sdk",
  "secp256k1",
+]
+
+[[package]]
+name = "otx-pool-service"
+version = "0.1.0"
+dependencies = [
+ "ansi_term",
+ "anyhow",
+ "async-trait",
+ "ckb-async-runtime",
+ "ckb-jsonrpc-types",
+ "ckb-sdk",
+ "ckb-stop-handler",
+ "ckb-types",
+ "crossbeam-channel",
+ "dashmap",
+ "derive_more",
+ "jsonrpc-core",
+ "jsonrpc-derive",
+ "jsonrpc-http-server",
+ "jsonrpc-server-utils",
+ "log",
+ "molecule",
+ "otx-format",
+ "otx-pool-config",
+ "otx-pool-plugin-protocol",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

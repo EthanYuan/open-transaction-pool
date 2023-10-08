@@ -55,7 +55,7 @@ generate_readme() {
 
   echo "# $CRATE_NAME" >README.md
   echo >>README.md
-  echo "This crate is a component of [otx](https://github.com/EthanYuan/open-transaction-pool)." >>README.md
+  echo "This crate is a component of [CKB](https://github.com/nervosnetwork/ckb) [otx-pool](https://github.com/EthanYuan/open-transaction-pool)." >>README.md
   echo >>README.md
   echo "$CRATE_DESCRIPTION" >>README.md
   echo >>README.md

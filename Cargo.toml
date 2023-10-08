@@ -1,5 +1,5 @@
 [package]
-name = "open-transaction-pool"
+name = "otx-pool"
 version = "0.1.0"
 license = "MIT"
 authors = ["Nervos Network"]
@@ -15,9 +15,9 @@ ctrlc = "3.2.3"
 env_logger = "0.9.3"
 log = "0.4.17"
 
-otx-pool = { path = "./otx-pool", version = "= 0.1.0" }
 otx-pool-client = { path = "util/client", version = "= 0.1.0" }
 otx-pool-config = { path = "util/config", version = "= 0.1.0" }
+otx-pool-service = { path = "./otx-pool-service", version = "= 0.1.0" }
 otx-sdk = { path = "./otx-sdk", version = "= 0.1.0" }
 
 otx-pool-plugin-atomic-swap = { path = "plugins-built-in/atomic-swap", version = "= 0.1.0" }
@@ -35,7 +35,7 @@ members = [
     "plugins-built-in/dust-collector",
     "plugins-built-in/signer",
 
-    "otx-pool",
+    "otx-pool-service",
 
     "util/client",
 ]

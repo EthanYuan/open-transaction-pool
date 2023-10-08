@@ -1186,10 +1186,10 @@ dependencies = [
  "log",
  "once_cell",
  "otx-format",
- "otx-pool",
  "otx-pool-client",
  "otx-pool-config",
  "otx-pool-plugin-dust-collector",
+ "otx-pool-service",
  "otx-sdk",
  "rand 0.8.5",
  "reqwest",
@@ -1559,35 +1559,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "otx-pool"
-version = "0.1.0"
-dependencies = [
- "ansi_term",
- "anyhow",
- "async-trait",
- "ckb-async-runtime",
- "ckb-jsonrpc-types",
- "ckb-sdk",
- "ckb-stop-handler",
- "ckb-types",
- "crossbeam-channel",
- "dashmap",
- "derive_more",
- "jsonrpc-core",
- "jsonrpc-derive",
- "jsonrpc-http-server",
- "jsonrpc-server-utils",
- "log",
- "molecule",
- "otx-format",
- "otx-pool-config",
- "otx-pool-plugin-protocol",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "otx-pool-client"
 version = "0.1.0"
 dependencies = [
@@ -1662,6 +1633,35 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
+]
+
+[[package]]
+name = "otx-pool-service"
+version = "0.1.0"
+dependencies = [
+ "ansi_term",
+ "anyhow",
+ "async-trait",
+ "ckb-async-runtime",
+ "ckb-jsonrpc-types",
+ "ckb-sdk",
+ "ckb-stop-handler",
+ "ckb-types",
+ "crossbeam-channel",
+ "dashmap",
+ "derive_more",
+ "jsonrpc-core",
+ "jsonrpc-derive",
+ "jsonrpc-http-server",
+ "jsonrpc-server-utils",
+ "log",
+ "molecule",
+ "otx-format",
+ "otx-pool-config",
+ "otx-pool-plugin-protocol",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

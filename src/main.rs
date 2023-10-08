@@ -1,8 +1,8 @@
-use otx_pool::{logo::print_logo, OtxPoolService};
 use otx_pool_config::{parse, AppConfig, ConfigFile};
 use otx_pool_plugin_atomic_swap::{rpc::AtomicSwapRpc, AtomicSwap};
 use otx_pool_plugin_dust_collector::DustCollector;
 use otx_pool_plugin_signer::Signer;
+use otx_pool_service::{logo::print_logo, OtxPoolService};
 
 use anyhow::{anyhow, Result};
 use clap::Parser;
